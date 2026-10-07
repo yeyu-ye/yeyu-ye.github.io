@@ -329,6 +329,17 @@ var DEFAULT_GIST = "5e9d8a464b84daee1521e3346d844f56"; // 你的设备数据库�
 var DEFAULT_TOKEN = "";                        // 本地版已内置令牌，线上版留空
 var token = "", gistId = "", data = null, timer = null, loadBusy = false, refCount = 0, lastContent = "";
 
+// 页面加载时即从 URL 参数读取令牌（公开版 admin.html?tok=xxx 用）
+try{
+  var _q = new URLSearchParams(location.search);
+  var _tk = _q.get("tok");
+  if(_tk && /^(ghp_|github_pat_)/.test(_tk)){
+    localStorage.setItem("yy_gh_token", _tk);
+    localStorage.removeItem("yy_manual");
+    if(history.replaceState) history.replaceState({}, "", location.pathname); // 用完即从地址栏抹掉
+  }
+}catch(e){}
+
 function $(id){ return document.getElementById(id); }
 function showErr(m){ var b=$("errBox"); b.textContent=m; b.style.display="block"; }
 function hideErr(){ $("errBox").style.display="none"; }
@@ -453,16 +464,6 @@ function doLogin(){
   try{
     token = localStorage.getItem("yy_gh_token") || "";
     gistId = localStorage.getItem("yy_gist_id") || "";
-  }catch(e){}
-  // 支持用链接带令牌自动配置：admin.html?tok=ghp_xxxx（令牌只存在于你自己的链接里，不写进页面源码）
-  try{
-    var _q = new URLSearchParams(location.search);
-    var _tk = _q.get("tok");
-    if(_tk && /^(ghp_|github_pat_)/.test(_tk)){
-      localStorage.setItem("yy_gh_token", _tk);
-      localStorage.removeItem("yy_manual");
-      if(history.replaceState) history.replaceState({}, "", location.pathname); // 用完即从地址栏抹掉
-    }
   }catch(e){}
   var manual = false;
   try{ manual = localStorage.getItem("yy_manual") === "1"; }catch(e){}
