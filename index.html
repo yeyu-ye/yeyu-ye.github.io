@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>夜雨开心之上</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.container {
+  text-align: center;
+  padding: 40px 20px;
+  max-width: 500px;
+  width: 100%;
+}
+.icon { font-size: 64px; margin-bottom: 20px; }
+h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
+.version { color: #8b949e; font-size: 14px; margin-bottom: 30px; }
+.info {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 2;
+}
+.info span { color: #8b949e; }
+.download-btn {
+  display: inline-block;
+  background: #238636;
+  color: #fff;
+  text-decoration: none;
+  padding: 14px 48px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.download-btn:hover { background: #2ea043; }
+.size { color: #8b949e; font-size: 13px; margin-top: 12px; }
+.admin-btn {
+  display: block; margin-top: 18px; padding: 11px 20px;
+  background: transparent; color: #58a6ff;
+  border: 1px solid #30363d; border-radius: 8px;
+  font-size: 14px; text-decoration: none;
+}
+.admin-btn:hover { border-color: #58a6ff; background: #161b22; }
+.alt-link {
+  display: inline-block; margin-top: 10px;
+  color: #8b949e; font-size: 13px; text-decoration: underline;
+}
+.alt-link:hover { color: #58a6ff; }
+/* 密钥锁屏 */
+.lock-screen { text-align: center; max-width: 360px; margin: 0 auto; }
+.lock-screen .lock-icon { font-size: 56px; margin-bottom: 16px; }
+.lock-screen h2 { font-size: 20px; color: #58a6ff; margin-bottom: 8px; }
+.lock-screen p { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+.lock-input-row { display: flex; gap: 8px; justify-content: center; }
+.lock-input {
+  flex: 1; background: #161b22; border: 1px solid #30363d;
+  border-radius: 10px; padding: 14px 20px; color: #e6edf3;
+  font-size: 20px; text-align: center; letter-spacing: 8px;
+  outline: none; transition: border-color 0.2s;
+}
+.lock-input:focus { border-color: #58a6ff; }
+.lock-btn {
+  background: #238636; color: #fff; border: none; border-radius: 10px;
+  padding: 14px 28px; font-size: 16px; font-weight: 600; cursor: pointer;
+  transition: background 0.2s; white-space: nowrap;
+}
+.lock-btn:hover { background: #2ea043; }
+.lock-btn:active { transform: scale(0.96); }
+.lock-error { color: #f85149; font-size: 13px; margin-top: 12px; min-height: 18px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 密钥锁屏 -->
+  <div class="lock-screen" id="lockScreen">
+    <div class="lock-icon">🔐</div>
+    <h2>夜雨开心之上</h2>
+    <p>输入密钥后查看下载内容</p>
+    <div class="lock-input-row">
+      <input type="password" class="lock-input" id="keyInput" placeholder="密钥" maxlength="10" autocomplete="off" onkeydown="if(event.key==='Enter')checkKey()">
+      <button class="lock-btn" onclick="checkKey()">确认</button>
+    </div>
+    <div class="lock-error" id="keyError"></div>
+  </div>
+
+  <!-- 下载内容（输入密钥后显示） -->
+  <div class="hidden" id="downloadContent">
+    <div class="icon">📦</div>
+    <h1>夜雨开心之上</h1>
+    <div class="version">v11 — 2026-10-08 更新</div>
+    <div class="info">
+      <div><span>📋 版本：</span>v11 (yeyu-v11)</div>
+      <div><span>🔧 签名：</span>v2 + v3</div>
+      <div><span>📱 最低系统：</span>Android 7.0+</div>
+      <div><span>✨ 本次更新：</span></div>
+      <div style="padding-left:16px;color:#7ee787">
+        • 更换为长期有效令牌，授权永不过期<br>
+        • 站点迁移到永久地址，链接不再失效<br>
+        • 底部导航简化，「设备与授权」移入设置页<br>
+        • 授权状态实时监听，后台一操作立刻生效
+      </div>
+    </div>
+    <a href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v11/yeyu-v11.apk" class="download-btn">⬇ 下载 APK</a>
+    <div class="size">文件大小：8.6 MB · 国内加速节点</div>
+    <a href="yeyu-v11.apk" class="alt-link">备用下载（GitHub 直连，加速节点打不开时用）</a>
+    <a href="admin.html" class="admin-btn">🛠 管理员后台 · 查看设备 / 授权 / 踢出</a>
+    <div class="size" style="margin-top:6px">只有你自己用这个，密钥同样是 9178</div>
+  </div>
+
+</div>
+<script>
+function checkKey(){
+  var input = document.getElementById("keyInput").value.trim();
+  var err = document.getElementById("keyError");
+  if(input === "9178"){
+    document.getElementById("lockScreen").classList.add("hidden");
+    document.getElementById("downloadContent").classList.remove("hidden");
+  } else {
+    err.textContent = "密钥错误，请重新输入";
+    document.getElementById("keyInput").value = "";
+    document.getElementById("keyInput").focus();
+  }
+}
+document.getElementById("keyInput").focus();
+</script>
+</body>
+</html>
