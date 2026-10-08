@@ -1,0 +1,9 @@
+{
+  "code": 16,
+  "ver": "v16",
+  "apk": "https://yeyu-ye.github.io/yeyu-v16.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v16/yeyu-v16.apk",
+  "force": false,
+  "time": "2026-10-08 21:45",
+  "note": "• 设置页新增「设备日志」：谁在线谁离线，几点几分几秒上线 / 被踢出 / 被放行\n• 设置页新增「和管理员聊天」，可以和后台互发消息\n• 后台新增「设备日志」「设备消息」两张卡片，可单独回复或群发所有设备\n• 以后有新版本会自动弹窗提醒，点一下就能下载更新"
+}
