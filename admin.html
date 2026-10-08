@@ -1435,7 +1435,7 @@ function renderLog(){
 var chatLastN = 0;
 var chatChan = "all";
 function chatChanOf(m){
-  if(m.ch === "all" || m.ch === "admin") return m.ch;
+  if(m.ch === "all" || m.ch === "admin" || m.ch === "dm") return m.ch;
   if(m.to === "admin" || m.from === "admin") return "admin";   // 兼容升级前的老消息
   return "all";
 }
@@ -1486,8 +1486,10 @@ function renderChat(){
   var arr = data.chat || [], h = "";
   for(var j = 0; j < arr.length; j++){
     var m = arr[j] || {};
-    if(chatChanOf(m) !== chatChan) continue;
-    if(chatChan === "admin" && to && !(m.to === to || m.from === to)) continue;
+    var ch = chatChanOf(m);
+    // 通用频道只看公共消息；设备私聊页则把该设备相关的私聊（含设备↔设备）一并显示
+    if(chatChan === "all"){ if(ch !== "all") continue; }
+    else { if(ch === "all") continue; if(to && !(m.to === to || m.from === to)) continue; }
     var mine = (m.from === "admin");
     var id = devIdOf(m.from);
     var nm = chatNameOf(m);
