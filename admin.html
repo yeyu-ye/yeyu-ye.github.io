@@ -1824,6 +1824,7 @@ function logLiveRestart(){
 }
 function livePingSet(on){
   if(!data || !data.cfg) return;
+  if(typeof canEdit === "function" && !canEdit()) return;   // 成员只读：静默跳过，不弹提示
   if(!!data.cfg.livePing === !!on) return;
   mutate(function(){ data.cfg.livePing = on ? 1 : 0; },
     on ? "已让手机每 1 秒上报一次（延迟显示最准）" : "手机上报已恢复为 5 秒一次");
