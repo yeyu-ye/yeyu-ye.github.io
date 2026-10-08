@@ -41,11 +41,42 @@ input[type=checkbox]{width:16px;height:16px;vertical-align:middle;accent-color:#
 .nav-i.hide{display:none}
 .main-col{flex:1;min-width:0}
 #cardHost{display:none}
+/* 弹窗：半透明毛玻璃，壁纸透得出来 */
 .tool-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
-  padding:22px;background:rgba(0,0,0,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+  padding:22px;background:rgba(4,7,13,.26);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
 .tool-modal.show{display:flex}
-.tool-box{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:rgba(13,17,23,.93);
-  border:1px solid rgba(48,54,61,.9);border-radius:14px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.tool-box{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:rgba(11,15,22,.52);
+  border:1px solid rgba(125,150,185,.30);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+  backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25)}
+/* 弹窗里的卡片再淡一档，别把壁纸糊死 */
+.tool-box .card{background:rgba(14,19,27,.42);border-color:rgba(125,150,185,.22)}
+.tool-box th{background:rgba(14,19,27,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+/* ===== 设备管理：一台设备一张卡，简洁好认 ===== */
+.devgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:11px}
+.devc{background:rgba(16,21,28,.5);border:1px solid rgba(48,54,61,.75);border-radius:12px;padding:11px 12px;transition:.15s}
+.devc:hover{border-color:rgba(88,166,255,.5);background:rgba(22,29,40,.55)}
+.devc.sel{border-color:#1f6feb;background:rgba(31,111,235,.13)}
+.devc.pend{background:rgba(210,153,34,.10);border-color:rgba(210,153,34,.42)}
+.devc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.devc-nm{flex:1;min-width:0;font-size:14px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.devc-meta{font-size:12px;color:#8b949e;line-height:1.55;word-break:break-all}
+.devc-id{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#79c0ff}
+.devc-ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.on{color:#3fb950}.off{color:#6e7681}
+/* ===== 设备日志：实时在线 / 延迟 / 停留页面 ===== */
+.livebar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+.livebar div{flex:1;min-width:96px;background:rgba(16,21,28,.5);border:1px solid rgba(48,54,61,.7);border-radius:10px;padding:9px 11px}
+.livebar b{display:block;font-size:19px;color:#e6edf3;line-height:1.25;font-variant-numeric:tabular-nums}
+.livebar span{font-size:11px;color:#8b949e}
+.livec{display:flex;align-items:center;gap:10px;background:rgba(16,21,28,.46);border:1px solid rgba(48,54,61,.7);
+  border-radius:11px;padding:9px 11px;margin-bottom:8px}
+.livec .dot{font-size:13px;flex:0 0 auto}
+.livec .mid{flex:1;min-width:0}
+.livec .nm{font-size:13px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.livec .sub{font-size:12px;color:#8b949e;margin-top:2px}
+.livec .lag{font-family:ui-monospace,Consolas,monospace;font-size:12px;flex:0 0 auto;text-align:right}
+.lag-v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;background:rgba(88,166,255,.14);color:#79c0ff;border-radius:8px;padding:1px 7px;font-size:12px}
 .tool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;
   padding-bottom:10px;border-bottom:1px solid rgba(48,54,61,.7)}
 .tool-head b{color:#e6edf3;font-size:15px}
@@ -322,30 +353,38 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <label class="sw" style="margin:0;white-space:nowrap" title="勾上后删除不再弹确认框，可以连着点">
         <input type="checkbox" id="quickDel"> 连删不提示</label>
     </div>
-    <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th style="width:34px"></th>
-          <th style="width:150px">设备 ID</th><th>机型</th><th>系统</th><th>状态</th><th>连接</th>
-          <th>首次上线</th><th>最后上线</th><th style="width:56px">启动</th><th>备注</th><th style="width:200px">操作</th>
-        </tr></thead>
-        <tbody id="tb"></tbody>
-      </table>
-    </div>
+    <div class="devgrid" id="devGrid"></div>
     <div class="empty" id="emptyTip" style="display:none">还没有设备上过线。把 APK 装到手机上打开一次，它就会自动出现在这里。</div>
   </div>
 
   <div class="card" id="logCard" style="display:none">
     <h2>④ 设备日志 · 谁在线谁离线</h2>
     <div class="muted" style="margin-bottom:10px">
-      5 分钟内有心跳 = <b style="color:#3fb950">在线</b>。下面按时间倒序列出每台设备的上线 / 离线 / 被踢出 / 被放行记录，精确到秒。
+      <b style="color:#3fb950">绿色 ●</b> = 这台手机现在开着 APP 并连着服务器；<b>延迟</b> = 它最后一次上报距现在多久（越小越实时）。
     </div>
     <div class="bar" style="margin-bottom:10px">
-      <input type="text" id="logKw" placeholder="筛选机型 / 设备 ID" oninput="renderLog()" style="flex:1;min-width:180px">
-      <button class="sm" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
+      <input type="text" id="logKw" placeholder="筛选机型 / 设备 ID / 页面" oninput="renderLog()" style="flex:1;min-width:170px">
+      <select id="liveRate" onchange="liveRateSet(this.value)" style="width:auto;min-width:96px">
+        <option value="1000">⚡ 1 秒</option>
+        <option value="2000">2 秒</option>
+        <option value="5000">5 秒</option>
+        <option value="0">手动</option>
+      </select>
+      <label class="sw" style="margin:0;white-space:nowrap" title="打开后手机会每 1 秒上报一次，延迟显示才准">
+        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 1 秒上报</label>
+      <button class="sm" onclick="load()">🔄 立即刷新</button>
+      <button class="sm danger" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
     </div>
-    <div id="logOnlineBox" style="margin-bottom:12px;font-size:13px"></div>
-    <div style="max-height:340px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px" id="logList"></div>
+    <div class="livebar">
+      <div><b id="lvOn" style="color:#3fb950">0</b><span>当前在线</span></div>
+      <div><b id="lvAll">0</b><span>设备总数</span></div>
+      <div><b id="lvLag" style="color:#58a6ff">-</b><span>平均延迟</span></div>
+      <div><b id="lvRtt">-</b><span>网络耗时</span></div>
+      <div><b id="lvPage" style="font-size:13px;padding-top:3px">-</b><span>大家都在看</span></div>
+    </div>
+    <div id="logLiveBox"></div>
+    <div class="muted" style="margin:14px 0 6px">📜 上线 / 离线 / 被踢出记录（按时间倒序）</div>
+    <div style="max-height:300px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px" id="logList"></div>
   </div>
 
   <div class="card" id="chatCard" style="display:none">
@@ -946,10 +985,12 @@ function openTool(id){
   c.style.display = "block";
   document.getElementById("toolModal").className = "tool-modal show";
   syncNav();
+  try{ if(id === "logCard") liveAutoOn(); else liveAutoOff(); }catch(e){}
 }
 function closeTool(){
   var m = document.getElementById("toolModal");
   if(m) m.className = "tool-modal";
+  try{ liveAutoOff(); }catch(e){}
   if(TOOL_OPEN){
     var c = document.getElementById(TOOL_OPEN);
     var host = document.getElementById("cardHost");
@@ -1568,7 +1609,8 @@ function _render(){
     nAll++;
     if(st==="active") nA++; else if(st==="pending") nP++; else if(st==="blocked") nB++;
     if(d.lastSeen && (now - d.lastSeen) < 86400000) nT++;
-    var online = d.lastSeen && (now - d.lastSeen) < 5*60*1000;
+    var dlag = lagMs(d, now);                       // 有实时上报（v30+）时这就是「在线延迟」
+    var online = isLive(d, now, dlag);
     if(online) nOn++;
 
     var txt = [d.id, d.model, d.brand, d.android, d.note].join(" ").toLowerCase();
@@ -1576,10 +1618,7 @@ function _render(){
 
     var cls = st==="active"?"b-active":(st==="pending"?"b-pending":"b-blocked");
     var label = st==="active"?"已授权":(st==="pending"?"待授权":"已踢出");
-    var stale = (d.lastSeen && (now - d.lastSeen) > 7*86400000) ? ' <span class="badge b-off">长期未上线</span>' : "";
-    var conn = online
-      ? '<span class="badge b-active">🟢 在线</span>'
-      : '<span class="badge b-off">⚪ 离线</span>';
+    var stale = (d.lastSeen && (now - d.lastSeen) > 7*86400000) ? '<span class="badge b-off">长期未上线</span>' : "";
 
     var ops = "";
     if(canEdit()){
@@ -1595,20 +1634,25 @@ function _render(){
     var chk = canEdit()
       ? '<input type="checkbox" ' + (selected[d.id] ? "checked" : "") + ' onchange="toggleSel(\''+d.id+'\', this.checked)">'
       : "";
-    html += "<tr" + (st==="pending" ? ' style="background:rgba(210,153,34,.08)"' : "") + ">" +
-      "<td>" + chk + "</td>" +
-      '<td class="id">' + esc(d.id) + "</td>" +
-      "<td>" + esc((d.brand?d.brand+" ":"") + (d.model||"未知机型")) + "</td>" +
-      "<td>" + esc(d.android ? "Android "+d.android : "-") + "</td>" +
-      '<td><span class="badge '+cls+'">'+label+"</span>"+stale+"</td>" +
-      "<td>" + conn + "</td>" +
-      "<td>" + fmt(d.firstSeen) + "</td>" +
-      "<td>" + fmt(d.lastSeen) + "</td>" +
-      "<td>" + (d.launches||0) + "</td>" +
-      "<td>" + esc(d.note||"") + "</td>" +
-      '<td class="ops">' + ops + "</td></tr>";
+    var nmFull = esc((d.note ? d.note + " · " : "") + (d.brand ? d.brand + " " : "") + (d.model || "未知机型"));
+    html += '<div class="devc' + (selected[d.id] ? " sel" : "") + (st === "pending" ? " pend" : "") + '">'
+      + '<div class="devc-top">' + chk
+      + '<span class="' + (online ? "on" : "off") + '">' + (online ? "●" : "○") + '</span>'
+      + '<div class="devc-nm">' + nmFull + '</div>'
+      + '<span class="badge ' + cls + '">' + label + '</span></div>'
+      + '<div class="devc-meta">' + esc(d.android ? "Android " + d.android : "系统未知")
+      + ' · 启动 ' + (d.launches || 0) + " 次"
+      + (online ? (d.ping ? ' · 延迟 <b style="color:' + lagColor(dlag) + '">' + lagTxt(dlag) + '</b>' : " · 在线")
+               : (d.lastSeen ? " · " + agoA(d.lastSeen) : " · 从未上线")) + '</div>'
+      + (d.page && online
+          ? '<div class="devc-meta">正在看 <span class="pill">' + esc(d.page) + "</span> 停留 " + fmtDur(now - (d.pt || now)) + '</div>'
+          : "")
+      + '<div class="devc-meta devc-id">' + esc(d.id) + '</div>'
+      + (stale ? '<div class="devc-meta">' + stale + '</div>' : "")
+      + '<div class="devc-ops">' + ops + '</div></div>';
   }
-  $("tb").innerHTML = html;
+  var gEl = $("devGrid");
+  if(gEl) gEl.innerHTML = html;
   var btn = $("delSelBtn");
   if(btn){
     var nSel = selCount();
@@ -1691,6 +1735,108 @@ function bulk(st){
 
 /* ==================== 设备日志 ==================== */
 var ONLINE_MS_ADMIN = 5 * 60 * 1000;
+/* ===== 实时面板：在线延迟 + 当前停留页面（默认每秒刷新一次） =====
+   v30 起的手机会每 1 秒上报 dev.ping（时间戳）/ dev.rtt（网络耗时）/ dev.page（当前页面），
+   后台这里每秒重画一次，延迟和「停留在哪一页」都是实时的。 */
+var LIVE_STALE = 12000;                 // 超过 12 秒没上报 = 掉线
+var logLiveTimer = null, logLiveMs = 1000;
+function lagMs(d, now){
+  if(d.ping){ var l = now - d.ping; return l < 0 ? 0 : l; }
+  return d.lastSeen ? (now - d.lastSeen) : -1;
+}
+function isLive(d, now, lag){ return lag >= 0 && lag < (d.ping ? LIVE_STALE : ONLINE_MS_ADMIN); }
+function fmtDur(ms){
+  if(!ms || ms < 0) ms = 0;
+  var s = Math.floor(ms / 1000);
+  if(s < 60) return s + " 秒";
+  var m = Math.floor(s / 60);
+  if(m < 60) return m + " 分 " + (s % 60) + " 秒";
+  return Math.floor(m / 60) + " 小时 " + (m % 60) + " 分";
+}
+function lagTxt(ms){ return ms < 1000 ? (Math.round(ms) + " ms") : (ms / 1000).toFixed(1) + " s"; }
+function lagColor(ms){ return ms < 1500 ? "#3fb950" : (ms < 5000 ? "#d29922" : "#f85149"); }
+
+function renderLive(){
+  var box = $("logLiveBox");
+  if(!box || !data) return;
+  var kwEl = $("logKw");
+  var kw = ((kwEl && kwEl.value) || "").trim().toLowerCase();
+  var now = Date.now(), list = [], rows = [];
+  var nOn = 0, sumLag = 0, nLag = 0, sumRtt = 0, nRtt = 0, pageCnt = {};
+  for(var k in data.dev){ if(data.dev[k]) list.push(data.dev[k]); }
+  for(var i = 0; i < list.length; i++){
+    var d = list[i], lag = lagMs(d, now), on = isLive(d, now, lag);
+    if(on){
+      nOn++;
+      if(d.ping){ sumLag += lag; nLag++; }
+      if(d.rtt){ sumRtt += d.rtt; nRtt++; }
+      if(d.page) pageCnt[d.page] = (pageCnt[d.page] || 0) + 1;
+    }
+    rows.push({ d: d, lag: lag, on: on });
+  }
+  rows.sort(function(a, b){
+    if(a.on !== b.on) return a.on ? -1 : 1;
+    if(a.on) return a.lag - b.lag;
+    return (b.d.lastSeen || 0) - (a.d.lastSeen || 0);
+  });
+  var h = "";
+  for(var j = 0; j < rows.length; j++){
+    var d2 = rows[j].d, on2 = rows[j].on, lg2 = rows[j].lag;
+    var txt = [d2.id, d2.model, d2.brand, d2.note, d2.page].join(" ").toLowerCase();
+    if(kw && txt.indexOf(kw) < 0) continue;
+    var stx = (d2.status === "blocked") ? '<span class="badge b-blocked">已踢出</span>'
+            : (d2.status === "pending") ? '<span class="badge b-pending">待授权</span>'
+            : '<span class="badge b-active">已授权</span>';
+    var nm = esc((d2.note ? d2.note + " · " : "") + (d2.brand ? d2.brand + " " : "") + (d2.model || "未知机型"));
+    var sub = on2
+      ? ((d2.ping ? '延迟 <b style="color:' + lagColor(lg2) + '">' + lagTxt(lg2) + '</b>' : "心跳在线")
+         + (d2.rtt ? ' · 网络 ' + d2.rtt + " ms" : "")
+         + (d2.page ? ' · <span class="pill">' + esc(d2.page) + "</span> 停留 " + fmtDur(now - (d2.pt || now)) : ""))
+      : (d2.lastSeen ? ("最后上线 " + fmtDayA(d2.lastSeen) + "（" + agoA(d2.lastSeen) + "）") : "从未上线");
+    h += '<div class="livec">'
+       + '<span class="dot ' + (on2 ? "on" : "off") + '">' + (on2 ? "●" : "○") + '</span>'
+       + '<div class="mid"><div class="nm">' + nm + " " + stx + '</div>'
+       + '<div class="sub">' + sub + '</div>'
+       + '<div class="sub" style="color:#6e7681">ID ' + esc(String(d2.id || "").slice(0, 12)) + '</div></div>'
+       + '<div class="lag"><span class="lag-v" style="color:' + (on2 ? lagColor(lg2) : "#6e7681") + '">'
+       + (on2 ? lagTxt(lg2) : "—") + '</span></div></div>';
+  }
+  box.innerHTML = h || '<div class="muted" style="padding:14px 0">' + (kw ? "没有匹配的设备" : "还没有设备上过线") + '</div>';
+  if($("lvOn")) $("lvOn").textContent = nOn;
+  if($("lvAll")) $("lvAll").textContent = list.length;
+  if($("lvLag")) $("lvLag").textContent = nLag ? (Math.round(sumLag / nLag) + " ms") : "—";
+  if($("lvRtt")) $("lvRtt").textContent = nRtt ? (Math.round(sumRtt / nRtt) + " ms") : "—";
+  if($("lvPage")){
+    var best = "", bn = 0;
+    for(var p in pageCnt){ if(pageCnt[p] > bn){ bn = pageCnt[p]; best = p; } }
+    $("lvPage").textContent = best ? (best + (bn > 1 ? " ×" + bn : "")) : "—";
+  }
+}
+function liveRateSet(v){ logLiveMs = parseInt(v, 10) || 0; logLiveRestart(); }
+function logLiveRestart(){
+  if(logLiveTimer){ clearInterval(logLiveTimer); logLiveTimer = null; }
+  if(!logLiveMs) return;
+  logLiveTimer = setInterval(function(){
+    if(TOOL_OPEN !== "logCard") return;
+    try{ load(); }catch(e){}
+    try{ renderLive(); }catch(e){}
+  }, logLiveMs);
+}
+function livePingSet(on){
+  if(!data || !data.cfg) return;
+  if(!!data.cfg.livePing === !!on) return;
+  mutate(function(){ data.cfg.livePing = on ? 1 : 0; },
+    on ? "已让手机每 1 秒上报一次（延迟显示最准）" : "手机上报已恢复为 5 秒一次");
+}
+function liveAutoOn(){
+  logLiveRestart();
+  var el = $("livePingSw"); if(el) el.checked = true;
+  livePingSet(true);
+}
+function liveAutoOff(){
+  if(logLiveTimer){ clearInterval(logLiveTimer); logLiveTimer = null; }
+  livePingSet(false);
+}
 function pad2a(n){ return (n < 10 ? "0" : "") + n; }
 function fmtClockA(ts){
   try{ var d = new Date(ts); return pad2a(d.getHours()) + ":" + pad2a(d.getMinutes()) + ":" + pad2a(d.getSeconds()); }
@@ -1720,36 +1866,9 @@ function logAdd(act, id, by){
 }
 function renderLog(){
   if(!data) return;
+  renderLive();
   var kwEl = $("logKw");
   var kw = ((kwEl && kwEl.value) || "").trim().toLowerCase();
-  var now = Date.now(), list = [];
-  for(var k in data.dev){ if(data.dev[k]) list.push(data.dev[k]); }
-  list.sort(function(a, b){ return (b.lastSeen||0) - (a.lastSeen||0); });
-
-  var h = "", nOn = 0, nShow = 0;
-  for(var i = 0; i < list.length; i++){
-    var d = list[i];
-    var on = d.lastSeen && (now - d.lastSeen) < ONLINE_MS_ADMIN;
-    if(on) nOn++;
-    if(kw && (String(d.id||"") + " " + (d.model||"") + " " + (d.note||"")).toLowerCase().indexOf(kw) < 0) continue;
-    nShow++;
-    var stx = (d.status === "blocked") ? '<span style="color:#f85149">已踢出</span>'
-            : (d.status === "pending") ? '<span style="color:#d29922">待授权</span>'
-            : '<span style="color:#3fb950">已授权</span>';
-    h += '<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #21262d">'
-       + '<div>' + (on ? '<span style="color:#3fb950">● 在线</span>' : '<span style="color:#6e7681">○ 离线</span>')
-       + '　<b>' + esc(d.model || "未知机型") + '</b>'
-       + ' <span style="color:#8b949e;font-size:12px">' + esc(String(d.id||"").slice(0,10)) + '</span>'
-       + '<div style="color:#8b949e;font-size:12px;margin-top:2px">'
-       + (on ? "刚刚在线 · " + fmtClockA(d.lastSeen) : (d.lastSeen ? "最后上线 " + fmtDayA(d.lastSeen) + "（" + agoA(d.lastSeen) + "）" : "从未上线"))
-       + '</div></div>'
-       + '<div style="text-align:right;flex-shrink:0">' + stx + '</div></div>';
-  }
-  var box = $("logOnlineBox");
-  if(box) box.innerHTML = '<div style="margin-bottom:6px">共 <b>' + list.length + '</b> 台设备，'
-      + '其中 <b style="color:#3fb950">' + nOn + '</b> 台在线'
-      + (kw ? '　·　筛选出 ' + nShow + ' 台' : '') + '</div>' + (h || '<div class="muted">没有匹配的设备</div>');
-
   var lg = data.log || [], s = "", box2 = $("logList");
   if(!box2) return;
   var stick = (box2.scrollTop < 30);
