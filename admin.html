@@ -318,6 +318,8 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <button class="sm danger" onclick="delSelected()" id="delSelBtn" disabled>🗑 删除选中（0）</button>
       <button class="sm" onclick="bulk('active')">✅ 批量允许</button>
       <button class="sm danger" onclick="bulk('blocked')">🚫 批量踢出</button>
+      <label class="sw" style="margin:0;white-space:nowrap" title="勾上后删除不再弹确认框，可以连着点">
+        <input type="checkbox" id="quickDel"> 连删不提示</label>
     </div>
     <div style="overflow-x:auto">
       <table>
@@ -354,16 +356,42 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <button class="sm" id="chTabAll" onclick="chatChanSwitch('all')">🌐 通用频道</button>
       <button class="sm" id="chTabOne" onclick="chatChanSwitch('admin')">👤 设备私聊</button>
       <span style="flex:1"></span>
-      <button class="sm" onclick="clearChat()">🗑 清空本频道</button>
+      <button class="sm" onclick="openPeople()">👥 查看人</button>
+      <button class="sm danger" onclick="clearChat()">🗑 清空本会话</button>
     </div>
     <div class="bar" id="chatToBar" style="margin-bottom:10px">
       <select id="chatTo" onchange="renderChat()" style="flex:1;min-width:180px"></select>
       <button class="sm" onclick="reNick()">✏️ 改备注</button>
     </div>
-    <div id="chatList" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:12px;font-size:13px;line-height:1.6"></div>
+    <div id="chatQuick"></div>
+    <div style="position:relative">
+      <div id="chatList" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:12px;font-size:13px;line-height:1.6"></div>
+      <button id="chatDownBtn" onclick="chatToBottom()" title="回到最新消息"
+        style="display:none;position:absolute;right:12px;bottom:12px;width:34px;height:34px;border-radius:50%;
+        background:#21262d;color:#e6edf3;border:1px solid #30363d;font-size:15px;cursor:pointer;
+        box-shadow:0 2px 8px rgba(0,0,0,.45)">⬇</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <input type="text" id="chatInput" placeholder="输入要发送的消息…" onkeydown="if(event.key==='Enter')chatSend()" style="flex:1">
       <button class="p" onclick="chatSend()">发送</button>
+    </div>
+  </div>
+
+  <!-- 查看人：像微信那样，点一个人直接跳到和他的会话 -->
+  <div id="peoplePanel" onclick="if(event.target===this)closePeople()"
+       style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;
+              background:rgba(0,0,0,.58);align-items:center;justify-content:center;padding:18px">
+    <div style="width:min(560px,100%);max-height:82vh;display:flex;flex-direction:column;
+                background:#0d1117;border:1px solid #30363d;border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <b style="color:#e6edf3;font-size:15px">👥 查看人</b>
+        <span style="font-size:12px;color:#8b949e">点一下直接跳过去</span>
+        <span style="flex:1"></span>
+        <button class="sm" onclick="closePeople()">✕ 关闭</button>
+      </div>
+      <input type="text" id="peopleKw" placeholder="搜名字 / 设备 ID" oninput="renderPeople()"
+             style="width:100%;margin-bottom:10px">
+      <div id="peopleList" style="flex:1;overflow-y:auto"></div>
     </div>
   </div>
 
@@ -1249,7 +1277,7 @@ function load(retried){
     if(!d || !d.dev) d = emptyDb();
     d.cfg = d.cfg || {}; d.dev = d.dev || {};
     data = d;
-    if(writeBusy || Object.keys(pendingDel).length){      // 正在保存的删除，别被刷新又刷回来
+    if(delGuard()){                                  // 刚删掉的设备，别被刷新又刷回来
       for(var kk in pendingDel) delete data.dev[kk];
     }
     var r = document.querySelector('input[name=mode][value="'+(d.cfg.mode==="manual"?"manual":"open")+'"]');
@@ -1317,7 +1345,17 @@ function write(cb, retry, fail){
 }
 
 /* ---- 保存队列：连点删除/踢出时界面立刻响应，写请求合并成一次 ---- */
-var pendingDel = {}, saveT = null, writeBusy = false, writeAgain = false, pendingMsg = "", dirty = false;
+var pendingDel = {}, pendingDelAt = 0, saveT = null, writeBusy = false, writeAgain = false, pendingMsg = "", dirty = false;
+/* 刚删掉的设备 id 只在很短一段时间内「屏蔽刷新」，防止服务器还没写完又被刷回来。
+   ⚠️ 以前这个集合写失败时永远不清空，会导致自动刷新被永久跳过 —— 表现就是「删完一台就卡住」。 */
+var DEL_GUARD_MS = 12000;
+function markDel(id){ pendingDel[id] = 1; pendingDelAt = Date.now(); }
+function clearDel(){ pendingDel = {}; pendingDelAt = 0; }
+function delGuard(){
+  if(!pendingDelAt) return false;
+  if(Date.now() - pendingDelAt > DEL_GUARD_MS){ clearDel(); return false; }  // 超时自动解除，绝不卡死
+  return true;
+}
 function setState(t){
   var el = $("saveState"); if(el) el.textContent = t;
 }
@@ -1344,12 +1382,13 @@ function doSave(){
   var msg = pendingMsg; pendingMsg = "";
   write(function(){
     writeBusy = false;
-    pendingDel = {}; dirty = false;
+    clearDel(); dirty = false;
     setState("✅ 已保存 · " + new Date().toLocaleTimeString("zh-CN"));
     if(msg) showOk(msg);
     if(writeAgain){ writeAgain = false; queueSave(); }
   }, 0, function(){
     writeBusy = false; writeAgain = false; dirty = true;
+    clearDel();                       // 失败也要解除刷新屏蔽，否则界面永远停在旧数据
     setState("❌ 保存失败");
   });
 }
@@ -1407,7 +1446,20 @@ function clearLockPwd(){
   mutate(function(){ data.cfg = data.cfg || {}; delete data.cfg.lockPwd; }, "已恢复默认密码 9178");
 }
 
+/* 连点删除时 100ms 内的多次 render 合并成一次，避免整张表反复重排导致「点了没反应、很卡」 */
+var _rT = null, _rLast = 0;
 function render(){
+  if(!data) return;
+  var now = Date.now();
+  if(now - _rLast < 100){
+    if(_rT) return;
+    _rT = setTimeout(function(){ _rT = null; _rLast = Date.now(); _render(); }, 100);
+    return;
+  }
+  if(_rT){ clearTimeout(_rT); _rT = null; }
+  _rLast = now; _render();
+}
+function _render(){
   if(!data) return;
   renderLockPwdTip();
   try{ renderApl(); }catch(e){}
@@ -1527,19 +1579,21 @@ function setNote(id){
   if(v === null) return;
   mutate(function(){ data.dev[id].note = v.trim(); }, "备注已保存");
 }
+function quickDel(){ var e = $("quickDel"); return !!(e && e.checked); }
 function del(id){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能删除设备。"); return; }
   if(!data || !data.dev){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
   if(!data.dev[id]) return;
-  if(!confirm("删除这台设备的记录？\n它下次打开会当作新设备重新上报。")) return;
-  mutate(function(){ logAdd("deleted", id, curUser); delete data.dev[id]; pendingDel[id] = 1; delete selected[id]; }, "已删除 1 台设备");
+  if(!quickDel() && !confirm("删除这台设备的记录？\n它下次打开会当作新设备重新上报。")) return;
+  mutate(function(){ logAdd("deleted", id, curUser); delete data.dev[id]; markDel(id); delete selected[id]; }, "已删除 1 台设备");
 }
 function delSelected(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能删除设备。"); return; }
   var ids = selIds();
   if(!ids.length){ alert("先勾选要删除的设备（左边的小方框）"); return; }
-  if(!confirm("删除选中的 " + ids.length + " 台设备？\n它们下次打开会当作新设备重新上报。")) return;
+  if(!quickDel() && !confirm("删除选中的 " + ids.length + " 台设备？\n它们下次打开会当作新设备重新上报。")) return;
   mutate(function(){
-    for(var i=0;i<ids.length;i++){ delete data.dev[ids[i]]; pendingDel[ids[i]] = 1; delete selected[ids[i]]; }
+    for(var i=0;i<ids.length;i++){ delete data.dev[ids[i]]; markDel(ids[i]); delete selected[ids[i]]; }
   }, "已删除 " + ids.length + " 台设备");
 }
 function bulk(st){
@@ -1643,6 +1697,17 @@ function chatChanOf(m){
   return "all";
 }
 function devIdOf(k){ return (k && String(k).indexOf("dev:") === 0) ? String(k).slice(4) : ""; }
+/* 一条消息在「当前频道 + 当前会话对象」下是否该显示。
+   ⚠️ 渲染和清空必须用同一个判断，否则会出现「点清空却删不掉」——
+   手机发来的私聊 ch 是 "dm"，而后台频道变量只有 all / admin，两边不一致就会漏。 */
+function chatVisible(m, to){
+  var ch = chatChanOf(m);
+  if(chatChan === "all") return ch === "all";
+  if(to === "__alldm__") return ch === "dm";
+  if(ch === "all") return false;
+  if(!to) return true;
+  return (m.to === to || m.from === to);
+}
 function chatNameOf(m){
   if(!m) return "";
   if(m.from === "admin" || String(m.from).indexOf("admin:") === 0){
@@ -1683,6 +1748,21 @@ function renderChat(){
   var cur = sel.value;
   var opt = "";
   if(curRole === "founder") opt += '<option value="__alldm__">🔍 全部私信（仅创始人可见）</option>';
+  var mgrs = [];
+  for(var u in (data.users || {})){
+    var ru = data.users[u];
+    if(ru && (ru.role === "founder" || ru.role === "admin")) mgrs.push(u);
+  }
+  mgrs.sort(function(a, b){
+    var ra = (data.users[a].role === "founder" ? 0 : 1), rb = (data.users[b].role === "founder" ? 0 : 1);
+    return ra - rb || a.localeCompare(b);
+  });
+  for(var j = 0; j < mgrs.length; j++){
+    var mu = mgrs[j], rm = data.users[mu], aonm = (data.aon && data.aon[mu]) ? data.aon[mu] : null;
+    var onm = aonm && (Date.now() - (aonm.t || 0) < 5 * 60 * 1000);
+    opt += '<option value="admin:' + esc(mu) + '">' + (onm ? "🟢 " : "⚪ ")
+         + esc(rm.name || mu) + '（' + (rm.role === "founder" ? "创始人" : "管理员") + '）</option>';
+  }
   for(var i = 0; i < ids.length; i++){
     var d = data.dev[ids[i]];
     var nm = d.nick || d.model || ids[i].slice(0, 8);
@@ -1692,15 +1772,12 @@ function renderChat(){
   if(cur) sel.value = cur;
   if(!sel.value && ids.length) sel.value = "dev:" + ids[0];
   var to = sel.value || "";
+  renderChatQuick(to);
   var arr = data.chat || [], h = "";
   _bgVoice.length = 0;
-  if(chatChan === "admin") h += adminOnlineHtml();
   for(var j = 0; j < arr.length; j++){
     var m = arr[j] || {};
-    var ch = chatChanOf(m);
-    if(chatChan === "all"){ if(ch !== "all") continue; }            // 通用频道只看公共消息
-    else if(to === "__alldm__"){ if(ch !== "dm") continue; }        // 创始人：查看全部私信
-    else { if(ch === "all") continue; if(to && !(m.to === to || m.from === to)) continue; }
+    if(!chatVisible(m, to)) continue;                              // 与「清空本会话」共用同一套过滤
     var mine = (m.from === "admin" || String(m.from).indexOf("admin:") === 0);
     var id = devIdOf(m.from);
     var nm = chatNameOf(m);
@@ -1718,7 +1795,169 @@ function renderChat(){
   if(!box) return;
   box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">'
                      + (chatChan === "all" ? "通用频道还没有消息" : "这台设备还没有私聊消息") + '</div>';
+  if(!box._kb){ box._kb = 1; box.addEventListener("scroll", chatOnScroll); }
   if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
+  chatOnScroll();
+}
+
+/* ---------- 会话上方那条「不随消息滚动」的快捷条 ---------- */
+function curChanName(){
+  var to = ($("chatTo") && $("chatTo").value) || "";
+  if(chatChan === "all") return "🌐 通用频道";
+  if(to === "__alldm__") return "🔍 全部私信";
+  if(String(to).indexOf("admin:") === 0){
+    var u = to.slice(6), r0 = (data.users && data.users[u]) ? data.users[u] : null;
+    return "👮 " + ((r0 && r0.name) || u);
+  }
+  if(String(to).indexOf("dev:") === 0){
+    var id = to.slice(4), dd = (data.dev && data.dev[id]) ? data.dev[id] : null;
+    return "👤 " + ((dd && dd.nick) || (dd && dd.model) || id.slice(0, 8));
+  }
+  return "👤 私聊";
+}
+function chatToBottom(){
+  var b = $("chatList");
+  if(b) b.scrollTop = b.scrollHeight;
+  chatLastN = -1;
+  chatOnScroll();
+}
+function chatOnScroll(){
+  var b = $("chatList"), dn = $("chatDownBtn");
+  if(!b || !dn) return;
+  var atEnd = (b.scrollTop + b.clientHeight >= b.scrollHeight - 40);
+  dn.style.display = atEnd ? "none" : "block";
+}
+function adminChipsHtml(){
+  var aon = (data && data.aon) ? data.aon : {}, now = Date.now(), ks = [], i;
+  for(var k in aon){ if(now - (aon[k].t || 0) < 5 * 60 * 1000) ks.push(k); }
+  var h = "";
+  if(!ks.length){
+    return '<span style="font-size:12px;color:#8b949e">👮 暂无管理员在线</span>';
+  }
+  for(i = 0; i < ks.length; i++){
+    var u = ks[i], r = (data.users && data.users[u]) ? data.users[u] : null;
+    var nm = (r && r.name) ? r.name : u;
+    var sel = ($("chatTo") && $("chatTo").value === ("admin:" + u));
+    h += '<span onclick="pickPerson(\'admin:' + esc(u) + '\')" title="点一下切到 TA 的会话"'
+       + ' style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:11px;cursor:pointer;'
+       + 'font-size:12px;background:' + (sel ? "rgba(212,175,55,.28)" : "rgba(63,185,80,.16)")
+       + ';border:1px solid ' + (sel ? "#d4af37" : "rgba(63,185,80,.5)") + ';color:#3fb950">'
+       + '🟢 ' + esc(nm) + (r && r.role === "founder" ? "👑" : "") + '</span>';
+  }
+  return h;
+}
+function renderChatQuick(to){
+  var el = $("chatQuick");
+  if(!el || !data) return;
+  var h = '<div class="bar" style="margin-bottom:8px;flex-wrap:wrap;gap:6px;align-items:center">'
+        + '<span style="font-size:12px;color:#e6edf3;background:rgba(255,255,255,.06);'
+        + 'border:1px solid #30363d;border-radius:11px;padding:3px 10px">' + esc(curChanName()) + '</span>'
+        + adminChipsHtml()
+        + '<span style="flex:1"></span>'
+        + '<button class="sm" onclick="openPeople()">👥 查看人</button>'
+        + '<button class="sm" onclick="chatToBottom()">⬇ 最新</button>'
+        + '</div>';
+  el.innerHTML = h;
+}
+
+/* ---------- 「查看人」面板：像微信那样列人，点一下直接跳 ---------- */
+function openPeople(){
+  var p = $("peoplePanel");
+  if(!p) return;
+  renderPeople();
+  p.style.display = "flex";
+}
+function closePeople(){ var p = $("peoplePanel"); if(p) p.style.display = "none"; }
+function pickPerson(v){
+  closePeople();
+  if(!v) return;
+  chatChan = "admin";
+  var sel = $("chatTo");
+  if(sel){
+    sel.value = v;
+    if(sel.value !== v){                      // 下拉里没有这个人（比如刚被删了）就先补一个
+      var o = document.createElement("option");
+      o.value = v; o.textContent = v; sel.appendChild(o); sel.value = v;
+    }
+  }
+  chatLastN = -1;
+  paintChanTab();
+  renderChat();
+  var b = $("chatList"); if(b) b.scrollTop = b.scrollHeight;
+}
+function personLast(data, key){
+  var arr = (data && data.chat) ? data.chat : [], lt = 0, last = "";
+  for(var i = 0; i < arr.length; i++){
+    var m = arr[i] || {};
+    if(m.to === key || m.from === key){ if((m.t || 0) >= lt){ lt = m.t || 0; last = m.text || (m.kind === "voice" ? "[语音]" : (m.kind === "call" ? "[通话]" : "")); } }
+  }
+  return { t: lt, text: last };
+}
+function renderPeople(){
+  var box = $("peopleList");
+  if(!box || !data) return;
+  var kw = (($("peopleKw") && $("peopleKw").value) || "").trim().toLowerCase();
+  var now = Date.now(), h = "", i;
+  var rowCss = 'display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:11px;'
+             + 'background:#161b22;border:1px solid #21262d;margin-bottom:7px;cursor:pointer';
+  /* ① 管理员 / 创始人 */
+  var mgrs = [];
+  for(var u in (data.users || {})){
+    var r = data.users[u];
+    if(r && (r.role === "founder" || r.role === "admin")) mgrs.push(u);
+  }
+  mgrs.sort(function(a, b){
+    var ra = (data.users[a].role === "founder" ? 0 : 1), rb = (data.users[b].role === "founder" ? 0 : 1);
+    return ra - rb || a.localeCompare(b);
+  });
+  var admh = "";
+  for(i = 0; i < mgrs.length; i++){
+    var mu = mgrs[i], rm = data.users[mu];
+    var aonm = (data.aon && data.aon[mu]) ? data.aon[mu] : null;
+    var onm = aonm && (now - (aonm.t || 0) < 5 * 60 * 1000);
+    var key = "admin:" + mu;
+    var txtm = ((rm.name || mu) + " " + mu).toLowerCase();
+    if(kw && txtm.indexOf(kw) < 0) continue;
+    var lm = personLast(data, key);
+    admh += '<div onclick="pickPerson(\'' + esc(key) + '\')" style="' + rowCss + '">'
+          + '<span style="font-size:13px">' + (onm ? "🟢" : "⚪") + '</span>'
+          + '<span style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;color:#e6edf3">' + esc(rm.name || mu)
+          + ' <span style="color:#d4af37;font-size:11px">' + (rm.role === "founder" ? "👑创始人" : "🛡管理员") + '</span></div>'
+          + '<div style="font-size:11px;color:#8b949e;margin-top:2px">' + esc(mu)
+          + ' · ' + (onm ? "在线" : "离线")
+          + (lm.t ? ' · ' + fmtDayA(lm.t) + (lm.text ? '：' + esc(String(lm.text).slice(0, 18)) : '') : '')
+          + '</div></span>'
+          + '<span style="color:#d4af37;font-size:12px">聊天 ›</span></div>';
+  }
+  if(admh) h += '<div style="font-size:12px;color:#8b949e;margin:2px 0 7px">👮 管理员 / 创始人</div>' + admh;
+  /* ② 设备（注册用户在前，纯设备在后） */
+  var ids = [];
+  for(var k in data.dev){ if(data.dev[k]) ids.push(k); }
+  ids.sort(function(a, b){ return (data.dev[b].lastSeen || 0) - (data.dev[a].lastSeen || 0); });
+  var devh = "";
+  for(i = 0; i < ids.length; i++){
+    var id = ids[i], d = data.dev[id] || {};
+    var key2 = "dev:" + id;
+    var nm2 = d.nick || d.model || id.slice(0, 8);
+    var tx2 = (String(nm2) + " " + id + " " + (d.model || "")).toLowerCase();
+    if(kw && tx2.indexOf(kw) < 0) continue;
+    var on2 = d.lastSeen && (now - d.lastSeen) < 5 * 60 * 1000;
+    var l2 = personLast(data, key2);
+    var stx = (d.status === "blocked") ? '<span style="color:#f85149;font-size:11px">已踢出</span>'
+            : (d.status === "pending") ? '<span style="color:#d29922;font-size:11px">待授权</span>' : '';
+    devh += '<div onclick="pickPerson(\'' + esc(key2) + '\')" style="' + rowCss + '">'
+          + '<span style="font-size:13px">' + (on2 ? "🟢" : "⚪") + '</span>'
+          + '<span style="flex:1;min-width:0">'
+          + '<div style="font-size:13px;color:#e6edf3">' + esc(nm2) + ' ' + stx + '</div>'
+          + '<div style="font-size:11px;color:#8b949e;margin-top:2px">' + esc(id.slice(0, 10))
+          + ' · ' + (d.lastSeen ? (on2 ? "在线" : fmtDayA(d.lastSeen)) : "从未上线")
+          + (l2.t && l2.text ? '：' + esc(String(l2.text).slice(0, 18)) : '')
+          + '</div></span>'
+          + '<span style="color:#d4af37;font-size:12px">聊天 ›</span></div>';
+  }
+  if(devh) h += '<div style="font-size:12px;color:#8b949e;margin:10px 0 7px">📱 设备</div>' + devh;
+  box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">没有匹配的人</div>';
 }
 function midKey(m){
   var mm = m || {};
@@ -1799,19 +2038,22 @@ function reNick(id){
   }, "备注已保存，手机上会立刻显示新名字");
 }
 function clearChat(){
-  var c = chatChan === "all" ? "通用频道" : "当前设备的私聊";
+  var to0 = ($("chatTo") && $("chatTo").value) || "";
+  var c = chatChan === "all" ? "通用频道"
+        : (to0 === "__alldm__" ? "全部私信"
+        : (String(to0).indexOf("admin:") === 0 ? "和管理员「" + to0.slice(6) + "」的私聊"
+        : "当前设备的私聊"));
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能清空。"); return; }
-  if(!confirm("确定清空「" + c + "」的全部消息？此操作不可恢复。")) return;
-  var to = ($("chatTo") && $("chatTo").value) || "";
+  if(!confirm("确定清空「" + c + "」的全部消息？\n此操作不可恢复。")) return;
   mutate(function(){
     var arr = [], src = data.chat || [];
     for(var i = 0; i < src.length; i++){
       var m = src[i] || {};
-      if(chatChanOf(m) !== chatChan){ arr.push(m); continue; }
-      if(chatChan === "admin" && to && !(m.to === to || m.from === to)) arr.push(m);
+      if(chatVisible(m, to0)) continue;      // 屏幕上现在看得见的，就是该删掉的
+      arr.push(m);
     }
     data.chat = arr;
-  }, "已清空" + c);
+  }, "已清空「" + c + "」");
 }
 function chatSend(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能发消息。"); return; }
