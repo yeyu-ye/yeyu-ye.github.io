@@ -26,6 +26,37 @@ td.ops{white-space:nowrap}
 td.id{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#79c0ff;word-break:break-all;max-width:150px}
 input[type=checkbox]{width:16px;height:16px;vertical-align:middle;accent-color:#1f6feb;cursor:pointer}
 @media(max-width:760px){.sec,.sec3{grid-template-columns:1fr}}
+/* ===== 工具收纳：左侧按顺序排列，点一下弹出窗口 ===== */
+.shell{display:flex;gap:18px;align-items:flex-start}
+.side{width:178px;flex:0 0 178px;position:sticky;top:16px;display:flex;flex-direction:column;gap:5px;
+  background:rgba(16,21,28,.5);border:1px solid rgba(48,54,61,.65);border-radius:12px;padding:10px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.side-t{font-size:12px;color:#8b949e;letter-spacing:.6px;padding:2px 6px 7px}
+.nav-i{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;
+  border:1px solid transparent;color:#c9d1d9;font:inherit;font-size:13px;padding:9px 10px;
+  border-radius:9px;cursor:pointer;transition:.15s;-webkit-transition:.15s}
+.nav-i:hover{background:rgba(255,255,255,.07);color:#e6edf3}
+.nav-i.on{background:rgba(31,111,235,.2);border-color:rgba(31,111,235,.55);color:#fff;font-weight:600}
+.nav-i .ni-n{color:#79c0ff;font-size:12px;min-width:15px;flex:0 0 auto}
+.nav-i.hide{display:none}
+.main-col{flex:1;min-width:0}
+#cardHost{display:none}
+.tool-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
+  padding:22px;background:rgba(0,0,0,.55);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.tool-modal.show{display:flex}
+.tool-box{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:rgba(13,17,23,.93);
+  border:1px solid rgba(48,54,61,.9);border-radius:14px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.tool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px solid rgba(48,54,61,.7)}
+.tool-head b{color:#e6edf3;font-size:15px}
+@media(max-width:900px){
+  .shell{flex-direction:column;gap:12px}
+  .side{width:100%;flex:none;position:static;flex-direction:row;overflow-x:auto;padding:8px;gap:8px;-webkit-overflow-scrolling:touch}
+  .side-t{display:none}
+  .nav-i{width:auto;flex:0 0 auto;white-space:nowrap}
+  .tool-modal{padding:0}
+  .tool-box{width:100%;height:100%;max-height:none;border-radius:0;padding:14px}
+}
 /* ===== 动态壁纸：自动适配屏幕比例（2K/4K），渲染分辨率自适应，跟随刷新率最高 120fps ===== */
 #bgImg{position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity .6s ease}
 #bgCanvas{position:fixed;inset:0;z-index:-2;display:block;width:100%;height:100%}
@@ -148,6 +179,20 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </div>
   </div>
 
+<div class="shell">
+  <nav class="side" id="sideNav">
+    <div class="side-t">🗂 工具收纳</div>
+    <button class="nav-i" data-c="connCard" onclick="openTool('connCard')"><span class="ni-n">①</span><span>连接数据库</span></button>
+    <button class="nav-i" data-c="cfgCard" onclick="openTool('cfgCard')"><span class="ni-n">②</span><span>新设备策略</span></button>
+    <button class="nav-i" data-c="devCard" onclick="openTool('devCard')"><span class="ni-n">③</span><span>设备管理</span></button>
+    <button class="nav-i" data-c="logCard" onclick="openTool('logCard')"><span class="ni-n">④</span><span>设备日志</span></button>
+    <button class="nav-i" data-c="chatCard" onclick="openTool('chatCard')"><span class="ni-n">⑤</span><span>消息中心</span></button>
+    <button class="nav-i" data-c="userAdminCard" onclick="openTool('userAdminCard')"><span class="ni-n">⑥</span><span>账号管理</span></button>
+    <button class="nav-i" data-c="aplCard" onclick="openTool('aplCard')"><span class="ni-n">⑦</span><span>账号申请</span></button>
+    <button class="nav-i" data-c="wpCard" onclick="openTool('wpCard')"><span class="ni-n">🎨</span><span>背景壁纸</span></button>
+    <button class="nav-i" data-c="helpCard" onclick="openTool('helpCard')"><span class="ni-n">📖</span><span>使用说明</span></button>
+  </nav>
+  <div class="main-col">
   <div class="card" id="userCard" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
       <div style="font-size:13px">
@@ -168,7 +213,17 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   <div class="err" id="errBox"></div>
   <div class="ok-box" id="okBox"></div>
 
-  <div class="card">
+  <div class="card" id="homeHint" style="padding:22px;text-align:center">
+    <div style="font-size:15px;color:#e6edf3;margin-bottom:6px">🗂 工具都收在左边</div>
+    <div class="muted" style="font-size:13px;line-height:1.8">
+      按顺序点开：<b style="color:#e6edf3">① 连接数据库 → ② 新设备策略 → ③ 设备管理 → ④ 设备日志 → ⑤ 消息中心</b> …<br>
+      点一下弹出对应的窗口，关掉就收回；手机上是顶横条，左右滑能翻。<br>
+      <span style="color:#8b949e">（按 Esc 或点窗口外面也能关）</span>
+    </div>
+  </div>
+
+  <div id="cardHost">
+  <div class="card" id="connCard">
     <h2>① 连接数据库</h2>
     <div id="setupStep">
       <div class="tip">
@@ -236,13 +291,12 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </div>
 
     <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(48,54,61,.7)">
-      <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:6px">👤 管理员登录 APP 的方式</div>
-      <div class="muted" style="font-size:12px;line-height:1.7;margin-bottom:10px">
-        管理员用自己的账号在手机 APP 里「👤 我的账号」登录后：<b style="color:#e6edf3">直接进入</b>，还是<b style="color:#e6edf3">仍需你在设备列表放行</b>。<br>
-        创始人不受这个限制，登录后永远可以直接进入。
+      <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:6px">👑 创始人 / 管理员登录</div>
+      <div class="muted" style="font-size:12px;line-height:1.7">
+        创始人和<b style="color:#e6edf3">管理员</b>用账号在手机 APP 里登录后，<b style="color:#3fb950">直接进入，不用你在设备列表再点一次「允许」</b>，
+        登录时这台设备在服务器上也会自动标成「已授权」。<br>
+        新注册的<b>成员</b>账号仍然要你在「⑦ 账号申请」里同意后，他那台设备才能用。
       </div>
-      <label class="sw"><input type="radio" name="mgrLogin" value="direct" onchange="setMgrLogin('direct')"> 直接登录进入（默认，推荐）</label>
-      <label class="sw"><input type="radio" name="mgrLogin" value="auth" onchange="setMgrLogin('auth')"> 仍需我授权（登录后还要在「③ 设备管理」点允许）</label>
     </div>
   </div>
 
@@ -314,7 +368,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="userAdminCard" style="display:none">
-    <h2>④ 账号管理（仅创始人可见）</h2>
+    <h2>⑥ 账号管理（仅创始人可见）</h2>
     <div class="muted" style="margin-bottom:10px">
       创始人可以新建管理员 / 成员账号，也可以随时改他们的权限或重置密码。<br>
       <b>创始人</b>：全部权限，包括这个账号管理面板；<b>管理员</b>：能踢人、允许、删除设备、切换模式，但不能动账号；<b>成员</b>：只能看，不能改。
@@ -339,7 +393,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="aplCard" style="display:none">
-    <h2>⑥ 账号申请（仅创始人 / 管理员可见）</h2>
+    <h2>⑦ 账号申请（仅创始人 / 管理员可见）</h2>
     <div class="muted" style="margin-bottom:10px">
       <b>新注册</b>的账号默认是「成员」，<b style="color:#e6edf3">不能直接使用 APP</b>，需要你在这里同意。<br>
       成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里<b>申请成为管理员</b>，也会出现在这里；同意后他立刻变成管理员。
@@ -347,7 +401,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div id="aplBox"></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="wpCard">
     <h2>🎨 背景壁纸</h2>
     <div class="muted" style="margin-bottom:10px">
       内置引擎会按屏幕比例自动铺满，2K / 4K 都能满帧（跟随刷新率，最高 120fps）；也可以加自己的图片或视频。
@@ -415,8 +469,8 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div class="muted" style="margin-top:6px">壁纸只存在你这台电脑上，不会上传到服务器；换浏览器或清缓存会丢。</div>
   </div>
 
-  <div class="card">
-    <h2>说明</h2>
+  <div class="card" id="helpCard">
+    <h2>📖 说明</h2>
     <div class="muted">
       · <b>新设备装好默认是「待授权」</b>，打不开 APP，必须你在下面点「允许」。<br>
       · 「连接」列：5 分钟内有上报显示 🟢 在线，否则 ⚪ 离线。<br>
@@ -427,6 +481,18 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       · APK 里的上报地址在创建数据库时生成，换数据库需要重新打包 APP。<br>
       · 令牌只保存在这台电脑的浏览器里，不会上传给任何人。
     </div>
+  </div>
+  </div>
+  </div>
+</div>
+
+<div class="tool-modal" id="toolModal" onclick="if(event.target===this)closeTool()">
+  <div class="tool-box">
+    <div class="tool-head">
+      <b id="toolTitle">工具</b>
+      <button class="sm" onclick="closeTool()">✕ 关闭</button>
+    </div>
+    <div id="toolBody"></div>
   </div>
 </div>
 
@@ -750,7 +816,54 @@ function wpKeepGet(){
   if(cb) return cb.checked;
   try{ return localStorage.getItem("yy_wp_keep") !== "0"; }catch(e){ return true; }
 }
+/* ===== 工具收纳窗口：点左侧菜单 → 把对应卡片搬进弹窗 ===== */
+var TOOL_OPEN = null;
+function openTool(id){
+  var c = document.getElementById(id);
+  if(!c) return;
+  var host = document.getElementById("cardHost");
+  if(TOOL_OPEN && TOOL_OPEN !== id){
+    var prev = document.getElementById(TOOL_OPEN);
+    if(prev && host) host.appendChild(prev);
+  }
+  TOOL_OPEN = id;
+  var h2 = c.getElementsByTagName("h2")[0];
+  var tt = document.getElementById("toolTitle");
+  if(tt) tt.textContent = h2 ? h2.textContent : "工具";
+  var body = document.getElementById("toolBody");
+  if(body) body.appendChild(c);
+  c.style.display = "block";
+  document.getElementById("toolModal").className = "tool-modal show";
+  syncNav();
+}
+function closeTool(){
+  var m = document.getElementById("toolModal");
+  if(m) m.className = "tool-modal";
+  if(TOOL_OPEN){
+    var c = document.getElementById(TOOL_OPEN);
+    var host = document.getElementById("cardHost");
+    if(c && host) host.appendChild(c);
+    TOOL_OPEN = null;
+  }
+  syncNav();
+}
+/* 卡片被 JS 隐藏（权限不够 / 还没连上数据库）时，左侧菜单跟着一起隐藏 */
+function syncNav(){
+  var bs = document.querySelectorAll("#sideNav .nav-i");
+  for(var i = 0; i < bs.length; i++){
+    var id = bs[i].getAttribute("data-c");
+    var c = document.getElementById(id);
+    var vis = !!(c && c.style.display !== "none");
+    bs[i].className = "nav-i" + (vis ? "" : " hide") + (TOOL_OPEN === id ? " on" : "");
+  }
+}
+try{
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape" && TOOL_OPEN) closeTool(); });
+}catch(e){}
+setInterval(syncNav, 700);
+
 function logout(){
+  try{ closeTool(); }catch(e){}
   var keep = wpKeepGet();
   if(!confirm(keep
       ? "退出登录？\n\n壁纸设置会保留，下次打开还是你现在的背景。"
