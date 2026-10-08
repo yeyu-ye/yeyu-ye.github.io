@@ -1,9 +1,9 @@
 {
-  "code": 30,
-  "ver": "v30",
-  "apk": "https://yeyu-ye.github.io/yeyu-v30.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v30/yeyu-v30.apk",
+  "code": 31,
+  "ver": "v31",
+  "apk": "https://yeyu-ye.github.io/yeyu-v31.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v31/yeyu-v31.apk",
   "force": true,
-  "time": "2026-10-09 05:20",
-  "note": "• 后台所有工具弹窗改成半透明毛玻璃，能直接看到壁纸\n• 设备管理换成「一台一卡」：机型/系统/状态/实时延迟/备注一眼看完\n• 设备日志实时显示在线延迟（默认 1 秒刷新，可切 2/5 秒或手动）\n• 实时显示每台手机停在哪个页面 + 停留多久（🐱计算/🌸筛选/💬消息/📞通话）\n• 打开「④ 设备日志」自动让手机 1 秒上报一次，关掉窗口自动恢复 5 秒"
+  "time": "2026-10-09 05:45",
+  "note": "• 手机端日志不再频繁刷新：APP 日志页 2 秒 → 15 秒；平时状态上报 5 秒 → 15 秒（只有后台开着「④设备日志」时才临时 1 秒）\n• 后台日志改成每台设备一个折叠分组：点设备名展开只看这一台，有「全部展开/全部收起」\n• 弹窗更透明，并新增「🌗 透亮」滑杆（8%~92%，记住你的设置）"
 }
