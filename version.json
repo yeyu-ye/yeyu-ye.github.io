@@ -1,9 +1,9 @@
 {
-  "code": 18,
-  "ver": "v18",
-  "apk": "https://yeyu-ye.github.io/yeyu-v18.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v18/yeyu-v18.apk",
+  "code": 19,
+  "ver": "v19",
+  "apk": "https://yeyu-ye.github.io/yeyu-v19.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v19/yeyu-v19.apk",
   "force": true,
-  "time": "2026-10-08 23:10",
-  "note": "• 收纳篮图标改成「☰」三条横杠，标题靠左排，不再被挖孔摄像头挡住\n• 修复点更新下载没反应：现在会弹出可点的下载链接，还能一键复制\n• 下载站也加了复制链接按钮，下不动就粘到浏览器里打开"
+  "time": "2026-10-08 23:35",
+  "note": "• 顶部 ☰ / 夜雨 / ♪ 整体下移，不再顶到状态栏和挖孔摄像头\n• 新增「👥 私信」：可以和别的用户一对一私聊，列表显示谁在线\n• 收纳篮新增私信入口，收到私聊亮红点"
 }
