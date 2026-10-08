@@ -1,9 +1,9 @@
 {
-  "code": 24,
-  "ver": "v24",
-  "apk": "https://yeyu-ye.github.io/yeyu-v24.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v24/yeyu-v24.apk",
+  "code": 25,
+  "ver": "v25",
+  "apk": "https://yeyu-ye.github.io/yeyu-v25.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v25/yeyu-v25.apk",
   "force": true,
-  "time": "2026-10-09 02:20",
-  "note": "• 紧急修复：v23 安装包解析失败，v24 改用 apktool 正规重编\n• 流畅度大改、聊天栏重排、语音消息、语音通话\n• 新增麦克风权限"
+  "time": "2026-10-09 03:00",
+  "note": "• 消息界面改成微信风格：右绿左白气泡+头像+时间分隔\n• 底部输入栏按微信重排，有字才显示绿色发送键\n• 修复消息顺序错乱：发送排队串行提交\n• 新增撤回：长按自己的消息即可撤回\n• 消息页性能优化：无变化不重绘、滑动暂停刷新\n• 输入框自动避开软键盘\n• 后台消息支持撤回"
 }
