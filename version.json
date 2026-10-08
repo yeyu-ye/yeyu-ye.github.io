@@ -1,9 +1,9 @@
 {
-  "code": 19,
-  "ver": "v19",
-  "apk": "https://yeyu-ye.github.io/yeyu-v19.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v19/yeyu-v19.apk",
+  "code": 20,
+  "ver": "v20",
+  "apk": "https://yeyu-ye.github.io/yeyu-v20.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v20/yeyu-v20.apk",
   "force": true,
-  "time": "2026-10-08 23:35",
-  "note": "• 顶部 ☰ / 夜雨 / ♪ 整体下移，不再顶到状态栏和挖孔摄像头\n• 新增「👥 私信」：可以和别的用户一对一私聊，列表显示谁在线\n• 收纳篮新增私信入口，收到私聊亮红点"
+  "time": "2026-10-09 00:05",
+  "note": "• 激活页/锁定页可用账号登录直接进入（创始人/管理员）\n• 收纳篮「我的账号」：成员可申请成为管理员，后台审批\n• 管理员频道可指定和哪位管理员聊；后台显示在线管理员\n• 创始人可查看全部私信；后台可设管理员登录方式（直接进/需授权）"
 }
