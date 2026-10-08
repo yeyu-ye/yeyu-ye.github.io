@@ -268,6 +268,35 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div class="empty" id="emptyTip" style="display:none">还没有设备上过线。把 APK 装到手机上打开一次，它就会自动出现在这里。</div>
   </div>
 
+  <div class="card" id="logCard" style="display:none">
+    <h2>④ 设备日志 · 谁在线谁离线</h2>
+    <div class="muted" style="margin-bottom:10px">
+      5 分钟内有心跳 = <b style="color:#3fb950">在线</b>。下面按时间倒序列出每台设备的上线 / 离线 / 被踢出 / 被放行记录，精确到秒。
+    </div>
+    <div class="bar" style="margin-bottom:10px">
+      <input type="text" id="logKw" placeholder="筛选机型 / 设备 ID" oninput="renderLog()" style="flex:1;min-width:180px">
+      <button class="sm" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
+    </div>
+    <div id="logOnlineBox" style="margin-bottom:12px;font-size:13px"></div>
+    <div style="max-height:340px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px" id="logList"></div>
+  </div>
+
+  <div class="card" id="chatCard" style="display:none">
+    <h2>⑤ 设备消息 · 和手机互发消息</h2>
+    <div class="muted" style="margin-bottom:10px">
+      手机设置页「💬 和管理员聊天」发来的消息会显示在这里；选一台设备就能回复它，也能群发给所有设备。
+    </div>
+    <div class="bar" style="margin-bottom:10px">
+      <select id="chatTo" onchange="renderChat()" style="flex:1;min-width:200px"></select>
+      <button class="sm" onclick="mutate(function(){ data.chat = []; }, '已清空聊天记录')">🗑 清空聊天</button>
+    </div>
+    <div id="chatList" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:12px;font-size:13px;line-height:1.6"></div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="chatInput" placeholder="输入要发送的消息…" onkeydown="if(event.key==='Enter')chatSend()" style="flex:1">
+      <button class="p" onclick="chatSend()">发送</button>
+    </div>
+  </div>
+
   <div class="card" id="userAdminCard" style="display:none">
     <h2>④ 账号管理（仅创始人可见）</h2>
     <div class="muted" style="margin-bottom:10px">
@@ -1174,6 +1203,12 @@ function clearLockPwd(){
 function render(){
   if(!data) return;
   renderLockPwdTip();
+  // 日志 / 消息卡片：一读到数据就显示（不用单独判断权限）
+  try{
+    if($("logCard")) $("logCard").style.display = "block";
+    if($("chatCard")) $("chatCard").style.display = "block";
+    renderLog(); renderChat();
+  }catch(e){}
   var kw = ($("kw").value||"").trim().toLowerCase();
   var ids = Object.keys(data.dev);
   var now = Date.now();
@@ -1273,7 +1308,7 @@ function allowAll(){
 function setStatus(id, st){
   if(!data || !data.dev){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
   if(!data.dev[id]) return;
-  mutate(function(){ data.dev[id].status = st; },
+  mutate(function(){ data.dev[id].status = st; logAdd(st === "blocked" ? "blocked" : "allowed", id, curUser); },
     st === "blocked" ? "已踢出，对方下次打开会被锁定" : "已允许，对方下次打开即可正常使用");
 }
 function setNote(id){
@@ -1287,7 +1322,7 @@ function del(id){
   if(!data || !data.dev){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
   if(!data.dev[id]) return;
   if(!confirm("删除这台设备的记录？\n它下次打开会当作新设备重新上报。")) return;
-  mutate(function(){ delete data.dev[id]; pendingDel[id] = 1; delete selected[id]; }, "已删除 1 台设备");
+  mutate(function(){ logAdd("deleted", id, curUser); delete data.dev[id]; pendingDel[id] = 1; delete selected[id]; }, "已删除 1 台设备");
 }
 function delSelected(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能删除设备。"); return; }
@@ -1303,8 +1338,144 @@ function bulk(st){
   var ids = selIds();
   if(!ids.length){ alert("先勾选设备（左边的小方框）"); return; }
   mutate(function(){
-    for(var i=0;i<ids.length;i++) data.dev[ids[i]].status = st;
+    for(var i=0;i<ids.length;i++){ data.dev[ids[i]].status = st; logAdd(st === "blocked" ? "blocked" : "allowed", ids[i], curUser); }
   }, (st === "blocked" ? "已踢出 " : "已允许 ") + ids.length + " 台设备");
+}
+
+/* ==================== 设备日志 ==================== */
+var ONLINE_MS_ADMIN = 5 * 60 * 1000;
+function pad2a(n){ return (n < 10 ? "0" : "") + n; }
+function fmtClockA(ts){
+  try{ var d = new Date(ts); return pad2a(d.getHours()) + ":" + pad2a(d.getMinutes()) + ":" + pad2a(d.getSeconds()); }
+  catch(e){ return "--:--:--"; }
+}
+function fmtDayA(ts){
+  try{
+    var d = new Date(ts);
+    if(new Date().toDateString() === d.toDateString()) return "今天 " + fmtClockA(ts);
+    return pad2a(d.getMonth()+1) + "-" + pad2a(d.getDate()) + " " + fmtClockA(ts);
+  }catch(e){ return "-"; }
+}
+function agoA(ts){
+  var s = Math.floor((Date.now() - ts) / 1000);
+  if(s < 60) return s + " 秒前";
+  if(s < 3600) return Math.floor(s/60) + " 分钟前";
+  if(s < 86400) return Math.floor(s/3600) + " 小时前";
+  return Math.floor(s/86400) + " 天前";
+}
+function logAdd(act, id, by){
+  if(!data) return;
+  if(!data.log || typeof data.log !== "object") data.log = [];
+  var d = (data.dev && data.dev[id]) || {};
+  data.log.unshift({ t: Date.now(), id: id || "", model: d.model || String(id || "设备").slice(0, 8),
+                     act: act, by: by || "" });
+  if(data.log.length > 200) data.log = data.log.slice(0, 200);
+}
+function renderLog(){
+  if(!data) return;
+  var kwEl = $("logKw");
+  var kw = ((kwEl && kwEl.value) || "").trim().toLowerCase();
+  var now = Date.now(), list = [];
+  for(var k in data.dev){ if(data.dev[k]) list.push(data.dev[k]); }
+  list.sort(function(a, b){ return (b.lastSeen||0) - (a.lastSeen||0); });
+
+  var h = "", nOn = 0, nShow = 0;
+  for(var i = 0; i < list.length; i++){
+    var d = list[i];
+    var on = d.lastSeen && (now - d.lastSeen) < ONLINE_MS_ADMIN;
+    if(on) nOn++;
+    if(kw && (String(d.id||"") + " " + (d.model||"") + " " + (d.note||"")).toLowerCase().indexOf(kw) < 0) continue;
+    nShow++;
+    var stx = (d.status === "blocked") ? '<span style="color:#f85149">已踢出</span>'
+            : (d.status === "pending") ? '<span style="color:#d29922">待授权</span>'
+            : '<span style="color:#3fb950">已授权</span>';
+    h += '<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #21262d">'
+       + '<div>' + (on ? '<span style="color:#3fb950">● 在线</span>' : '<span style="color:#6e7681">○ 离线</span>')
+       + '　<b>' + esc(d.model || "未知机型") + '</b>'
+       + ' <span style="color:#8b949e;font-size:12px">' + esc(String(d.id||"").slice(0,10)) + '</span>'
+       + '<div style="color:#8b949e;font-size:12px;margin-top:2px">'
+       + (on ? "刚刚在线 · " + fmtClockA(d.lastSeen) : (d.lastSeen ? "最后上线 " + fmtDayA(d.lastSeen) + "（" + agoA(d.lastSeen) + "）" : "从未上线"))
+       + '</div></div>'
+       + '<div style="text-align:right;flex-shrink:0">' + stx + '</div></div>';
+  }
+  var box = $("logOnlineBox");
+  if(box) box.innerHTML = '<div style="margin-bottom:6px">共 <b>' + list.length + '</b> 台设备，'
+      + '其中 <b style="color:#3fb950">' + nOn + '</b> 台在线'
+      + (kw ? '　·　筛选出 ' + nShow + ' 台' : '') + '</div>' + (h || '<div class="muted">没有匹配的设备</div>');
+
+  var lg = data.log || [], s = "", box2 = $("logList");
+  if(!box2) return;
+  var stick = (box2.scrollTop < 30);
+  for(var j = 0; j < lg.length; j++){
+    var it = lg[j] || {}, a = it.act || "";
+    if(kw && (String(it.id||"") + " " + (it.model||"")).toLowerCase().indexOf(kw) < 0) continue;
+    var col = a === "online" ? "#3fb950" : a === "blocked" ? "#f85149" : a === "allowed" ? "#58a6ff"
+            : a === "deleted" ? "#f85149" : "#8b949e";
+    var atx = a === "online" ? "上线" : a === "offline" ? "离线" : a === "blocked" ? "被踢出"
+            : a === "allowed" ? "被放行" : a === "deleted" ? "被删除" : (a || "操作");
+    s += '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #21262d">'
+       + '<div><b>' + esc(it.model || String(it.id||"设备").slice(0,8)) + '</b> '
+       + '<b style="color:' + col + '">' + atx + '</b>'
+       + (it.by ? ' <span style="color:#8b949e;font-size:12px">操作人 ' + esc(it.by) + '</span>' : '')
+       + '<div style="color:#8b949e;font-size:12px">ID ' + esc(String(it.id||"").slice(0,10)) + '</div></div>'
+       + '<div style="color:#8b949e;font-size:12px;flex-shrink:0">' + fmtDayA(it.t) + '</div></div>';
+  }
+  box2.innerHTML = s || '<div class="muted">还没有日志记录</div>';
+  if(stick) box2.scrollTop = 0;
+}
+
+/* ==================== 设备消息（与手机互发） ==================== */
+var chatLastN = 0;
+function renderChat(){
+  if(!data) return;
+  var sel = $("chatTo");
+  if(!sel) return;
+  var ids = [];
+  for(var k in data.dev){ if(data.dev[k]) ids.push(k); }
+  ids.sort(function(a, b){ return (data.dev[b].lastSeen||0) - (data.dev[a].lastSeen||0); });
+  var cur = sel.value;
+  var opt = '<option value="all">📢 群发 · 所有设备</option>';
+  for(var i = 0; i < ids.length; i++){
+    var d = data.dev[ids[i]];
+    opt += '<option value="dev:' + ids[i] + '">' + esc(d.model || ids[i].slice(0,8))
+         + '　' + esc(ids[i].slice(0, 8)) + '</option>';
+  }
+  sel.innerHTML = opt;
+  if(cur) sel.value = cur;
+  var to = sel.value || "all";
+  var arr = data.chat || [], h = "";
+  for(var j = 0; j < arr.length; j++){
+    var m = arr[j] || {};
+    if(to !== "all" && !(m.to === to || m.from === to)) continue;
+    var mine = (m.from === "admin");
+    h += '<div style="margin:7px 0;text-align:' + (mine ? "right" : "left") + '">'
+       + '<div style="display:inline-block;max-width:78%;padding:8px 11px;border-radius:11px;text-align:left;'
+       + 'background:' + (mine ? "rgba(31,111,235,.28)" : "rgba(255,255,255,.07)") + '">'
+       + '<div style="font-size:11px;color:#8b949e;margin-bottom:3px">'
+       + esc(m.name || (mine ? "后台" : "设备")) + ' · ' + fmtDayA(m.t) + '</div>'
+       + '<div style="white-space:pre-wrap;word-break:break-word">' + esc(m.text || "") + '</div>'
+       + '</div></div>';
+  }
+  var box = $("chatList");
+  if(!box) return;
+  box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">还没有消息</div>';
+  // 只有真的来了新消息才滚到底，避免每秒自动刷新把人正在看的记录顶走
+  if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
+}
+function chatSend(){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能发消息。"); return; }
+  var inp = $("chatInput");
+  if(!inp) return;
+  var txt = String(inp.value || "").trim();
+  if(!txt) return;
+  var to = ($("chatTo") && $("chatTo").value) || "all";
+  inp.value = "";
+  mutate(function(){
+    if(!data.chat || typeof data.chat !== "object") data.chat = [];
+    data.chat.push({ t: Date.now(), from: "admin", to: (to === "all" ? "" : to),
+                     name: (curUser || "管理员"), text: txt });
+    if(data.chat.length > 200) data.chat = data.chat.slice(data.chat.length - 200);
+  }, to === "all" ? "已群发给所有设备" : "消息已发送");
 }
 function copyId(id){
   try{
