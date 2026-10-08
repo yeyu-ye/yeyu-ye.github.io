@@ -339,10 +339,10 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="aplCard" style="display:none">
-    <h2>⑥ 管理员申请（仅创始人可见）</h2>
+    <h2>⑥ 账号申请（仅创始人 / 管理员可见）</h2>
     <div class="muted" style="margin-bottom:10px">
-      成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里申请成为管理员，申请会出现在这里。<br>
-      <b>同意</b>后他的账号立刻变成管理员，能踢人、允许设备、在手机上管理设备。
+      <b>新注册</b>的账号默认是「成员」，<b style="color:#e6edf3">不能直接使用 APP</b>，需要你在这里同意。<br>
+      成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里<b>申请成为管理员</b>，也会出现在这里；同意后他立刻变成管理员。
     </div>
     <div id="aplBox"></div>
   </div>
@@ -670,7 +670,7 @@ function afterLogin(){
   rb.textContent = roleName(curRole);
   $("loginAt").textContent = "登录于 " + new Date().toLocaleString("zh-CN");
   $("userAdminCard").style.display = (curRole === "founder") ? "block" : "none";
-  $("aplCard").style.display = (curRole === "founder") ? "block" : "none";
+  $("aplCard").style.display = canEdit() ? "block" : "none";
   syncMgrLogin();
   try{ localStorage.setItem("yy_user", curUser); localStorage.setItem("yy_user_at", String(Date.now())); }catch(e){}
   startClock();
@@ -704,14 +704,17 @@ function renderApl(){
     var stTxt = a.st === "ok" ? '<span style="color:#3fb950">已同意</span>'
               : a.st === "no" ? '<span style="color:#f85149">已拒绝</span>'
               : '<span style="color:#d29922">待处理</span>';
+    var isReg = (a.kind === "reg");
     h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #21262d">'
        + '<div style="flex:1;min-width:180px">'
-       + '<div style="font-size:13px;color:#e6edf3"><b>' + esc(a.u || "") + '</b> 申请成为管理员</div>'
+       + '<div style="font-size:13px;color:#e6edf3"><b>' + esc(a.u || "") + '</b> '
+       + (isReg ? '<span class="badge b-off">新注册</span> 等待同意使用'
+                : '申请成为 <span class="badge b-active">管理员</span>') + '</div>'
        + '<div class="muted" style="font-size:11px">' + esc(a.model || "") + " · "
        + esc(String(a.dev || "").slice(0, 10)) + " · " + fmtDayA(a.t) + "</div></div>"
        + '<div style="font-size:12px">' + stTxt + "</div>";
     if(a.st === "pending"){
-      h += '<button class="sm" onclick="doApl(' + j + ',1)">✅ 同意</button>'
+      h += '<button class="sm" onclick="doApl(' + j + ',1)">' + (isReg ? "✅ 同意使用" : "✅ 同意") + '</button>'
          + '<button class="sm danger" onclick="doApl(' + j + ',0)">✖ 拒绝</button>';
     }
     h += "</div>";
@@ -719,18 +722,25 @@ function renderApl(){
   box.innerHTML = h;
 }
 function doApl(i, ok){
-  if(curRole !== "founder"){ showErr("只有创始人能审批申请"); return; }
+  if(!canEdit()){ showErr("只有创始人和管理员能审批申请"); return; }
   var a = data.apl && data.apl[i];
   if(!a) return;
-  if(ok && !confirm("同意 " + a.u + " 成为管理员？他之后可以踢人、允许设备、在手机上管理设备。")) return;
+  var isReg = (a.kind === "reg");
+  if(ok && !isReg && !confirm("同意 " + a.u + " 成为管理员？他之后可以踢人、允许设备、在手机上管理设备。")) return;
   mutate(function(){
     data.apl[i].st = ok ? "ok" : "no";
     data.apl[i].at = Date.now();
     data.apl[i].by = curUser;
-    if(ok && data.users && data.users[a.u] && data.users[a.u].role !== "founder"){
-      data.users[a.u].role = "admin";
+    if(ok && data.users && data.users[a.u]){
+      if(isReg){
+        // 新注册：同意后放行他这台设备，他就能正常用了（权限仍是成员）
+        if(a.dev && data.dev && data.dev[a.dev]) data.dev[a.dev].status = "active";
+      }else if(data.users[a.u].role !== "founder"){
+        data.users[a.u].role = "admin";
+      }
     }
-  }, ok ? ("已同意：" + a.u + " 现在是管理员") : ("已拒绝：" + a.u));
+  }, ok ? (isReg ? ("已同意：" + a.u + " 可以使用了（放行了他的设备）") : ("已同意：" + a.u + " 现在是管理员"))
+        : ("已拒绝：" + a.u));
 }
 function wpKeep(on){
   try{ localStorage.setItem("yy_wp_keep", on ? "1" : "0"); }catch(e){}
@@ -1522,7 +1532,12 @@ function chatChanOf(m){
 function devIdOf(k){ return (k && String(k).indexOf("dev:") === 0) ? String(k).slice(4) : ""; }
 function chatNameOf(m){
   if(!m) return "";
-  if(m.from === "admin") return m.name || "后台";
+  if(m.from === "admin" || String(m.from).indexOf("admin:") === 0){
+    var an = String(m.from).indexOf("admin:") === 0 ? String(m.from).slice(6) : (m.acc || "");
+    if(an && data && data.users && data.users[an] && data.users[an].name) return data.users[an].name;
+    return m.name || "后台";
+  }
+  if(m.acc && data && data.users && data.users[m.acc] && data.users[m.acc].name) return data.users[m.acc].name;
   var id = devIdOf(m.from);
   var nd = (id && data && data.dev && data.dev[id]) ? data.dev[id] : null;
   if(nd && nd.nick) return nd.nick;
@@ -1649,7 +1664,7 @@ function chatSend(){
   mutate(function(){
     if(!data.chat || typeof data.chat !== "object") data.chat = [];
     data.chat.push({ t: Date.now(), ch: chatChan,
-                     from: ("admin:" + (curUser || "admin")),
+                     from: ("admin:" + (curUser || "admin")), acc: (curUser || ""),
                      to: (chatChan === "admin" ? to : ""),
                      name: (curUser || "管理员"), text: txt });
     if(data.chat.length > 200) data.chat = data.chat.slice(data.chat.length - 200);
