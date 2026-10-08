@@ -1710,7 +1710,7 @@ function renderChat(){
        + '<div style="font-size:11px;color:#8b949e;margin-bottom:3px">'
        + (!mine && id ? '<span style="color:#d4af37;text-decoration:underline dotted;cursor:pointer" onclick="reNick(\'' + esc(id) + '\')">✏️ ' + esc(nm) + '</span>'
                       : esc(nm))
-       + ' · ' + fmtDayA(m.t) + '</div>'
+       + ' · ' + fmtDayA(m.t) + (m.rev ? '' : ' · <span style="color:#f85149;cursor:pointer" onclick="bgRevoke(\'' + esc(midKey(m)) + '\')">🗑 撤回</span>') + '</div>'
        + chatBodyHtml(m)
        + '</div></div>';
   }
@@ -1720,6 +1720,26 @@ function renderChat(){
                      + (chatChan === "all" ? "通用频道还没有消息" : "这台设备还没有私聊消息") + '</div>';
   if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
 }
+function midKey(m){
+  var mm = m || {};
+  if(mm.mid) return String(mm.mid);
+  return "k" + String(mm.t || 0) + "_" + String(mm.from || "").replace(/[^a-zA-Z0-9]/g, "");
+}
+function bgRevoke(key){
+  if(!canEdit() && curRole !== "founder"){ alert("没有权限撤回"); return; }
+  if(!confirm("撤回这条消息？撤回后所有人都看不到内容了。")) return;
+  mutate(function(){
+    var arr = data.chat || [];
+    for(var i = 0; i < arr.length; i++){
+      var m = arr[i] || {};
+      if(m.mid === key || midKey(m) === key){
+        m.rev = 1; m.text = ""; m.data = ""; m.revAt = Date.now(); m.revBy = curUser;
+        break;
+      }
+    }
+  }, "已撤回");
+}
+
 /* 消息内容：普通文字 / 语音（点一下能听）/ 通话记录 */
 var _bgVoice = [];
 function playBgVoice(i){
@@ -1732,6 +1752,7 @@ function playBgVoice(i){
   }catch(e){ alert("播放失败"); }
 }
 function chatBodyHtml(m){
+  if(m.rev) return '<div style="color:#8b949e;font-size:12px;font-style:italic">（消息已被撤回）</div>';
   if(m.kind === "voice"){
     _bgVoice.push(m);
     return '<div onclick="playBgVoice(' + (_bgVoice.length - 1) + ')" style="display:inline-flex;align-items:center;'
@@ -1804,6 +1825,7 @@ function chatSend(){
     if(!data.chat || typeof data.chat !== "object") data.chat = [];
     data.chat.push({ t: Date.now(), ch: chatChan,
                      from: ("admin:" + (curUser || "admin")), acc: (curUser || ""),
+                     mid: (Date.now().toString(36) + Math.random().toString(36).slice(2, 7)),
                      to: (chatChan === "admin" ? to : ""),
                      name: (curUser || "管理员"), text: txt });
     if(data.chat.length > 200) data.chat = data.chat.slice(data.chat.length - 200);
