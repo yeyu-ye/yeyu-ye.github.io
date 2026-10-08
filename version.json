@@ -1,9 +1,9 @@
 {
-  "code": 25,
-  "ver": "v25",
-  "apk": "https://yeyu-ye.github.io/yeyu-v25.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v25/yeyu-v25.apk",
+  "code": 26,
+  "ver": "v26",
+  "apk": "https://yeyu-ye.github.io/yeyu-v26.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v26/yeyu-v26.apk",
   "force": true,
-  "time": "2026-10-09 03:00",
-  "note": "• 消息界面改成微信风格：右绿左白气泡+头像+时间分隔\n• 底部输入栏按微信重排，有字才显示绿色发送键\n• 修复消息顺序错乱：发送排队串行提交\n• 新增撤回：长按自己的消息即可撤回\n• 消息页性能优化：无变化不重绘、滑动暂停刷新\n• 输入框自动避开软键盘\n• 后台消息支持撤回"
+  "time": "2026-10-09 03:30",
+  "note": "• 后台：修复「清空聊天」点了没反应（私聊消息频道判断不一致）\n• 后台：修复删设备连点卡顿（写失败会永久卡住刷新）＋新增「连删不提示」\n• 后台/APP：新增「👥 查看人」面板，点一个人直接跳到和他的会话\n• 管理员/在线状态改成不随消息滚动的快捷条，不再需要滑到最上面\n• 聊天窗口新增「⬇ 最新」浮动按钮，消息多了可一键回到底部\n• APP：修复点输入栏软键盘不弹出\n• APP：后台选中的会话对象支持管理员（不只设备）"
 }
