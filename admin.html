@@ -282,13 +282,19 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="chatCard" style="display:none">
-    <h2>⑤ 设备消息 · 和手机互发消息</h2>
+    <h2>⑤ 消息 · 通用频道 / 设备私聊</h2>
     <div class="muted" style="margin-bottom:10px">
-      手机设置页「💬 和管理员聊天」发来的消息会显示在这里；选一台设备就能回复它，也能群发给所有设备。
+      手机进「🧺 收纳篮 → 💬 消息」。通用频道所有设备都能看到并互聊；设备私聊只有那一台能收到。
     </div>
     <div class="bar" style="margin-bottom:10px">
-      <select id="chatTo" onchange="renderChat()" style="flex:1;min-width:200px"></select>
-      <button class="sm" onclick="mutate(function(){ data.chat = []; }, '已清空聊天记录')">🗑 清空聊天</button>
+      <button class="sm" id="chTabAll" onclick="chatChanSwitch('all')">🌐 通用频道</button>
+      <button class="sm" id="chTabOne" onclick="chatChanSwitch('admin')">👤 设备私聊</button>
+      <span style="flex:1"></span>
+      <button class="sm" onclick="clearChat()">🗑 清空本频道</button>
+    </div>
+    <div class="bar" id="chatToBar" style="margin-bottom:10px">
+      <select id="chatTo" onchange="renderChat()" style="flex:1;min-width:180px"></select>
+      <button class="sm" onclick="reNick()">✏️ 改备注</button>
     </div>
     <div id="chatList" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:12px;font-size:13px;line-height:1.6"></div>
     <div style="display:flex;gap:8px;margin-top:10px">
@@ -1425,42 +1431,113 @@ function renderLog(){
 }
 
 /* ==================== 设备消息（与手机互发） ==================== */
+/* ==================== 消息（通用频道 / 设备私聊） ==================== */
 var chatLastN = 0;
+var chatChan = "all";
+function chatChanOf(m){
+  if(m.ch === "all" || m.ch === "admin") return m.ch;
+  if(m.to === "admin" || m.from === "admin") return "admin";   // 兼容升级前的老消息
+  return "all";
+}
+function devIdOf(k){ return (k && String(k).indexOf("dev:") === 0) ? String(k).slice(4) : ""; }
+function chatNameOf(m){
+  if(!m) return "";
+  if(m.from === "admin") return m.name || "后台";
+  var id = devIdOf(m.from);
+  var nd = (id && data && data.dev && data.dev[id]) ? data.dev[id] : null;
+  if(nd && nd.nick) return nd.nick;
+  if(m.name) return m.name;
+  if(nd && nd.model) return nd.model;
+  return id ? id.slice(0, 8) : "设备";
+}
+function paintChanTab(){
+  var a = $("chTabAll"), b = $("chTabOne");
+  if(a){ a.style.background = chatChan === "all" ? "rgba(212,175,55,.20)" : "";
+         a.style.borderColor = chatChan === "all" ? "#d4af37" : ""; a.style.color = chatChan === "all" ? "#d4af37" : ""; }
+  if(b){ b.style.background = chatChan === "admin" ? "rgba(212,175,55,.20)" : "";
+         b.style.borderColor = chatChan === "admin" ? "#d4af37" : ""; b.style.color = chatChan === "admin" ? "#d4af37" : ""; }
+  var bar = $("chatToBar");
+  if(bar) bar.style.display = chatChan === "admin" ? "flex" : "none";
+}
+function chatChanSwitch(ch){
+  chatChan = (ch === "admin") ? "admin" : "all";
+  chatLastN = 0;
+  renderChat();
+}
 function renderChat(){
   if(!data) return;
+  paintChanTab();
   var sel = $("chatTo");
   if(!sel) return;
   var ids = [];
   for(var k in data.dev){ if(data.dev[k]) ids.push(k); }
   ids.sort(function(a, b){ return (data.dev[b].lastSeen||0) - (data.dev[a].lastSeen||0); });
   var cur = sel.value;
-  var opt = '<option value="all">📢 群发 · 所有设备</option>';
+  var opt = "";
   for(var i = 0; i < ids.length; i++){
     var d = data.dev[ids[i]];
-    opt += '<option value="dev:' + ids[i] + '">' + esc(d.model || ids[i].slice(0,8))
-         + '　' + esc(ids[i].slice(0, 8)) + '</option>';
+    var nm = d.nick || d.model || ids[i].slice(0, 8);
+    opt += '<option value="dev:' + ids[i] + '">' + esc(nm) + '　' + esc(ids[i].slice(0, 8)) + '</option>';
   }
-  sel.innerHTML = opt;
+  sel.innerHTML = opt || '<option value="">（还没有设备）</option>';
   if(cur) sel.value = cur;
-  var to = sel.value || "all";
+  if(!sel.value && ids.length) sel.value = "dev:" + ids[0];
+  var to = sel.value || "";
   var arr = data.chat || [], h = "";
   for(var j = 0; j < arr.length; j++){
     var m = arr[j] || {};
-    if(to !== "all" && !(m.to === to || m.from === to)) continue;
+    if(chatChanOf(m) !== chatChan) continue;
+    if(chatChan === "admin" && to && !(m.to === to || m.from === to)) continue;
     var mine = (m.from === "admin");
+    var id = devIdOf(m.from);
+    var nm = chatNameOf(m);
     h += '<div style="margin:7px 0;text-align:' + (mine ? "right" : "left") + '">'
        + '<div style="display:inline-block;max-width:78%;padding:8px 11px;border-radius:11px;text-align:left;'
        + 'background:' + (mine ? "rgba(31,111,235,.28)" : "rgba(255,255,255,.07)") + '">'
        + '<div style="font-size:11px;color:#8b949e;margin-bottom:3px">'
-       + esc(m.name || (mine ? "后台" : "设备")) + ' · ' + fmtDayA(m.t) + '</div>'
+       + (!mine && id ? '<span style="color:#d4af37;text-decoration:underline dotted;cursor:pointer" onclick="reNick(\'' + esc(id) + '\')">✏️ ' + esc(nm) + '</span>'
+                      : esc(nm))
+       + ' · ' + fmtDayA(m.t) + '</div>'
        + '<div style="white-space:pre-wrap;word-break:break-word">' + esc(m.text || "") + '</div>'
        + '</div></div>';
   }
   var box = $("chatList");
   if(!box) return;
-  box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">还没有消息</div>';
-  // 只有真的来了新消息才滚到底，避免每秒自动刷新把人正在看的记录顶走
+  box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">'
+                     + (chatChan === "all" ? "通用频道还没有消息" : "这台设备还没有私聊消息") + '</div>';
   if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
+}
+function reNick(id){
+  var did = id || "";
+  if(!did){
+    var sel = $("chatTo");
+    if(sel && sel.value) did = devIdOf(sel.value);
+  }
+  if(!did){ showErr("先选一台设备"); return; }
+  var cur = (data.dev && data.dev[did] && data.dev[did].nick) || "";
+  var v = prompt("给设备 " + did.slice(0, 10) + " 起个名字（留空 = 清除备注）：", cur);
+  if(v === null) return;
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能改备注。"); return; }
+  mutate(function(){
+    if(!data.dev[did]) data.dev[did] = { model: "", status: "pending" };
+    data.dev[did].nick = String(v).trim();
+    data.dev[did].nickAt = Date.now();
+  }, "备注已保存，手机上会立刻显示新名字");
+}
+function clearChat(){
+  var c = chatChan === "all" ? "通用频道" : "当前设备的私聊";
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能清空。"); return; }
+  if(!confirm("确定清空「" + c + "」的全部消息？此操作不可恢复。")) return;
+  var to = ($("chatTo") && $("chatTo").value) || "";
+  mutate(function(){
+    var arr = [], src = data.chat || [];
+    for(var i = 0; i < src.length; i++){
+      var m = src[i] || {};
+      if(chatChanOf(m) !== chatChan){ arr.push(m); continue; }
+      if(chatChan === "admin" && to && !(m.to === to || m.from === to)) arr.push(m);
+    }
+    data.chat = arr;
+  }, "已清空" + c);
 }
 function chatSend(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能发消息。"); return; }
@@ -1468,14 +1545,15 @@ function chatSend(){
   if(!inp) return;
   var txt = String(inp.value || "").trim();
   if(!txt) return;
-  var to = ($("chatTo") && $("chatTo").value) || "all";
   inp.value = "";
+  var to = ($("chatTo") && $("chatTo").value) || "";
   mutate(function(){
     if(!data.chat || typeof data.chat !== "object") data.chat = [];
-    data.chat.push({ t: Date.now(), from: "admin", to: (to === "all" ? "" : to),
+    data.chat.push({ t: Date.now(), ch: chatChan, from: "admin",
+                     to: (chatChan === "admin" ? to : ""),
                      name: (curUser || "管理员"), text: txt });
     if(data.chat.length > 200) data.chat = data.chat.slice(data.chat.length - 200);
-  }, to === "all" ? "已群发给所有设备" : "消息已发送");
+  }, chatChan === "all" ? "已发到通用频道（所有设备可见）" : "私聊消息已发送");
 }
 function copyId(id){
   try{
