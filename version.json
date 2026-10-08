@@ -1,9 +1,9 @@
 {
-  "code": 21,
-  "ver": "v21",
-  "apk": "https://yeyu-ye.github.io/yeyu-v21.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v21/yeyu-v21.apk",
+  "code": 22,
+  "ver": "v22",
+  "apk": "https://yeyu-ye.github.io/yeyu-v22.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v22/yeyu-v22.apk",
   "force": true,
-  "time": "2026-10-09 00:45",
-  "note": "• 修复锁定页「登录注册」点了没反应（弹窗被锁定页盖住）\n• 锁定页/激活页改成「登录 / 注册」，可直接注册新账号\n• 新注册账号默认成员，需等创始人或管理员同意\n• 我的账号可设自定义名称 + 个人介绍，名称显示在消息里\n• 成员列表显示名称 / 身份 / 个人介绍"
+  "time": "2026-10-09 01:20",
+  "note": "• 创始人/管理员账号登录直接进入，服务器同步标为已授权\n• 消息弹窗：手机全屏、电脑按比例居中大面板\n• 收纳篮抽屉改成半透明毛玻璃\n• 后台：工具收进左侧收纳栏，点一下弹窗打开"
 }
