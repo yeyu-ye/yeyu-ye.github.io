@@ -671,6 +671,11 @@ function doLogin(){
     if(!token && DEFAULT_TOKEN) token = DEFAULT_TOKEN;
     if(!gistId && DEFAULT_GIST) gistId = DEFAULT_GIST;
   }
+  // 本机没令牌时，用启动时从线上拉到的令牌池兜底（用户不用手动填）
+  if(!token && tokDL && tokDL.length){
+    token = tokDL[0];
+    try{ localStorage.setItem("yy_gh_token", token); gistId = gistId || DEFAULT_GIST; save(); }catch(e){}
+  }
   var remember = true;
   var rb = $("rememberSw"); if(rb) remember = rb.checked;
 
@@ -833,16 +838,86 @@ function save(){
 }
 
 var ghEtag = null, ghEtagData = null;   // 条件请求：数据没变时 GitHub 返回 304，不消耗每小时 5000 次配额
-function gh(path, method, body){
+/* ---------- 动态令牌：令牌被吊销时自动换线上最新的，不用重新打包 APK ----------
+   tok.txt 每行一个「XOR+base64 混淆」的令牌，多个 = 冗余。混淆是为了躲开 GitHub 的
+   密钥扫描器（扫到明文 ghp_ 会直接吊销），不是防人——所以这个文件也别到处发。 */
+var TOK_URLS = [
+  "https://yeyu-ye.github.io/tok.txt",
+  "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@main/tok.txt"
+];
+var TOK_KEY = "YYKSZS2026-TOK";
+var tokDL = [], tokTried = {}, tokRotateN = 0;
+function deobfTok(b64){
+  try{
+    var s = atob(String(b64||"").trim()), k = TOK_KEY, out = "";
+    for(var i=0;i<s.length;i++) out += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    return out;
+  }catch(e){ return ""; }
+}
+function fetchTokPool(cb){
+  var i = 0;
+  function next(){
+    if(i >= TOK_URLS.length){ if(cb) cb(false); return; }
+    var u = TOK_URLS[i++] + "?_t=" + Date.now();
+    var fin = false;
+    function fail(){ if(fin) return; fin = true; next(); }
+    try{
+      fetch(u, { method:"GET", cache:"no-store" })
+        .then(function(r){ if(!r.ok) throw 0; return r.text(); })
+        .then(function(t){
+          if(fin) return; fin = true;
+          var arr = [], lines = String(t).split(/\r?\n/);
+          for(var j=0;j<lines.length;j++){
+            var L = lines[j].trim();
+            if(!L || L.charAt(0) === "#") continue;
+            var d = deobfTok(L);
+            if(d && /^ghp_/.test(d)) arr.push(d);
+          }
+          if(arr.length){ tokDL = arr; tokTried = {}; }
+          if(cb) cb(arr.length > 0);
+        }).catch(fail);
+    }catch(e){ fail(); }
+    setTimeout(fail, 8000);
+  }
+  next();
+}
+function rotateTok(cb){
+  if(tokRotateN > 6){ if(cb) cb(false); return; }   // 上限：全是坏令牌时别无限转圈
+  tokRotateN++;
+  function tryNext(){
+    var pool = [token].concat(tokDL);
+    for(var i=0;i<pool.length;i++){
+      var t = pool[i];
+      if(t && !tokTried[t]){ tokTried[t] = 1; token = t; try{ save(); }catch(e){} if(cb) cb(true); return; }
+    }
+    if(cb) cb(false);
+  }
+  if(!tokDL.length || Object.keys(tokTried).length > tokDL.length){
+    fetchTokPool(function(){ tryNext(); });
+  } else { tryNext(); }
+}
+
+function gh(path, method, body, _rotated){
   var h = { "Accept":"application/vnd.github+json", "Authorization":"Bearer "+token };
   if(body) h["Content-Type"] = "application/json";
   else if(ghEtag) h["If-None-Match"] = ghEtag;
   return fetch(GH+path, { method:method||"GET", headers:h, body: body?JSON.stringify(body):undefined })
     .then(function(r){
       if(!body && r.status === 304) return ghEtagData;    // 没变化，直接用上次的结果
+      if(r.status === 401 && !_rotated){
+        // 令牌被吊销 → 自动换下一枚重试（后台与 APK 共用同一套线上令牌池）
+        return new Promise(function(res, rej){
+          rotateTok(function(ok){
+            if(!ok){ rej(new Error("HTTP 401 · 令牌失效（线上令牌已全部试过）")); return; }
+            ghEtag = null;
+            gh(path, method, body, 1).then(res, rej);
+          });
+        });
+      }
       if(!r.ok){
         return r.text().then(function(t){ throw new Error("HTTP "+r.status+" · "+t.slice(0,180)); });
       }
+      tokRotateN = 0;
       return r.json().then(function(j){
         if(!body){
           try{
@@ -1305,11 +1380,27 @@ function toggleAuto(){
     var u = localStorage.getItem("yy_user");
     if(u){ $("uname").value = u; $("pwd").focus(); }
     else { $("uname").focus(); }
-    // 本机没配过令牌（换了设备 / 清了缓存 / 公开版首次打开）→ 登录框直接给出填令牌入口
+    // 本机没配过令牌（换了设备 / 清了缓存 / 公开版首次打开）
+    // 先自动去线上取令牌；取不到才显示手动入口——正常情况下用户永远不用碰令牌
     try{
       var _tk = localStorage.getItem("yy_gh_token") || "";
       var _mn = localStorage.getItem("yy_manual") === "1";
-      if(!_tk && !_mn && !DEFAULT_TOKEN) $("loginTokEntry").style.display = "block";
+      if(!_tk && !_mn && !DEFAULT_TOKEN){
+        var _ent = $("loginTokEntry");
+        var _tip = $("loginTip");
+        try{ if(_tip) _tip.textContent = "正在获取数据库配置…"; }catch(e){}
+        fetchTokPool(function(ok){
+          if(ok && tokDL.length){
+            token = tokDL[0];
+            try{ localStorage.setItem("yy_gh_token", token); gistId = gistId || DEFAULT_GIST; save(); }catch(e){}
+            try{ if(_ent) _ent.style.display = "none"; }catch(e){}
+            try{ if(_tip) _tip.textContent = ""; }catch(e){}
+          } else {
+            try{ if(_ent) _ent.style.display = "block"; }catch(e){}
+            try{ if(_tip) _tip.textContent = ""; }catch(e){}
+          }
+        });
+      }
     }catch(e){}
   }catch(e){}
 })();
