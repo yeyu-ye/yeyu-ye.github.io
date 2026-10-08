@@ -234,6 +234,16 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       </div>
       <div class="muted" id="lockPwdTip" style="margin-top:8px;font-size:12px"></div>
     </div>
+
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(48,54,61,.7)">
+      <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:6px">👤 管理员登录 APP 的方式</div>
+      <div class="muted" style="font-size:12px;line-height:1.7;margin-bottom:10px">
+        管理员用自己的账号在手机 APP 里「👤 我的账号」登录后：<b style="color:#e6edf3">直接进入</b>，还是<b style="color:#e6edf3">仍需你在设备列表放行</b>。<br>
+        创始人不受这个限制，登录后永远可以直接进入。
+      </div>
+      <label class="sw"><input type="radio" name="mgrLogin" value="direct" onchange="setMgrLogin('direct')"> 直接登录进入（默认，推荐）</label>
+      <label class="sw"><input type="radio" name="mgrLogin" value="auth" onchange="setMgrLogin('auth')"> 仍需我授权（登录后还要在「③ 设备管理」点允许）</label>
+    </div>
   </div>
 
   <div class="card" id="devCard" style="display:none">
@@ -326,6 +336,15 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       </div>
       <button class="p" style="margin-top:12px" onclick="addUser()">创建账号</button>
     </div>
+  </div>
+
+  <div class="card" id="aplCard" style="display:none">
+    <h2>⑥ 管理员申请（仅创始人可见）</h2>
+    <div class="muted" style="margin-bottom:10px">
+      成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里申请成为管理员，申请会出现在这里。<br>
+      <b>同意</b>后他的账号立刻变成管理员，能踢人、允许设备、在手机上管理设备。
+    </div>
+    <div id="aplBox"></div>
   </div>
 
   <div class="card">
@@ -651,8 +670,67 @@ function afterLogin(){
   rb.textContent = roleName(curRole);
   $("loginAt").textContent = "登录于 " + new Date().toLocaleString("zh-CN");
   $("userAdminCard").style.display = (curRole === "founder") ? "block" : "none";
+  $("aplCard").style.display = (curRole === "founder") ? "block" : "none";
+  syncMgrLogin();
   try{ localStorage.setItem("yy_user", curUser); localStorage.setItem("yy_user_at", String(Date.now())); }catch(e){}
   startClock();
+}
+// ---------- 管理员登录 APP 的方式 ----------
+function syncMgrLogin(){
+  var v = (data && data.cfg && data.cfg.mgrLogin === "auth") ? "auth" : "direct";
+  var rs = document.getElementsByName("mgrLogin");
+  for(var i = 0; i < rs.length; i++) rs[i].checked = (rs[i].value === v);
+}
+function setMgrLogin(v){
+  if(!canEdit()){ showErr("只有创始人和管理员能改这个设置。"); syncMgrLogin(); return; }
+  mutate(function(){
+    if(!data.cfg) data.cfg = {};
+    data.cfg.mgrLogin = v;
+  }, v === "auth" ? "已设置：管理员登录后仍需你在设备列表放行" : "已设置：管理员登录后可直接使用");
+}
+// ---------- 管理员申请审批（仅创始人） ----------
+function renderApl(){
+  var box = $("aplBox");
+  if(!box) return;
+  var arr = (data && data.apl) ? data.apl : [], h = "";
+  var pend = 0;
+  for(var i = 0; i < arr.length; i++){ if(arr[i] && arr[i].st === "pending") pend++; }
+  if(!arr.length){
+    box.innerHTML = '<div class="muted" style="text-align:center;padding:16px 0">还没有人申请</div>';
+    return;
+  }
+  for(var j = arr.length - 1; j >= 0; j--){
+    var a = arr[j] || {};
+    var stTxt = a.st === "ok" ? '<span style="color:#3fb950">已同意</span>'
+              : a.st === "no" ? '<span style="color:#f85149">已拒绝</span>'
+              : '<span style="color:#d29922">待处理</span>';
+    h += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid #21262d">'
+       + '<div style="flex:1;min-width:180px">'
+       + '<div style="font-size:13px;color:#e6edf3"><b>' + esc(a.u || "") + '</b> 申请成为管理员</div>'
+       + '<div class="muted" style="font-size:11px">' + esc(a.model || "") + " · "
+       + esc(String(a.dev || "").slice(0, 10)) + " · " + fmtDayA(a.t) + "</div></div>"
+       + '<div style="font-size:12px">' + stTxt + "</div>";
+    if(a.st === "pending"){
+      h += '<button class="sm" onclick="doApl(' + j + ',1)">✅ 同意</button>'
+         + '<button class="sm danger" onclick="doApl(' + j + ',0)">✖ 拒绝</button>';
+    }
+    h += "</div>";
+  }
+  box.innerHTML = h;
+}
+function doApl(i, ok){
+  if(curRole !== "founder"){ showErr("只有创始人能审批申请"); return; }
+  var a = data.apl && data.apl[i];
+  if(!a) return;
+  if(ok && !confirm("同意 " + a.u + " 成为管理员？他之后可以踢人、允许设备、在手机上管理设备。")) return;
+  mutate(function(){
+    data.apl[i].st = ok ? "ok" : "no";
+    data.apl[i].at = Date.now();
+    data.apl[i].by = curUser;
+    if(ok && data.users && data.users[a.u] && data.users[a.u].role !== "founder"){
+      data.users[a.u].role = "admin";
+    }
+  }, ok ? ("已同意：" + a.u + " 现在是管理员") : ("已拒绝：" + a.u));
 }
 function wpKeep(on){
   try{ localStorage.setItem("yy_wp_keep", on ? "1" : "0"); }catch(e){}
@@ -1209,6 +1287,8 @@ function clearLockPwd(){
 function render(){
   if(!data) return;
   renderLockPwdTip();
+  try{ renderApl(); }catch(e){}
+  try{ syncMgrLogin(); }catch(e){}
   // 日志 / 消息卡片：一读到数据就显示（不用单独判断权限）
   try{
     if($("logCard")) $("logCard").style.display = "block";
@@ -1474,6 +1554,7 @@ function renderChat(){
   ids.sort(function(a, b){ return (data.dev[b].lastSeen||0) - (data.dev[a].lastSeen||0); });
   var cur = sel.value;
   var opt = "";
+  if(curRole === "founder") opt += '<option value="__alldm__">🔍 全部私信（仅创始人可见）</option>';
   for(var i = 0; i < ids.length; i++){
     var d = data.dev[ids[i]];
     var nm = d.nick || d.model || ids[i].slice(0, 8);
@@ -1484,13 +1565,14 @@ function renderChat(){
   if(!sel.value && ids.length) sel.value = "dev:" + ids[0];
   var to = sel.value || "";
   var arr = data.chat || [], h = "";
+  if(chatChan === "admin") h += adminOnlineHtml();
   for(var j = 0; j < arr.length; j++){
     var m = arr[j] || {};
     var ch = chatChanOf(m);
-    // 通用频道只看公共消息；设备私聊页则把该设备相关的私聊（含设备↔设备）一并显示
-    if(chatChan === "all"){ if(ch !== "all") continue; }
+    if(chatChan === "all"){ if(ch !== "all") continue; }            // 通用频道只看公共消息
+    else if(to === "__alldm__"){ if(ch !== "dm") continue; }        // 创始人：查看全部私信
     else { if(ch === "all") continue; if(to && !(m.to === to || m.from === to)) continue; }
-    var mine = (m.from === "admin");
+    var mine = (m.from === "admin" || String(m.from).indexOf("admin:") === 0);
     var id = devIdOf(m.from);
     var nm = chatNameOf(m);
     h += '<div style="margin:7px 0;text-align:' + (mine ? "right" : "left") + '">'
@@ -1508,6 +1590,21 @@ function renderChat(){
   box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">'
                      + (chatChan === "all" ? "通用频道还没有消息" : "这台设备还没有私聊消息") + '</div>';
   if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
+}
+// 手机端登录过的创始人 / 管理员，这里会显示在线
+function adminOnlineHtml(){
+  var aon = (data && data.aon) ? data.aon : {}, now = Date.now(), ks = [];
+  for(var k in aon){ if(now - (aon[k].t || 0) < 5 * 60 * 1000) ks.push(k); }
+  var h = '<div style="margin-bottom:9px;font-size:12px;color:#8b949e;line-height:1.7">';
+  if(!ks.length){ return h + "👮 暂无管理员在线（管理员在手机 APP 里登录后这里会显示）</div>"; }
+  h += "🟢 在线管理员：";
+  for(var i = 0; i < ks.length; i++){
+    var r = (data.users && data.users[ks[i]]) ? data.users[ks[i]] : null;
+    h += '<b style="color:#3fb950">' + esc(ks[i]) + "</b>"
+       + (r ? "（" + (r.role === "founder" ? "创始人" : "管理员") + "）" : "")
+       + (aon[ks[i]].model ? " · " + esc(aon[ks[i]].model) : "") + "　";
+  }
+  return h + "</div>";
 }
 function reNick(id){
   var did = id || "";
@@ -1551,7 +1648,8 @@ function chatSend(){
   var to = ($("chatTo") && $("chatTo").value) || "";
   mutate(function(){
     if(!data.chat || typeof data.chat !== "object") data.chat = [];
-    data.chat.push({ t: Date.now(), ch: chatChan, from: "admin",
+    data.chat.push({ t: Date.now(), ch: chatChan,
+                     from: ("admin:" + (curUser || "admin")),
                      to: (chatChan === "admin" ? to : ""),
                      name: (curUser || "管理员"), text: txt });
     if(data.chat.length > 200) data.chat = data.chat.slice(data.chat.length - 200);
