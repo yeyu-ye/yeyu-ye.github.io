@@ -186,6 +186,19 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <h2>② 新设备策略</h2>
     <label class="sw"><input type="radio" name="mode" value="open" onchange="setMode('open')"> 自动放行（装了就能用，我可以随时踢）</label>
     <label class="sw"><input type="radio" name="mode" value="manual" onchange="setMode('manual')"> 严格模式（新设备必须先经我手动点「允许」）</label>
+
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(48,54,61,.7)">
+      <div style="font-size:14px;font-weight:600;color:#e6edf3;margin-bottom:6px">🔒 关闭授权锁的密码</div>
+      <div class="muted" style="font-size:12px;line-height:1.7;margin-bottom:10px">
+        手机 APP 里点「关闭授权锁」时要输入的密码。改完点保存，<b style="color:#e6edf3">所有联网的 APP 会在几秒内自动同步到新密码</b>（APP 本来就在实时监听，不用通知用户）。
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="lockPwdInput" placeholder="输入新密码（至少 4 位）" style="flex:1;min-width:190px">
+        <button class="sm" onclick="setLockPwd()">💾 保存并同步</button>
+        <button class="sm danger" onclick="clearLockPwd()">↩ 恢复默认 9178</button>
+      </div>
+      <div class="muted" id="lockPwdTip" style="margin-top:8px;font-size:12px"></div>
+    </div>
   </div>
 
   <div class="card" id="devCard" style="display:none">
@@ -983,8 +996,37 @@ function setMode(m){
     m === "manual" ? "已切换为严格模式：新设备需要你手动允许" : "已切换为自动放行：新设备装了就能用");
 }
 
+/* ---------- 关闭授权锁的密码（同步到所有设备） ----------
+   只存「盐 + 哈希」，明文不落库；APP 读到后本地比对，所以改完自动生效
+   （APP 本来就在每 0.5 秒监听一次服务器，不需要通知用户）。 */
+function renderLockPwdTip(){
+  var el = $("lockPwdTip"); if(!el) return;
+  var lp = data && data.cfg && data.cfg.lockPwd;
+  el.innerHTML = lp
+    ? '当前状态：<b style="color:#3fb950">已设置自定义密码</b>（所有联网 APP 已同步）'
+    : '当前状态：<b style="color:#d29922">默认密码 9178</b>（建议改成自己的）';
+}
+function setLockPwd(){
+  if(!canEdit()){ alert("只有创始人和管理员能改授权锁密码"); return; }
+  var v = ($("lockPwdInput").value || "").trim();
+  if(!v){ alert("请输入新密码"); return; }
+  if(v.length < 4){ alert("密码至少 4 位"); return; }
+  var s = newSalt();
+  mutate(function(){
+    data.cfg = data.cfg || {};
+    data.cfg.lockPwd = { s:s, p:hashPwd(v, s) };
+  }, "✅ 授权锁密码已更新，联网的 APP 会在几秒内自动同步");
+  $("lockPwdInput").value = "";
+}
+function clearLockPwd(){
+  if(!canEdit()){ alert("只有创始人和管理员能改授权锁密码"); return; }
+  if(!confirm("恢复为默认密码 9178？\n\n所有联网的 APP 会同步回 9178。")) return;
+  mutate(function(){ data.cfg = data.cfg || {}; delete data.cfg.lockPwd; }, "已恢复默认密码 9178");
+}
+
 function render(){
   if(!data) return;
+  renderLockPwdTip();
   var kw = ($("kw").value||"").trim().toLowerCase();
   var ids = Object.keys(data.dev);
   var now = Date.now();
