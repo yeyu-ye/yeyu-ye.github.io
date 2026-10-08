@@ -1,9 +1,9 @@
 {
-  "code": 20,
-  "ver": "v20",
-  "apk": "https://yeyu-ye.github.io/yeyu-v20.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v20/yeyu-v20.apk",
+  "code": 21,
+  "ver": "v21",
+  "apk": "https://yeyu-ye.github.io/yeyu-v21.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v21/yeyu-v21.apk",
   "force": true,
-  "time": "2026-10-09 00:05",
-  "note": "• 激活页/锁定页可用账号登录直接进入（创始人/管理员）\n• 收纳篮「我的账号」：成员可申请成为管理员，后台审批\n• 管理员频道可指定和哪位管理员聊；后台显示在线管理员\n• 创始人可查看全部私信；后台可设管理员登录方式（直接进/需授权）"
+  "time": "2026-10-09 00:45",
+  "note": "• 修复锁定页「登录注册」点了没反应（弹窗被锁定页盖住）\n• 锁定页/激活页改成「登录 / 注册」，可直接注册新账号\n• 新注册账号默认成员，需等创始人或管理员同意\n• 我的账号可设自定义名称 + 个人介绍，名称显示在消息里\n• 成员列表显示名称 / 身份 / 个人介绍"
 }
