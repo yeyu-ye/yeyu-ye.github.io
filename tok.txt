@@ -1,0 +1,5 @@
+# 夜雨开心之上 · 线上令牌池（XOR+base64 混淆）
+# 每行一枚，APK 与后台按顺序尝试，一枚被吊销自动换下一枚。
+# 这个文件是公开的，令牌已混淆；但仍然不要到处转发。
+# 更新方法: python gen_tok.py <你的GitHub令牌> <令牌1> [令牌2] ...
+PjE7DA8HcXdrVVsFCQ0/HhtqGwpze39Xej4jIiEQLjc4AAJHWQ4VOQ==
