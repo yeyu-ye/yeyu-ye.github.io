@@ -103,9 +103,9 @@ h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
   <div class="hidden" id="downloadContent">
     <div class="icon">📦</div>
     <h1>夜雨开心之上</h1>
-    <div class="version">v17 — 2026-10-08 更新</div>
+    <div class="version">v18 — 2026-10-08 更新</div>
     <div class="info">
-      <div><span>📋 版本：</span>v17 (yeyu-v17)</div>
+      <div><span>📋 版本：</span>v18 (yeyu-v18)</div>
       <div><span>🔧 签名：</span>v2 + v3</div>
       <div><span>📱 最低系统：</span>Android 7.0+</div>
       <div><span>✨ 本次更新：</span></div>
@@ -114,15 +114,24 @@ h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
         • 手机上直接看全部设备：允许 / 踢出 / 删除，与后台同步<br>
         • 「关闭授权锁」密码改为后台统一设置，改完自动同步所有手机<br>
         • 成员账号不能登录管理，只有创始人和管理员可以<br>
-        • 设置页新增「<b>设备日志</b>」：谁在线谁离线，几点几分几秒上线 / 被踢出<br>
-        • 设置页新增「<b>和管理员聊天</b>」，手机上直接和后台互发消息<br>
-        • 后台新增设备日志 + 设备消息，可单独回复，也可群发所有设备<br>
-        • 以后出新版本会<b>自动弹窗提醒</b>，点一下就下载更新
+        • 左上角新增「<b>☰ 收纳篮</b>」：消息 / 管理员 / 日志 / 设备 都收在里面<br>
+        • 聊天拆成「<b>🌐 通用频道</b>」（所有人可见互聊）和「<b>👮 管理员</b>」私聊频道<br>
+        • 可以给别的设备<b>备注名字</b>，点名字就能改，后台同步显示<br>
+        • 有新消息时 ☰ 会<b>亮红点</b>；出新版本会自动弹窗提醒更新
       </div>
     </div>
-    <a href="yeyu-v17.apk" class="download-btn">⬇ 下载 APK</a>
-    <div class="size">文件大小：8.6 MB · 国内加速节点</div>
-    <a href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v17/yeyu-v17.apk" class="alt-link">备用下载（jsDelivr 加速节点）</a>
+    <a href="https://yeyu-ye.github.io/yeyu-v18.apk" class="download-btn" download>⬇ 下载 APK</a>
+    <div class="size">文件大小：8.6 MB · 直连下载</div>
+    <a href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v18/yeyu-v18.apk" class="alt-link">备用下载（jsDelivr 加速节点）</a>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #21262d">
+      <div class="size" style="margin-bottom:6px">点上面没反应？复制下面的链接，到浏览器里打开 ↓</div>
+      <div style="display:flex;gap:6px">
+        <input id="apkUrl" type="text" readonly value="https://yeyu-ye.github.io/yeyu-v18.apk"
+               style="flex:1;min-width:0;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:9px 10px;color:#8b949e;font-size:11px;font-family:monospace">
+        <button onclick="copyApkUrl()" style="background:#238636;color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">复制</button>
+      </div>
+      <div id="copyTip" class="size" style="margin-top:6px;color:#7ee787"></div>
+    </div>
     <a href="admin.html" class="admin-btn">🛠 管理员后台 · 查看设备 / 授权 / 踢出</a>
     <div class="size" style="margin-top:6px">只有你自己用这个，密钥同样是 9178</div>
   </div>
@@ -140,6 +149,27 @@ function checkKey(){
     document.getElementById("keyInput").value = "";
     document.getElementById("keyInput").focus();
   }
+}
+function copyApkUrl(){
+  var inp = document.getElementById("apkUrl"), tip = document.getElementById("copyTip");
+  if(!inp) return;
+  var ok = false;
+  try{
+    inp.removeAttribute("readonly"); inp.select(); inp.setSelectionRange(0, 99999);
+    ok = document.execCommand("copy");
+    inp.setAttribute("readonly", "readonly");
+  }catch(e){ ok = false; }
+  if(!ok){
+    try{
+      var ta = document.createElement("textarea");
+      ta.value = inp.value; ta.style.position = "fixed"; ta.style.left = "-9999px";
+      document.body.appendChild(ta); ta.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    }catch(e){ ok = false; }
+  }
+  if(tip) tip.textContent = ok ? "✅ 已复制，粘到浏览器地址栏打开就能下载"
+                               : "复制失败，请长按上面的输入框全选后手动复制";
 }
 document.getElementById("keyInput").focus();
 </script>
