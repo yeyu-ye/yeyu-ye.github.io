@@ -1,9 +1,9 @@
 {
-  "code": 22,
-  "ver": "v22",
-  "apk": "https://yeyu-ye.github.io/yeyu-v22.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v22/yeyu-v22.apk",
+  "code": 23,
+  "ver": "v23",
+  "apk": "https://yeyu-ye.github.io/yeyu-v23.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v23/yeyu-v23.apk",
   "force": true,
-  "time": "2026-10-09 01:20",
-  "note": "• 创始人/管理员账号登录直接进入，服务器同步标为已授权\n• 消息弹窗：手机全屏、电脑按比例居中大面板\n• 收纳篮抽屉改成半透明毛玻璃\n• 后台：工具收进左侧收纳栏，点一下弹窗打开"
+  "time": "2026-10-09 01:55",
+  "note": "• 流畅度大改：轮询降频+滚动暂停+防抖+长列表按需渲染\n• 聊天栏：输入框变大、发送键变小，新增通话与语音按钮\n• 语音消息：按住说话松手即发（最长30秒）\n• 语音通话：来电响铃→接听→按住对讲\n• 新增麦克风权限，装完请允许"
 }
