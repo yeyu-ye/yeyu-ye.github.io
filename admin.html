@@ -93,6 +93,9 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div class="muted" style="margin-bottom:16px">请输入账号和密码</div>
     <input type="text" id="uname" placeholder="账号" autocomplete="username" onkeydown="if(event.key==='Enter')$('pwd').focus()">
     <input type="password" id="pwd" placeholder="密码" autocomplete="current-password" style="margin-top:10px" onkeydown="if(event.key==='Enter')doLogin()">
+    <label class="muted" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;cursor:pointer;font-size:12px;user-select:none">
+      <input type="checkbox" id="rememberSw" checked style="width:auto;margin:0;cursor:pointer"> 记住登录 90 天（下次打开直接进，不用再输密码）
+    </label>
     <button class="p" style="width:100%;margin-top:14px" onclick="doLogin()">登 录</button>
     <div class="muted" id="loginTip" style="margin-top:12px;min-height:18px"></div>
   </div>
@@ -119,10 +122,13 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="sm" onclick="showChangePwd()">🔑 修改我的密码</button>
+        <button class="sm" onclick="fixToken()">🔧 更换数据库令牌</button>
         <button class="sm" onclick="logout()">退出登录</button>
       </div>
     </div>
   </div>
+
+  <div id="offlineBar" style="display:none;background:rgba(210,153,34,.14);border:1px solid rgba(210,153,34,.45);color:#e3b341;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.7"></div>
 
   <div class="err" id="errBox"></div>
   <div class="ok-box" id="okBox"></div>
@@ -341,6 +347,114 @@ try{
 }catch(e){}
 
 function $(id){ return document.getElementById(id); }
+
+/* ==================== 本机备份 + 免密登录 ====================
+   目的：令牌失效、断网、GitHub 抽风时，后台照样能打开、能看上次的数据、还能自己换令牌，
+   不用再找开发者重新打包。
+   ① 每次联网读到数据，就把「账号哈希 + 设备列表」备份一份到本机；
+   ② 登录时若连不上服务器，改用本机备份校验账号密码（离线模式）；
+   ③ 登录状态记住 90 天，下次打开直接进，不用再输密码。 */
+var BAKEY = "yy_bak", SESSKEY = "yy_sess", SESS_DAYS = 90;
+var offline = false, retryTimer = null;
+
+function backup(){
+  try{
+    if(!data || !data.users) return;
+    localStorage.setItem(BAKEY, JSON.stringify({ users:data.users, dev:data.dev||{}, cfg:data.cfg||{}, at:Date.now() }));
+  }catch(e){}
+}
+function readBackup(){
+  try{
+    var s = localStorage.getItem(BAKEY);
+    if(!s) return null;
+    var b = JSON.parse(s);
+    return (b && b.users) ? b : null;
+  }catch(e){ return null; }
+}
+function loadBackupIntoData(){
+  var b = readBackup();
+  if(b) data = { cfg:b.cfg||{}, dev:b.dev||{}, users:b.users||{} };
+  return !!b;
+}
+function localCheck(u, pwd){          // 用本机备份校验账号密码
+  var b = readBackup();
+  if(!b || !b.users || !b.users[u]) return null;
+  var rec = b.users[u];
+  return hashPwd(pwd, rec.s) === rec.p ? rec : null;
+}
+function saveSess(u, role){
+  try{ localStorage.setItem(SESSKEY, JSON.stringify({ u:u, role:role, at:Date.now() })); }catch(e){}
+}
+function readSess(){
+  try{
+    var s = localStorage.getItem(SESSKEY);
+    if(!s) return null;
+    var j = JSON.parse(s);
+    if(!j || !j.u) return null;
+    if(j.at && Date.now() - j.at > SESS_DAYS*86400000){ localStorage.removeItem(SESSKEY); return null; }
+    return j;
+  }catch(e){ return null; }
+}
+function clearSess(){ try{ localStorage.removeItem(SESSKEY); }catch(e){} }
+
+// 离线提示条：告诉用户为什么连不上、现在看的是什么数据、怎么自己修
+function setOfflineBar(reason){
+  var el = $("offlineBar"); if(!el) return;
+  if(!reason){ el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.innerHTML = "⚠ <b>离线模式</b>　" + esc(reason)
+    + "<br><span style='color:#8b949e'>下面显示的是本机上次缓存的数据，你可以照常查看；要踢人/改状态请先恢复连接。</span>"
+    + "<div style='margin-top:10px;display:flex;gap:8px;flex-wrap:wrap'>"
+    + "<button class='sm' onclick='retryConn(true)'>🔄 重新连接</button>"
+    + "<button class='sm' onclick='fixToken()'>🔑 更换令牌</button>"
+    + "</div>";
+}
+function stopRetry(){ if(retryTimer){ clearInterval(retryTimer); retryTimer = null; } }
+function startRetry(){ stopRetry(); retryTimer = setInterval(function(){ retryConn(false); }, 20000); }
+
+function applyGistData(g){              // 把服务器返回的数据灌进界面
+  var f = g && g.files && g.files[FILE];
+  var d = null;
+  if(f && f.content){ try{ d = JSON.parse(f.content); }catch(e){ d = null; } }
+  if(!d || !d.dev) d = emptyDb();
+  d.cfg = d.cfg || {}; d.dev = d.dev || {};
+  data = d;
+  lastContent = (f && f.content) || "";
+  if(curUser && data.users && data.users[curUser]) curRole = data.users[curUser].role || "member";
+  backup();
+}
+function goOnline(){
+  offline = false; stopRetry(); setOfflineBar(null);
+  try{ connected(); }catch(e){}
+  try{ render(); }catch(e){}
+  if(curRole === "founder"){ try{ renderUsers(); }catch(e){} }
+  try{ toggleAuto(); }catch(e){}
+}
+function retryConn(notify){
+  if(!gistId || !token) return;
+  gh("/gists/"+gistId+"?_t="+Date.now(),"GET").then(function(g){
+    applyGistData(g); goOnline();
+    if(notify) showOk("✅ 已重新连上数据库");
+    var r = document.querySelector('input[name=mode][value="'+((data.cfg&&data.cfg.mode)==="manual"?"manual":"open")+'"]');
+    if(r) r.checked = true;
+  }).catch(function(e){
+    if(notify) showErr("还是连不上：" + String(e.message).slice(0,120));
+  });
+}
+function fixToken(){
+  var v = prompt("粘贴新的 GitHub 令牌（ghp_ 开头）\n\n生成地址（权限已预勾）：\nhttps://github.com/settings/tokens/new?scopes=gist&description=yykszs\n\n生成时 Expiration 记得选 No expiration", token || "");
+  if(v === null) return;
+  v = v.trim();
+  if(!v) return;
+  if(!/^ghp_/.test(v)){ alert("这串不是 ghp_ 开头的令牌，请重新生成。"); return; }
+  token = v;
+  try{ localStorage.setItem("yy_gh_token", v); localStorage.removeItem("yy_manual"); }catch(e){}
+  if(!gistId) gistId = DEFAULT_GIST;
+  save();
+  showOk("正在用新令牌连接…");
+  retryConn(true);
+}
+
 function showErr(m){ var b=$("errBox"); b.textContent=m; b.style.display="block"; }
 function hideErr(){ $("errBox").style.display="none"; }
 function showOk(m){ var b=$("okBox"); b.textContent=m; b.style.display="block"; setTimeout(function(){ b.style.display="none"; },4000); }
@@ -437,8 +551,10 @@ function logout(){
   try{
     localStorage.removeItem("yy_user");
     localStorage.removeItem("yy_user_at");
+    clearSess();                 // 清掉免密登录状态，下次需要重新输密码
     if(!keep){ localStorage.removeItem(WPK); localStorage.removeItem(WPK_VID); }
   }catch(e){}
+  stopRetry();
   location.reload();
 }
 var clockTimer = null;
@@ -471,8 +587,29 @@ function doLogin(){
     if(!token && DEFAULT_TOKEN) token = DEFAULT_TOKEN;
     if(!gistId && DEFAULT_GIST) gistId = DEFAULT_GIST;
   }
+  var remember = true;
+  var rb = $("rememberSw"); if(rb) remember = rb.checked;
+
+  // 连不上数据库时：用本机备份的账密照样登录，进离线模式（能看缓存数据、能自己换令牌）
+  function enterOffline(rec, reason){
+    curUser = u; curRole = rec.role || "member";
+    var has = loadBackupIntoData();
+    offline = true;
+    if(remember) saveSess(u, curRole); else clearSess();
+    afterLogin();
+    if(has){
+      try{ $("devCard").style.display = "block"; render(); }catch(e){}
+      if(curRole === "founder"){ try{ renderUsers(); }catch(e){} }
+    }
+    setOfflineBar(reason);
+    startRetry();
+    tip.textContent = "";
+  }
+
   if(!gistId || !token){
-    tip.innerHTML = '<span style="color:#f85149">还没连上数据库，无法验证账号</span>';
+    var rec0 = localCheck(u, p);
+    if(rec0){ enterOffline(rec0, "还没有配置数据库连接"); return; }
+    tip.innerHTML = '<span style="color:#f85149">还没连上数据库，且本机没有备份的账号信息</span>';
     return;
   }
   gh("/gists/"+gistId+"?_t="+Date.now(),"GET").then(function(g){
@@ -491,12 +628,18 @@ function doLogin(){
     }
     curUser = u; curRole = rec.role || "member";
     rec.last = Date.now();
-    save(); connected(); afterLogin();
+    offline = false; stopRetry(); setOfflineBar(null);
+    save(); backup(); connected(); afterLogin();
+    if(remember) saveSess(u, curRole); else clearSess();
     tip.textContent = "";
     write();          // 保存最近登录时间 / 首次初始化的默认账号
     load();
   }).catch(function(e){
-    tip.innerHTML = '<span style="color:#f85149">连不上数据库：' + esc(String(e.message).slice(0,90)) + '</span>';
+    // 令牌失效 / 断网 / GitHub 抽风：退回本机备份验证，照样能进
+    var rec2 = localCheck(u, p);
+    if(rec2){ enterOffline(rec2, "连不上数据库：" + String(e.message).slice(0,80)); return; }
+    tip.innerHTML = '<span style="color:#f85149">连不上数据库：' + esc(String(e.message).slice(0,90))
+      + '<br>本机也没有备份的账号信息，请检查网络后重试</span>';
   });
 }
 function showChangePwd(){
@@ -722,6 +865,7 @@ function load(retried){
     var canEditNow = canEdit();
     var rs = document.querySelectorAll('input[name=mode]');
     for(var i=0;i<rs.length;i++) rs[i].disabled = !canEditNow;
+    backup(); offline = false; stopRetry(); setOfflineBar(null);
     render();
     if(curRole === "founder") renderUsers();
   }).catch(function(e){
@@ -734,8 +878,9 @@ function load(retried){
       if(!retried && !manual && DEFAULT_TOKEN && token !== DEFAULT_TOKEN){
         token = DEFAULT_TOKEN; save(); load(1); return;
       }
-      showErr("读取失败：令牌无效（HTTP 401）。\n这串令牌可能被删除或过期了，请重新生成一个 ghp_ 开头的令牌，\n点「更换数据库」后粘贴。");
+      showErr("读取失败：令牌无效（HTTP 401）。这串令牌可能被删除或吊销了，点下面的「🔑 更换令牌」可以自己换，不用找开发者。");
       $("rebindTip").style.display = "block";
+      offline = true; setOfflineBar("令牌失效（HTTP 401）"); startRetry();
     } else if(msg.indexOf("403") >= 0 || msg.indexOf("429") >= 0 || msg.toLowerCase().indexOf("rate limit") >= 0){
       var ar = $("autoRef");
       if(ar){ ar.checked = false; toggleAuto(); }
@@ -1010,9 +1155,39 @@ function toggleAuto(){
   if(el && el.checked){ timer = setInterval(load, 1000); }   // 每秒刷新一次
 }
 
-// 启动时：记住上次登录的账号名，密码仍需输入
+// 启动时：有 90 天内的登录记录就直接进（免密），后台再静默联网校验
 (function(){
   try{
+    var s = readSess();
+    if(s){
+      curUser = s.u; curRole = s.role || "member";
+      token = localStorage.getItem("yy_gh_token") || "";
+      gistId = localStorage.getItem("yy_gist_id") || "";
+      var manual = localStorage.getItem("yy_manual") === "1";
+      if(!manual){
+        if(!token && DEFAULT_TOKEN) token = DEFAULT_TOKEN;
+        if(!gistId && DEFAULT_GIST) gistId = DEFAULT_GIST;
+      }
+      var has = loadBackupIntoData();
+      afterLogin();
+      if(has){
+        try{ $("devCard").style.display = "block"; render(); }catch(e){}
+        if(curRole === "founder"){ try{ renderUsers(); }catch(e){} }
+      }
+      if(gistId && token){
+        // 先让界面出来并展示缓存，再悄悄联网；连上了自动切回在线
+        gh("/gists/"+gistId+"?_t="+Date.now(),"GET").then(function(g){
+          applyGistData(g); goOnline();
+          var r = document.querySelector('input[name=mode][value="'+((data.cfg&&data.cfg.mode)==="manual"?"manual":"open")+'"]');
+          if(r) r.checked = true;
+        }).catch(function(e){
+          offline = true; setOfflineBar("连不上数据库：" + String(e.message).slice(0,80)); startRetry();
+        });
+      } else {
+        offline = true; setOfflineBar("还没有配置数据库连接"); startRetry();
+      }
+      return;
+    }
     var u = localStorage.getItem("yy_user");
     if(u){ $("uname").value = u; $("pwd").focus(); }
     else { $("uname").focus(); }
