@@ -98,6 +98,41 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </label>
     <button class="p" style="width:100%;margin-top:14px" onclick="doLogin()">登 录</button>
     <div class="muted" id="loginTip" style="margin-top:12px;min-height:18px"></div>
+    <div id="loginTokEntry" style="margin-top:10px;display:none">
+      <button class="sm" style="width:100%" onclick="fixToken()">🔑 填入 / 更换数据库令牌</button>
+      <div class="muted" style="margin-top:6px;font-size:11px;line-height:1.6">
+        第一次在这台设备打开、或提示连不上数据库时点这里，<br>粘贴一串 <code style="color:#58a6ff">ghp_</code> 开头的 GitHub 令牌即可。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 令牌输入弹窗（不依赖 prompt，手机微信里也能用） -->
+<div id="tokModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:18px" onclick="if(event.target===this)closeTokModal()">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:14px;padding:22px 20px;max-width:420px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.6)">
+    <div style="font-size:17px;font-weight:600;color:#e6edf3;margin-bottom:6px">🔑 填入数据库令牌</div>
+    <div class="muted" style="font-size:12px;line-height:1.7;margin-bottom:14px">
+      令牌是一串 <code style="color:#58a6ff">ghp_</code> 开头的代码，用来读写你的设备数据库。<br>
+      填一次就存在这台设备上，以后打开不用再填。
+    </div>
+    <input type="text" id="tokInput" placeholder="在这里粘贴令牌"
+           style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px"
+           autocomplete="off" autocapitalize="none" spellcheck="false"
+           onkeydown="if(event.key==='Enter')submitToken()">
+    <div style="margin-top:12px;display:flex;gap:10px">
+      <button class="p" style="flex:1" onclick="submitToken()">保存并连接</button>
+      <button class="sm" style="flex:0 0 auto" onclick="closeTokModal()">取消</button>
+    </div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid #21262d">
+      <div class="muted" style="font-size:11px;margin-bottom:6px">还没有令牌？点下面生成（权限已预勾）：</div>
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=yykszs" target="_blank" rel="noopener"
+         style="display:block;font-size:11px;color:#58a6ff;word-break:break-all;line-height:1.6">
+        github.com/settings/tokens/new?scopes=gist
+      </a>
+      <div class="muted" style="font-size:11px;margin-top:6px;color:#d29922">
+        ⚠️ 生成时 Expiration 记得选 No expiration
+      </div>
+    </div>
   </div>
 </div>
 
@@ -454,8 +489,38 @@ function retryConn(notify){
     if(notify) showErr("还是连不上：" + String(e.message).slice(0,120));
   });
 }
+/* ---- 令牌弹窗（自己画的输入框，手机/微信里比 prompt 可靠） ---- */
+function openTokModal(){
+  var m = $("tokModal"); if(!m) return false;
+  m.style.display = "flex";
+  var i = $("tokInput"); if(i){ i.value = token || ""; setTimeout(function(){ i.focus(); },60); }
+  return true;
+}
+function closeTokModal(){ var m=$("tokModal"); if(m) m.style.display="none"; }
+function submitToken(){
+  var v = ($("tokInput").value || "").trim();
+  if(!v){ alert("请先粘贴令牌"); return; }
+  if(!/^ghp_/.test(v)){ alert("这串不是 ghp_ 开头的令牌，请重新生成。"); return; }
+  closeTokModal();
+  token = v;
+  try{ localStorage.setItem("yy_gh_token", v); localStorage.removeItem("yy_manual"); }catch(e){}
+  if(!gistId) gistId = DEFAULT_GIST;
+  save();
+  // 还没登录（登录框可见）时：只保存令牌并提示，等用户输账密后 doLogin 会用它去连
+  var onLogin = $("loginMask") && $("loginMask").style.display !== "none";
+  if(onLogin){
+    try{ $("loginTokEntry").style.display = "none"; }catch(e){}
+    try{
+      $("loginTip").innerHTML = '<span style="color:#3fb950">✅ 令牌已保存到这台设备，现在输入账号密码登录</span>';
+    }catch(e){}
+    return;
+  }
+  showOk("正在用新令牌连接…");
+  retryConn(true);
+}
 function fixToken(){
-  var v = prompt("粘贴新的 GitHub 令牌（ghp_ 开头）\n\n生成地址（权限已预勾）：\nhttps://github.com/settings/tokens/new?scopes=gist&description=yykszs\n\n生成时 Expiration 记得选 No expiration", token || "");
+  if(openTokModal()) return;          // 有弹窗就用弹窗（手机上更好粘贴）
+  var v = prompt("粘贴新的 GitHub 令牌（ghp_ 开头）\n\n生成地址：https://github.com/settings/tokens/new?scopes=gist&description=yykszs\n\nExpiration 记得选 No expiration", token || "");
   if(v === null) return;
   v = v.trim();
   if(!v) return;
@@ -464,6 +529,12 @@ function fixToken(){
   try{ localStorage.setItem("yy_gh_token", v); localStorage.removeItem("yy_manual"); }catch(e){}
   if(!gistId) gistId = DEFAULT_GIST;
   save();
+  var onLogin = $("loginMask") && $("loginMask").style.display !== "none";
+  if(onLogin){
+    try{ $("loginTokEntry").style.display = "none"; }catch(e){}
+    try{ $("loginTip").innerHTML = '<span style="color:#3fb950">✅ 令牌已保存到这台设备，现在输入账号密码登录</span>'; }catch(e){}
+    return;
+  }
   showOk("正在用新令牌连接…");
   retryConn(true);
 }
@@ -623,6 +694,7 @@ function doLogin(){
     var rec0 = localCheck(u, p);
     if(rec0){ enterOffline(rec0, "还没有配置数据库连接"); return; }
     tip.innerHTML = '<span style="color:#f85149">还没连上数据库，且本机没有备份的账号信息</span>';
+    try{ $("loginTokEntry").style.display = "block"; }catch(e){}
     return;
   }
   gh("/gists/"+gistId+"?_t="+Date.now(),"GET").then(function(g){
@@ -1233,6 +1305,12 @@ function toggleAuto(){
     var u = localStorage.getItem("yy_user");
     if(u){ $("uname").value = u; $("pwd").focus(); }
     else { $("uname").focus(); }
+    // 本机没配过令牌（换了设备 / 清了缓存 / 公开版首次打开）→ 登录框直接给出填令牌入口
+    try{
+      var _tk = localStorage.getItem("yy_gh_token") || "";
+      var _mn = localStorage.getItem("yy_manual") === "1";
+      if(!_tk && !_mn && !DEFAULT_TOKEN) $("loginTokEntry").style.display = "block";
+    }catch(e){}
   }catch(e){}
 })();
 
