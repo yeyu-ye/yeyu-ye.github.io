@@ -1693,6 +1693,7 @@ function renderChat(){
   if(!sel.value && ids.length) sel.value = "dev:" + ids[0];
   var to = sel.value || "";
   var arr = data.chat || [], h = "";
+  _bgVoice.length = 0;
   if(chatChan === "admin") h += adminOnlineHtml();
   for(var j = 0; j < arr.length; j++){
     var m = arr[j] || {};
@@ -1710,7 +1711,7 @@ function renderChat(){
        + (!mine && id ? '<span style="color:#d4af37;text-decoration:underline dotted;cursor:pointer" onclick="reNick(\'' + esc(id) + '\')">✏️ ' + esc(nm) + '</span>'
                       : esc(nm))
        + ' · ' + fmtDayA(m.t) + '</div>'
-       + '<div style="white-space:pre-wrap;word-break:break-word">' + esc(m.text || "") + '</div>'
+       + chatBodyHtml(m)
        + '</div></div>';
   }
   var box = $("chatList");
@@ -1718,6 +1719,31 @@ function renderChat(){
   box.innerHTML = h || '<div class="muted" style="text-align:center;padding:24px 0">'
                      + (chatChan === "all" ? "通用频道还没有消息" : "这台设备还没有私聊消息") + '</div>';
   if(arr.length !== chatLastN){ chatLastN = arr.length; box.scrollTop = box.scrollHeight; }
+}
+/* 消息内容：普通文字 / 语音（点一下能听）/ 通话记录 */
+var _bgVoice = [];
+function playBgVoice(i){
+  var m = _bgVoice[i];
+  if(!m || !m.data){ alert("这条语音已经过期了（超过 12 小时的语音会自动清掉，只留记录）"); return; }
+  try{
+    if(window._bgAudio){ window._bgAudio.pause(); }
+    window._bgAudio = new Audio(m.data);
+    window._bgAudio.play();
+  }catch(e){ alert("播放失败"); }
+}
+function chatBodyHtml(m){
+  if(m.kind === "voice"){
+    _bgVoice.push(m);
+    return '<div onclick="playBgVoice(' + (_bgVoice.length - 1) + ')" style="display:inline-flex;align-items:center;'
+         + 'gap:7px;padding:6px 11px;border-radius:11px;background:rgba(212,175,55,.16);'
+         + 'border:1px solid #d4af37;color:#e6edf3;font-size:13px;cursor:pointer">▶️ 语音 <b>'
+         + esc(String(m.dur || 0)) + '″</b></div>';
+  }
+  if(m.kind === "call"){
+    var cs = (m.st === "ring") ? "📞 来电（未接听）" : (m.st === "answer") ? "📞 已接听" : "📞 通话结束";
+    return '<div style="color:#d4af37;font-size:13px">' + cs + '</div>';
+  }
+  return '<div style="white-space:pre-wrap;word-break:break-word">' + esc(m.text || "") + '</div>';
 }
 // 手机端登录过的创始人 / 管理员，这里会显示在线
 function adminOnlineHtml(){
