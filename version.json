@@ -1,9 +1,9 @@
 {
-  "code": 16,
-  "ver": "v16",
-  "apk": "https://yeyu-ye.github.io/yeyu-v16.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v16/yeyu-v16.apk",
+  "code": 17,
+  "ver": "v17",
+  "apk": "https://yeyu-ye.github.io/yeyu-v17.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v17/yeyu-v17.apk",
   "force": false,
-  "time": "2026-10-08 21:45",
-  "note": "• 设置页新增「设备日志」：谁在线谁离线，几点几分几秒上线 / 被踢出 / 被放行\n• 设置页新增「和管理员聊天」，可以和后台互发消息\n• 后台新增「设备日志」「设备消息」两张卡片，可单独回复或群发所有设备\n• 以后有新版本会自动弹窗提醒，点一下就能下载更新"
+  "time": "2026-10-08 22:50",
+  "note": "• 左上角新增「🧺 收纳篮」，消息 / 管理员 / 日志 / 设备 都收在里面\n• 聊天拆成「🌐 通用频道」（所有人可见互聊）和「👮 管理员」私聊频道\n• 可以给别的设备备注名字，点名字就能改，后台同步显示\n• 设备日志移进收纳篮，有未读消息时收纳篮会亮红点"
 }
