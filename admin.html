@@ -41,16 +41,28 @@ input[type=checkbox]{width:16px;height:16px;vertical-align:middle;accent-color:#
 .nav-i.hide{display:none}
 .main-col{flex:1;min-width:0}
 #cardHost{display:none}
-/* 弹窗：半透明毛玻璃，壁纸透得出来 */
+/* 弹窗：半透明毛玻璃，壁纸透得出来（--tbA 越低调越透，滑块可调） */
 .tool-modal{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;
-  padding:22px;background:rgba(4,7,13,.26);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  padding:22px;background:rgba(4,7,13,calc(var(--tbA,.26) * .55));backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px)}
 .tool-modal.show{display:flex}
-.tool-box{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:rgba(11,15,22,.52);
-  border:1px solid rgba(125,150,185,.30);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);
-  backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25)}
+.tool-box{width:min(1080px,96vw);max-height:92vh;overflow:auto;background:rgba(11,15,22,var(--tbA,.26));
+  border:1px solid rgba(125,150,185,.26);border-radius:16px;padding:18px;box-shadow:0 24px 70px rgba(0,0,0,.4);
+  backdrop-filter:blur(var(--tbB,7px)) saturate(1.35);-webkit-backdrop-filter:blur(var(--tbB,7px)) saturate(1.35);
+  text-shadow:0 1px 2px rgba(0,0,0,.5)}
 /* 弹窗里的卡片再淡一档，别把壁纸糊死 */
-.tool-box .card{background:rgba(14,19,27,.42);border-color:rgba(125,150,185,.22)}
-.tool-box th{background:rgba(14,19,27,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.tool-box .card{background:rgba(14,19,27,calc(var(--tbA,.26) * .55));border-color:rgba(125,150,185,.20)}
+.tool-box th{background:rgba(14,19,27,calc(var(--tbA,.26) * .8));backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.tool-box input[type=text],.tool-box input[type=password],.tool-box select,.tool-box textarea{background:rgba(10,14,20,.45)}
+.alp{display:flex;align-items:center;gap:6px;font-size:12px;color:#8b949e}
+.alp input[type=range]{width:96px;accent-color:#58a6ff}
+/* 日志按设备折叠 */
+.logg{background:rgba(16,21,28,.42);border:1px solid rgba(48,54,61,.7);border-radius:11px;margin-bottom:8px;overflow:hidden}
+.logg-h{display:flex;align-items:center;gap:8px;padding:9px 11px;cursor:pointer;user-select:none}
+.logg-h:hover{background:rgba(255,255,255,.05)}
+.logg-nm{flex:1;min-width:0;font-size:13px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logg-cnt{font-size:12px;color:#8b949e;flex:0 0 auto}
+.logg-ar{color:#8b949e;font-size:11px;flex:0 0 auto;transition:.15s}
+.logg-b{padding:2px 11px 8px 30px;border-top:1px solid rgba(48,54,61,.6)}
 /* ===== 设备管理：一台设备一张卡，简洁好认 ===== */
 .devgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:11px}
 .devc{background:rgba(16,21,28,.5);border:1px solid rgba(48,54,61,.75);border-radius:12px;padding:11px 12px;transition:.15s}
@@ -383,8 +395,14 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <div><b id="lvPage" style="font-size:13px;padding-top:3px">-</b><span>大家都在看</span></div>
     </div>
     <div id="logLiveBox"></div>
-    <div class="muted" style="margin:14px 0 6px">📜 上线 / 离线 / 被踢出记录（按时间倒序）</div>
-    <div style="max-height:300px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px" id="logList"></div>
+    <div class="bar" style="margin:14px 0 8px;align-items:center">
+      <b style="font-size:13px;color:#e6edf3">📜 每台设备的独立日志</b>
+      <span class="muted">点设备名展开 / 收起</span>
+      <span style="flex:1"></span>
+      <button class="sm" onclick="logFoldAll(true)">🔽 全部展开</button>
+      <button class="sm" onclick="logFoldAll(false)">🔼 全部收起</button>
+    </div>
+    <div style="max-height:320px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px" id="logList"></div>
   </div>
 
   <div class="card" id="chatCard" style="display:none">
@@ -575,6 +593,9 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   <div class="tool-box">
     <div class="tool-head">
       <b id="toolTitle">工具</b>
+      <span class="alp">🌗 透亮
+        <input type="range" id="toolAlpha" min="8" max="92" value="26" oninput="toolAlphaSet(this.value)">
+      </span>
       <button class="sm" onclick="closeTool()">✕ 关闭</button>
     </div>
     <div id="toolBody"></div>
@@ -1013,6 +1034,25 @@ try{
   document.addEventListener("keydown", function(e){ if(e.key === "Escape" && TOOL_OPEN) closeTool(); });
 }catch(e){}
 setInterval(syncNav, 700);
+
+/* 弹窗透亮度：记在本机，下次打开还是你调过的样子 */
+function applyToolAlpha(v){
+  var a = Math.max(0.08, Math.min(0.92, (parseInt(v, 10) || 26) / 100));
+  var b = Math.round(3 + (92 - a * 100) * 0.10);      // 越透 → 模糊越小，壁纸越清楚
+  try{
+    document.documentElement.style.setProperty("--tbA", a.toFixed(2));
+    document.documentElement.style.setProperty("--tbB", b + "px");
+  }catch(e){}
+}
+function toolAlphaSet(v){
+  try{ localStorage.setItem("yy_tool_alpha", String(v)); }catch(e){}
+  applyToolAlpha(v);
+}
+try{
+  var _ta = localStorage.getItem("yy_tool_alpha");
+  if(_ta){ var _taEl = $("toolAlpha"); if(_taEl) _taEl.value = _ta; }
+  applyToolAlpha(_ta || 26);
+}catch(e){}
 
 function logout(){
   try{ closeTool(); }catch(e){}
@@ -1865,29 +1905,110 @@ function logAdd(act, id, by){
                      act: act, by: by || "" });
   if(data.log.length > 200) data.log = data.log.slice(0, 200);
 }
+/* 日志按「每台设备一个可折叠分组」渲染：默认收起，点一下展开，只看某台时很方便 */
+var logFold = {};                       // {设备ID: 是否展开}
+function toggleLogFold(id){ logFold[id] = !logFold[id]; renderLog(); }
+function logFoldAll(open){
+  logFold = {};
+  if(open && data && data.dev){ for(var id in data.dev){ logFold[id] = true; } }
+  renderLog();
+}
+function logRowHtml(it){
+  var a = it.act || "";
+  var col = a === "online" ? "#3fb950" : a === "blocked" ? "#f85149" : a === "allowed" ? "#58a6ff"
+          : a === "deleted" ? "#f85149" : "#8b949e";
+  var atx = a === "online" ? "上线" : a === "offline" ? "离线" : a === "blocked" ? "被踢出"
+          : a === "allowed" ? "被放行" : a === "deleted" ? "被删除" : (a || "操作");
+  return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #21262d">'
+       + '<div><b style="color:' + col + '">' + atx + '</b>'
+       + (it.by ? ' <span style="color:#8b949e;font-size:12px">操作人 ' + esc(it.by) + '</span>' : '')
+       + '</div>'
+       + '<div style="color:#8b949e;font-size:12px;flex-shrink:0">' + fmtDayA(it.t) + '</div></div>';
+}
 function renderLog(){
   if(!data) return;
   renderLive();
   var kwEl = $("logKw");
   var kw = ((kwEl && kwEl.value) || "").trim().toLowerCase();
-  var lg = data.log || [], s = "", box2 = $("logList");
+  var lg = data.log || [], box2 = $("logList");
   if(!box2) return;
-  var stick = (box2.scrollTop < 30);
+  var now = Date.now(), stick = (box2.scrollTop < 30);
+
+  // 1) 先按设备把日志分堆（已在设备列表里的按设备归组；设备被删掉的归到「其它」）
+  var byDev = {}, other = [];
   for(var j = 0; j < lg.length; j++){
-    var it = lg[j] || {}, a = it.act || "";
-    if(kw && (String(it.id||"") + " " + (it.model||"")).toLowerCase().indexOf(kw) < 0) continue;
-    var col = a === "online" ? "#3fb950" : a === "blocked" ? "#f85149" : a === "allowed" ? "#58a6ff"
-            : a === "deleted" ? "#f85149" : "#8b949e";
-    var atx = a === "online" ? "上线" : a === "offline" ? "离线" : a === "blocked" ? "被踢出"
-            : a === "allowed" ? "被放行" : a === "deleted" ? "被删除" : (a || "操作");
-    s += '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #21262d">'
-       + '<div><b>' + esc(it.model || String(it.id||"设备").slice(0,8)) + '</b> '
-       + '<b style="color:' + col + '">' + atx + '</b>'
-       + (it.by ? ' <span style="color:#8b949e;font-size:12px">操作人 ' + esc(it.by) + '</span>' : '')
-       + '<div style="color:#8b949e;font-size:12px">ID ' + esc(String(it.id||"").slice(0,10)) + '</div></div>'
-       + '<div style="color:#8b949e;font-size:12px;flex-shrink:0">' + fmtDayA(it.t) + '</div></div>';
+    var it = lg[j] || {};
+    if(kw && (String(it.id || "") + " " + (it.model || "")).toLowerCase().indexOf(kw) < 0) continue;
+    if(it.id && data.dev[it.id]){
+      if(!byDev[it.id]) byDev[it.id] = [];
+      byDev[it.id].push(it);
+    } else {
+      other.push(it);
+    }
   }
-  box2.innerHTML = s || '<div class="muted">还没有日志记录</div>';
+  // 2) 排序：在线的在前，其次按该设备最后一条日志时间倒序
+  var ids = [], k2;
+  for(k2 in byDev){ ids.push(k2); }
+  ids.sort(function(a, b){
+    var da = data.dev[a] || {}, db = data.dev[b] || {};
+    var la = lagMs(da, now), lb = lagMs(db, now);
+    var oa = isLive(da, now, la), ob = isLive(db, now, lb);
+    if(oa !== ob) return oa ? -1 : 1;
+    var ta = (byDev[a][0] || {}).t || 0, tb = (byDev[b][0] || {}).t || 0;
+    return tb - ta;
+  });
+
+  var s = "";
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i], d = data.dev[id] || {}, arr = byDev[id];
+    arr.sort(function(x, y){ return (y.t || 0) - (x.t || 0); });
+    var la2 = lagMs(d, now), on2 = isLive(d, now, la2);
+    if(kw){
+      var tt = [d.id, d.model, d.brand, d.note].join(" ").toLowerCase();
+      if(tt.indexOf(kw) < 0 && !arr.length) continue;
+    }
+    var nm = esc((d.note ? d.note + " · " : "") + (d.brand ? d.brand + " " : "") + (d.model || "未知机型"));
+    var stx = (d.status === "blocked") ? '<span class="badge b-blocked">已踢出</span>'
+            : (d.status === "pending") ? '<span class="badge b-pending">待授权</span>'
+            : '<span class="badge b-active">已授权</span>';
+    var open = !!logFold[id];
+    var sid = String(id).replace(/['"\\]/g, "");
+    s += '<div class="logg"><div class="logg-h" onclick="toggleLogFold(\'' + sid + '\')">'
+       + '<span class="' + (on2 ? "on" : "off") + '">' + (on2 ? "●" : "○") + '</span>'
+       + '<span class="logg-nm">' + nm + '</span>' + stx
+       + '<span class="logg-cnt">' + arr.length + ' 条 · ' + (on2 ? "在线" : (d.lastSeen ? agoA(d.lastSeen) : "从未上线")) + '</span>'
+       + '<span class="logg-ar">' + (open ? "▼" : "▶") + '</span></div>';
+    if(open){
+      s += '<div class="logg-b">';
+      for(var q = 0; q < arr.length; q++){ s += logRowHtml(arr[q]); }
+      s += '</div>';
+    }
+    s += '</div>';
+  }
+  if(other.length){
+      var op = !!logFold["__other__"];
+      s += '<div class="logg"><div class="logg-h" onclick="toggleLogFold(\'__other__\')">'
+         + '<span class="off">○</span><span class="logg-nm">🗑 已删除 / 未知设备</span>'
+         + '<span class="logg-cnt">' + other.length + ' 条</span>'
+         + '<span class="logg-ar">' + (op ? "▼" : "▶") + '</span></div>';
+      if(op){
+        s += '<div class="logg-b">';
+        for(var w = 0; w < other.length; w++){
+          var o2 = other[w] || {}, oa = o2.act || "";
+          var ocol = oa === "online" ? "#3fb950" : oa === "blocked" ? "#f85149" : oa === "allowed" ? "#58a6ff"
+                   : oa === "deleted" ? "#f85149" : "#8b949e";
+          var oatx = oa === "online" ? "上线" : oa === "offline" ? "离线" : oa === "blocked" ? "被踢出"
+                   : oa === "allowed" ? "被放行" : oa === "deleted" ? "被删除" : (oa || "操作");
+          s += '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid #21262d">'
+             + '<div><b>' + esc(o2.model || String(o2.id || "设备").slice(0, 8)) + '</b> '
+             + '<b style="color:' + ocol + '">' + oatx + '</b></div>'
+             + '<div style="color:#8b949e;font-size:12px;flex-shrink:0">' + fmtDayA(o2.t) + '</div></div>';
+        }
+        s += '</div>';
+      }
+      s += '</div>';
+  }
+  box2.innerHTML = s || '<div class="muted" style="padding:14px 0">' + (kw ? "没有匹配的日志" : "还没有日志记录") + '</div>';
   if(stick) box2.scrollTop = 0;
 }
 
