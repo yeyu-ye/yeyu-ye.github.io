@@ -1,9 +1,9 @@
 {
-  "code": 23,
-  "ver": "v23",
-  "apk": "https://yeyu-ye.github.io/yeyu-v23.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v23/yeyu-v23.apk",
+  "code": 24,
+  "ver": "v24",
+  "apk": "https://yeyu-ye.github.io/yeyu-v24.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v24/yeyu-v24.apk",
   "force": true,
-  "time": "2026-10-09 01:55",
-  "note": "• 流畅度大改：轮询降频+滚动暂停+防抖+长列表按需渲染\n• 聊天栏：输入框变大、发送键变小，新增通话与语音按钮\n• 语音消息：按住说话松手即发（最长30秒）\n• 语音通话：来电响铃→接听→按住对讲\n• 新增麦克风权限，装完请允许"
+  "time": "2026-10-09 02:20",
+  "note": "• 紧急修复：v23 安装包解析失败，v24 改用 apktool 正规重编\n• 流畅度大改、聊天栏重排、语音消息、语音通话\n• 新增麦克风权限"
 }
