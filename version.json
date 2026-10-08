@@ -1,9 +1,9 @@
 {
-  "code": 17,
-  "ver": "v17",
-  "apk": "https://yeyu-ye.github.io/yeyu-v17.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v17/yeyu-v17.apk",
-  "force": false,
-  "time": "2026-10-08 22:50",
-  "note": "• 左上角新增「🧺 收纳篮」，消息 / 管理员 / 日志 / 设备 都收在里面\n• 聊天拆成「🌐 通用频道」（所有人可见互聊）和「👮 管理员」私聊频道\n• 可以给别的设备备注名字，点名字就能改，后台同步显示\n• 设备日志移进收纳篮，有未读消息时收纳篮会亮红点"
+  "code": 18,
+  "ver": "v18",
+  "apk": "https://yeyu-ye.github.io/yeyu-v18.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v18/yeyu-v18.apk",
+  "force": true,
+  "time": "2026-10-08 23:10",
+  "note": "• 收纳篮图标改成「☰」三条横杠，标题靠左排，不再被挖孔摄像头挡住\n• 修复点更新下载没反应：现在会弹出可点的下载链接，还能一键复制\n• 下载站也加了复制链接按钮，下不动就粘到浏览器里打开"
 }
