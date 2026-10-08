@@ -94,7 +94,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <input type="text" id="uname" placeholder="账号" autocomplete="username" onkeydown="if(event.key==='Enter')$('pwd').focus()">
     <input type="password" id="pwd" placeholder="密码" autocomplete="current-password" style="margin-top:10px" onkeydown="if(event.key==='Enter')doLogin()">
     <label class="muted" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-top:12px;cursor:pointer;font-size:12px;user-select:none">
-      <input type="checkbox" id="rememberSw" checked style="width:auto;margin:0;cursor:pointer"> 记住登录 90 天（下次打开直接进，不用再输密码）
+      <input type="checkbox" id="rememberSw" checked style="width:auto;margin:0;cursor:pointer"> 记住登录（365 天内打开直接进，不用再输密码）
     </label>
     <button class="p" style="width:100%;margin-top:14px" onclick="doLogin()">登 录</button>
     <div class="muted" id="loginTip" style="margin-top:12px;min-height:18px"></div>
@@ -354,7 +354,7 @@ function $(id){ return document.getElementById(id); }
    ① 每次联网读到数据，就把「账号哈希 + 设备列表」备份一份到本机；
    ② 登录时若连不上服务器，改用本机备份校验账号密码（离线模式）；
    ③ 登录状态记住 90 天，下次打开直接进，不用再输密码。 */
-var BAKEY = "yy_bak", SESSKEY = "yy_sess", SESS_DAYS = 90;
+var BAKEY = "yy_bak", SESSKEY = "yy_sess", SESS_DAYS = 365;
 var offline = false, retryTimer = null;
 
 function backup(){
