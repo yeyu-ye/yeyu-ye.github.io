@@ -189,6 +189,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <button class="nav-i" data-c="chatCard" onclick="openTool('chatCard')"><span class="ni-n">⑤</span><span>消息中心</span></button>
     <button class="nav-i" data-c="userAdminCard" onclick="openTool('userAdminCard')"><span class="ni-n">⑥</span><span>账号管理</span></button>
     <button class="nav-i" data-c="aplCard" onclick="openTool('aplCard')"><span class="ni-n">⑦</span><span>账号申请</span></button>
+    <button class="nav-i" data-c="noticeCard" onclick="openTool('noticeCard')"><span class="ni-n">⑧</span><span>发布公告</span></button>
     <button class="nav-i" data-c="wpCard" onclick="openTool('wpCard')"><span class="ni-n">🎨</span><span>背景壁纸</span></button>
     <button class="nav-i" data-c="helpCard" onclick="openTool('helpCard')"><span class="ni-n">📖</span><span>使用说明</span></button>
   </nav>
@@ -427,6 +428,23 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里<b>申请成为管理员</b>，也会出现在这里；同意后他立刻变成管理员。
     </div>
     <div id="aplBox"></div>
+  </div>
+
+  <div class="card" id="noticeCard" style="display:none">
+    <h2>⑧ 发布公告（创始人 / 管理员）</h2>
+    <div class="muted" style="margin-bottom:10px">
+      公告会推送到<b style="color:#e6edf3">所有手机</b>：打开 APP →「☰ 收纳篮 → 💬 消息 → 📢 公告」就能看到，
+      有新的公告时消息页会亮<b style="color:#f85149">红点</b>。版本更新说明也会一起显示在里面。
+    </div>
+    <input type="text" id="noticeTitle" placeholder="公告标题，比如「今晚 10 点维护」" style="width:100%;margin-bottom:8px">
+    <textarea id="noticeText" rows="4" placeholder="公告内容…" style="width:100%;resize:vertical;margin-bottom:8px"></textarea>
+    <div class="bar" style="margin-bottom:10px">
+      <button class="p" onclick="sendNotice()">📢 发布公告</button>
+      <button class="sm" onclick="fillVerNote()">🎉 填入当前版本更新内容</button>
+      <span style="flex:1"></span>
+      <button class="sm danger" onclick="clearNotice()">🗑 清空公告</button>
+    </div>
+    <div id="noticeList" style="max-height:320px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
   </div>
 
   <div class="card" id="wpCard">
@@ -765,6 +783,7 @@ function afterLogin(){
   $("loginAt").textContent = "登录于 " + new Date().toLocaleString("zh-CN");
   $("userAdminCard").style.display = (curRole === "founder") ? "block" : "none";
   $("aplCard").style.display = canEdit() ? "block" : "none";
+  $("noticeCard").style.display = canEdit() ? "block" : "none";
   syncMgrLogin();
   try{ localStorage.setItem("yy_user", curUser); localStorage.setItem("yy_user_at", String(Date.now())); }catch(e){}
   startClock();
@@ -814,6 +833,70 @@ function renderApl(){
     h += "</div>";
   }
   box.innerHTML = h;
+}
+/* ===== 公告：创始人 / 管理员发布，所有手机可见 ===== */
+function renderNotice(){
+  var box = $("noticeList");
+  if(!box || !data) return;
+  var arr = data.notice || [], h = "";
+  if(!arr.length){
+    box.innerHTML = '<div class="muted" style="text-align:center;padding:14px 0">还没有公告</div>';
+    return;
+  }
+  for(var i = arr.length - 1; i >= 0; i--){
+    var n = arr[i] || {};
+    var who = (n.name || n.by || "管理员") + (n.role === "founder" ? "（创始人）" : (n.role === "admin" ? "（管理员）" : ""));
+    h += '<div style="padding:10px 0;border-bottom:1px solid #21262d">'
+       + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+       + '<b style="flex:1;color:#e6edf3">📢 ' + esc(n.title || "公告") + '</b>'
+       + '<span class="muted" style="font-size:11px">' + fmtDayA(n.t) + '</span>'
+       + '<button class="sm danger" onclick="delNotice(\'' + esc(String(n.id || "")) + '\')">🗑 删除</button></div>'
+       + '<div style="color:#c9d1d9;white-space:pre-wrap;margin-top:5px;line-height:1.65">' + esc(n.text || "") + '</div>'
+       + '<div class="muted" style="font-size:11px;margin-top:4px">— ' + esc(who) + '</div></div>';
+  }
+  box.innerHTML = h;
+}
+function sendNotice(){
+  if(!canEdit()){ showErr("你的权限是「成员」，不能发公告。"); return; }
+  var t = ($("noticeTitle").value || "").trim();
+  var x = ($("noticeText").value || "").trim();
+  if(!x){ showErr("公告内容不能为空"); return; }
+  if(!t) t = x.length > 14 ? x.slice(0, 14) + "…" : x;
+  var me = curUser || "";
+  var nm = (data.users && data.users[me] && data.users[me].name) || me || "管理员";
+  var role = (data.users && data.users[me] && data.users[me].role) || curRole || "";
+  mutate(function(){
+    if(!data.notice || typeof data.notice !== "object") data.notice = [];
+    data.notice.push({ id: "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+                       t: Date.now(), title: t, text: x, by: me, name: nm, role: role });
+    if(data.notice.length > 60) data.notice = data.notice.slice(data.notice.length - 60);
+  }, "公告已发布，手机端立刻能看到");
+  $("noticeTitle").value = ""; $("noticeText").value = "";
+}
+function delNotice(id){
+  if(!canEdit()){ showErr("你的权限是「成员」，不能删公告。"); return; }
+  mutate(function(){
+    var arr = [], src = data.notice || [];
+    for(var i = 0; i < src.length; i++){ if(src[i] && src[i].id !== id) arr.push(src[i]); }
+    data.notice = arr;
+  }, "已删除这条公告");
+}
+function clearNotice(){
+  if(!canEdit()){ showErr("你的权限是「成员」，不能清空公告。"); return; }
+  if(!confirm("清空所有公告？手机端也会一起消失。")) return;
+  mutate(function(){ data.notice = []; }, "已清空公告");
+}
+function fillVerNote(){
+  try{
+    fetch("https://yeyu-ye.github.io/version.json?_t=" + Date.now(), { cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var t = $("noticeTitle"), x = $("noticeText");
+        if(t && !(t.value || "").trim()) t.value = "版本更新 " + (j.ver || ("v" + (j.code || "")));
+        if(x) x.value = j.note || "";
+        showOk("已填入当前版本的更新内容，检查一下就能发");
+      }).catch(function(){ showErr("没读到版本信息，手填就行"); });
+  }catch(e){ showErr("没读到版本信息，手填就行"); }
 }
 function doApl(i, ok){
   if(!canEdit()){ showErr("只有创始人和管理员能审批申请"); return; }
@@ -1463,6 +1546,7 @@ function _render(){
   if(!data) return;
   renderLockPwdTip();
   try{ renderApl(); }catch(e){}
+  try{ renderNotice(); }catch(e){}
   try{ syncMgrLogin(); }catch(e){}
   // 日志 / 消息卡片：一读到数据就显示（不用单独判断权限）
   try{
