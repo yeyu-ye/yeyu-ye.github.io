@@ -1411,7 +1411,11 @@ function gh(path, method, body, _rotated){
             if(et){ ghEtag = et; ghEtagData = j; }
           }catch(e){}
         } else {
-          ghEtag = null;                                  // 刚写过，下次必须拉全量
+          // v36：写完用服务器返回的新 ETag 续上，下次读取就是 304（不下载正文、不占配额）。
+          // 以前一律清成 null，后台每秒刷 + APP 每几秒写，配额烧得飞快 → 403 → 各种写入失败。
+          var et2 = ""; try{ et2 = r.headers.get("etag") || ""; }catch(e){}
+          ghEtag = et2 || null;
+          ghEtagData = null;                              // PATCH 的响应里没有文件正文，不能当 304 的结果用
         }
         return j;
       });
@@ -1551,6 +1555,14 @@ function write(cb, retry, fail){
     if(cb) cb();
   }).catch(function(e){
     var msg = e.message || "";
+    // v36：绝大多数 403 其实是「写太快被 GitHub 短时限流」，不是令牌没权限 —— 别再误导人去换令牌
+    if(msg.indexOf("rate limit") >= 0 || msg.indexOf("secondary") >= 0){
+      showErr("保存失败：服务器（GitHub）正在限流，短时间内写太多次了。\n\n"
+        + "这不是令牌问题，等 30 秒～1 分钟再点就好，千万不要连点。\n"
+        + "新版本 APP 已经自动把写入降频（平时 60 秒一次），不会再这样了。");
+      if(fail) fail(e);
+      return;
+    }
     // 403 是权限问题，重试没用
     if(msg.indexOf("403") >= 0 || msg.indexOf("Resource not accessible") >= 0){
       showErr("保存失败：当前令牌没有 Gist 写入权限。\n\n原因多半是你用了 `github_pat_` 开头的新版令牌，或者 `ghp_` 令牌漏勾了 gist。\n\n解决办法（二选一）：\n① 最省事：直接用本地版 `夜雨开心之上-设备后台（双击打开）.html`，令牌已内置，双击登录就能踢人；\n② 点页面里的绿色按钮生成 classic 令牌（ghp_ 开头），生成页面里只勾「gist」一项，然后粘贴到「更换数据库」里。");
@@ -1569,6 +1581,7 @@ function write(cb, retry, fail){
 
 /* ---- 保存队列：连点删除/踢出时界面立刻响应，写请求合并成一次 ---- */
 var pendingDel = {}, pendingDelAt = 0, saveT = null, writeBusy = false, writeAgain = false, pendingMsg = "", dirty = false;
+var _lastSaveAt = 0;                 // v36：上一次真正写服务器的时刻（写节流用）
 /* 刚删掉的设备 id 只在很短一段时间内「屏蔽刷新」，防止服务器还没写完又被刷回来。
    ⚠️ 以前这个集合写失败时永远不清空，会导致自动刷新被永久跳过 —— 表现就是「删完一台就卡住」。 */
 var DEL_GUARD_MS = 12000;
@@ -1600,6 +1613,10 @@ function doSave(){
   saveT = null;
   if(!dirty) return;
   if(writeBusy){ writeAgain = true; return; }
+  // v36：两次保存至少隔 1.5 秒 —— 连点「踢出/允许」会连续写，直接触发 GitHub 的短时限流
+  var _g = Date.now() - _lastSaveAt;
+  if(_g < 1500){ saveT = setTimeout(doSave, 1500 - _g + 30); return; }
+  _lastSaveAt = Date.now();
   writeBusy = true;
   setState("💾 保存中…");
   var msg = pendingMsg; pendingMsg = "";
@@ -1826,9 +1843,37 @@ function applyPendingSt(){
   if(!data || !data.dev) return;
   var now = Date.now(), id;
   for(id in pendingSt){
-    if(now - pendingSt[id].t > 8000){ delete pendingSt[id]; continue; }
-    if(data.dev[id]) data.dev[id].status = pendingSt[id].st;
+    if(now - pendingSt[id].t > 15000){ delete pendingSt[id]; continue; }
+    if(data.dev[id]){
+      // 把服务器上的真实值留一份：校验「有没有被 APP 的写入冲掉」时要看它，
+      // 不能看被本地乐观更新改过的 status
+      if(data.dev[id].status) data.dev[id]._rawSt = data.dev[id].status;
+      data.dev[id].status = pendingSt[id].st;
+    }
   }
+}
+/* v36 保险：手机每隔几秒会把整份数据写回服务器一次，极偶尔会把管理员刚点下去的状态冲掉
+   （表现：点了「允许」手机还是被禁用 / 过一会儿又变回「已踢出」）。
+   所以写完过几秒偷偷复查一次服务器上的真实值，被冲掉了就自动再写一次。 */
+var _vfTimers = {};
+function _vfKey(id, st){ return id + "|" + st; }
+function verifyStatus(id, st, round){
+  if(round > 2) return;
+  var k = id;
+  if(_vfTimers[k]) clearTimeout(_vfTimers[k]);
+  _vfTimers[k] = setTimeout(function(){
+    delete _vfTimers[k];
+    try{
+      if(!data || !data.dev || !data.dev[id]) return;
+      var p = pendingSt[id];
+      if(!p || p.st !== st) return;                  // 期间又改主意了，交给那一次去校验
+      if(Date.now() - p.t > 30000) return;
+      var real = data.dev[id]._rawSt || data.dev[id].status;
+      if(real === st) return;                        // 服务器已经是目标状态，没问题
+      mutate(function(){ data.dev[id].status = st; logAdd(st === "blocked" ? "blocked" : "allowed", id, curUser); });
+      verifyStatus(id, st, (round || 0) + 1);
+    }catch(e){}
+  }, round ? 6000 : 5000);
 }
 function setStatus(id, st){
   if(!data || !data.dev){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
@@ -1841,6 +1886,7 @@ function setStatus(id, st){
   try{ _rLast = 0; _render(); }catch(e){}   // 立即重画，不等 100ms 节流
   mutate(function(){ data.dev[id].status = st; logAdd(st === "blocked" ? "blocked" : "allowed", id, curUser); },
     st === "blocked" ? "已踢出，对方立刻被锁定" : "已允许，对方立刻可以正常使用");
+  verifyStatus(id, st, 0);          // 5 秒后复查，被 APP 的写入冲掉就自动重写
 }
 function setNote(id){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能改备注。"); return; }
@@ -1881,8 +1927,8 @@ var ONLINE_MS_ADMIN = 5 * 60 * 1000;
    v30 起的手机会每 1 秒上报 dev.ping（时间戳）/ dev.rtt（网络耗时）/ dev.page（当前页面），
    后台这里每秒重画一次，延迟和「停留在哪一页」都是实时的。 */
 /* ⚠️ 这个阈值必须比手机平时上报间隔（livePingGap 的 12 秒）大，否则永远判成掉线 */
-var LIVE_STALE = 35000;                 // 超过 35 秒没上报 = 掉线
-var logLiveTimer = null, logLiveMs = 2000;
+var LIVE_STALE = 90000;                 // 超过 90 秒没上报 = 掉线（v36：手机平时 60 秒一写，阈值必须比它大）
+var logLiveTimer = null, logLiveMs = 4000;
 function lagMs(d, now){
   if(d.ping){ var l = now - d.ping; return l < 0 ? 0 : l; }
   return d.lastSeen ? (now - d.lastSeen) : -1;
@@ -1970,7 +2016,7 @@ function livePingSet(on){
   if(typeof canEdit === "function" && !canEdit()) return;   // 成员只读：静默跳过，不弹提示
   if(!!data.cfg.livePing === !!on) return;
   mutate(function(){ data.cfg.livePing = on ? 1 : 0; },
-    on ? "已让手机每 2 秒上报一次（延迟显示最准）" : "手机上报已恢复为 12 秒一次");
+    on ? "已让手机高频上报（延迟显示更准）" : "手机上报已恢复为 60 秒一次");
 }
 function liveAutoOn(){
   logLiveRestart();
@@ -2538,7 +2584,7 @@ function exportCsv(){
 function toggleAuto(){
   if(timer){ clearInterval(timer); timer = null; }
   var el = $("autoRef");
-  if(el && el.checked){ timer = setInterval(load, 2000); }   // 2 秒刷新一次（GitHub 配额 5000/小时，1 秒太费）
+  if(el && el.checked){ timer = setInterval(load, 4000); }   // v36：4 秒刷新一次（2 秒太费，会把 GitHub 的短时限流打爆）
 }
 
 // 启动时：有 90 天内的登录记录就直接进（免密），后台再静默联网校验
