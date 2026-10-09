@@ -386,7 +386,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
         <option value="0">手动</option>
       </select>
       <label class="sw" style="margin:0;white-space:nowrap" title="打开后手机会每 2 秒上报一次，在线状态和延迟显示才准">
-        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 2 秒上报</label>
+        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 20 秒上报</label>
       <button class="sm" onclick="load()">🔄 立即刷新</button>
       <button class="sm danger" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
     </div>
@@ -1554,24 +1554,69 @@ function load(retried){
   });
 }
 
-function write(cb, retry, fail){
+/* v38：写之前给数据瘦身。线上 Gist 曾被语音消息（base64，单条 33KB）和残留通话信令
+   撑到 105KB，而 Gist 只能整份读写 —— 每次「点踢出」都要传 105KB，又慢又吃配额，
+   直接撞出 GitHub 二级限流（PATCH 403、点了毫无反应）。现在写入前自动清掉过期内容。 */
+function chatSlim(d){
+  try{
+    var now = Date.now();
+    var ch = d && d.chat;
+    if(ch && ch.length){
+      for(var i = 0; i < ch.length; i++){
+        var m = ch[i];
+        if(!m) continue;
+        var t = parseInt(m.t, 10) || 0;
+        if(m.sdp && (now - t) > 5 * 60 * 1000) m.sdp = "";
+        if(typeof m.data === "string" && m.data.length > 2000 && (now - t) > 6 * 3600 * 1000){
+          m.data = ""; m._clr = 1;
+          if(!m.text || m.text.length > 40) m.text = "［语音消息·已过期清理］";
+        }
+      }
+    }
+    var lg = d && d.log;
+    if(lg && lg.length > 200) d.log = lg.slice(lg.length - 200);
+  }catch(e){}
+}
+/* v38：限流不再「点了没反应」—— 自动退避重试。
+   ⚠️ 以前遇到 rate limit 直接 return：管理员点「踢出」写不上去 = 完全没反应，只能干等几十秒再点。
+   实测：PATCH 返回 403 且 X-RateLimit-Remaining:0，而同一枚令牌 GET 却显示剩 4909 ——
+   这是 GitHub 的「二级限流」（短时间内写同一资源太多），窗口通常只有几十秒。
+   现在：等 4s / 10s / 25s / 60s 自动重试，并暂停自动刷新，把请求全让给写入。 */
+var _rlWait = [4000, 10000, 25000, 60000];
+var _holdT = null;
+function holdRefresh(ms){                       // 暂停自动刷新，别和写入抢请求
+  if(timer){ clearInterval(timer); timer = null; }
+  if(_holdT) clearTimeout(_holdT);
+  _holdT = setTimeout(function(){ _holdT = null; toggleAuto(); }, ms);
+}
+function write(cb, retry, fail, rl){
   if(!data || !data.dev){
     showErr("还没读到数据，不能保存。请先点「🔄 立即刷新」读取一次。");
     return;
   }
+  chatSlim(data);          // v38：写之前先瘦身（清过期语音 / 残留信令），别让 Gist 越写越大
   var body = { files:{} };
   body.files[FILE] = { content: JSON.stringify(data) };
-  var n = retry || 0;
+  var n = retry || 0, m = rl || 0;              // n = 网络抖动重试；m = 限流退避重试
   gh("/gists/"+gistId,"PATCH",body).then(function(){
     hideErr();
+    if(m) setState("✅ 已保存 · " + new Date().toLocaleTimeString("zh-CN"));
     if(cb) cb();
   }).catch(function(e){
     var msg = e.message || "";
-    // v36：绝大多数 403 其实是「写太快被 GitHub 短时限流」，不是令牌没权限 —— 别再误导人去换令牌
+    // v36/v38：绝大多数 403 其实是「写太快被 GitHub 二级限流」，不是令牌没权限 —— 别再误导人去换令牌
     if(msg.indexOf("rate limit") >= 0 || msg.indexOf("secondary") >= 0){
-      showErr("保存失败：服务器（GitHub）正在限流，短时间内写太多次了。\n\n"
-        + "这不是令牌问题，等 30 秒～1 分钟再点就好，千万不要连点。\n"
-        + "新版本 APP 已经自动把写入降频（平时 60 秒一次），不会再这样了。");
+      if(m < _rlWait.length){
+        var w = _rlWait[m];
+        holdRefresh(w + 3000);
+        setState("⏳ 服务器繁忙（限流），" + Math.round(w/1000) + " 秒后自动重试 (" + (m+1) + "/" + _rlWait.length + ")…");
+        setTimeout(function(){ write(cb, n, fail, m+1); }, w);
+        return;
+      }
+      showErr("保存失败：服务器（GitHub）正在限流，已自动重试 " + _rlWait.length + " 次仍未成功。\n\n"
+        + "这不是令牌问题。现在是太多手机在同时上报，把写入额度占满了。\n"
+        + "等 1～2 分钟再点一次就好，千万不要连点。\n"
+        + "新版本 APP（v38）已把上报降到 3 分钟一次，装了的手机不会再造成这种情况。");
       if(fail) fail(e);
       return;
     }
@@ -1938,8 +1983,8 @@ var ONLINE_MS_ADMIN = 5 * 60 * 1000;
 /* ===== 实时面板：在线延迟 + 当前停留页面（默认每秒刷新一次） =====
    v30 起的手机会每 1 秒上报 dev.ping（时间戳）/ dev.rtt（网络耗时）/ dev.page（当前页面），
    后台这里每秒重画一次，延迟和「停留在哪一页」都是实时的。 */
-/* ⚠️ 这个阈值必须比手机平时上报间隔（livePingGap 的 12 秒）大，否则永远判成掉线 */
-var LIVE_STALE = 90000;                 // 超过 90 秒没上报 = 掉线（v36：手机平时 60 秒一写，阈值必须比它大）
+/* ⚠️ 这个阈值必须比手机平时上报间隔（v38：livePingGap 的 180 秒）大，否则永远判成掉线 */
+var LIVE_STALE = 240000;                // 超过 4 分钟没上报 = 掉线（v38：手机平时 3 分钟一写，阈值必须比它大）
 var logLiveTimer = null, logLiveMs = 4000;
 function lagMs(d, now){
   if(d.ping){ var l = now - d.ping; return l < 0 ? 0 : l; }
@@ -2471,7 +2516,7 @@ function bgRevoke(key){
 var _bgVoice = [];
 function playBgVoice(i){
   var m = _bgVoice[i];
-  if(!m || !m.data){ alert("这条语音已经过期了（超过 12 小时的语音会自动清掉，只留记录）"); return; }
+  if(!m || !m.data){ alert("这条语音已经过期了（超过 6 小时的语音会自动清掉，只留记录）\n\n因为语音是整段存在服务器里的，留太久会把数据库撑大，导致「踢出/允许」点不动。"); return; }
   try{
     if(window._bgAudio){ window._bgAudio.pause(); }
     window._bgAudio = new Audio(m.data);
@@ -2596,8 +2641,9 @@ function exportCsv(){
 function toggleAuto(){
   if(timer){ clearInterval(timer); timer = null; }
   var el = $("autoRef");
-  // v36：基础 4 秒；配额吃紧时按倍数跳过，实际间隔 4 / 8 / 16 秒（2 秒太费，会把 GitHub 的短时限流打爆）
-  if(el && el.checked){ timer = setInterval(autoLoad, 4000); }
+  // v38：基础 8 秒；配额吃紧时按倍数跳过，实际间隔 8 / 16 / 32 秒
+  // （v36 的 4 秒太费：后台一开就是每秒都在请求，和手机的写入抢额度 → 点踢出写不上去）
+  if(el && el.checked){ timer = setInterval(autoLoad, 8000); }
 }
 var _autoSkip = 0;
 function autoLoad(){
