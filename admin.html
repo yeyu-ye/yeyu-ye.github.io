@@ -70,6 +70,7 @@ input[type=checkbox]{width:16px;height:16px;vertical-align:middle;accent-color:#
 .devc.sel{border-color:#1f6feb;background:rgba(31,111,235,.13)}
 .devc.pend{background:rgba(210,153,34,.10);border-color:rgba(210,153,34,.42)}
 .devc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.devc-dot{flex-shrink:0;font-size:13px;line-height:1}
 .devc-nm{flex:1;min-width:0;font-size:14px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .devc-meta{font-size:12px;color:#8b949e;line-height:1.55;word-break:break-all}
 .devc-id{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#79c0ff;cursor:pointer}
@@ -1501,6 +1502,7 @@ function load(retried){
     if(delGuard()){                                  // 刚删掉的设备，别被刷新又刷回来
       for(var kk in pendingDel) delete data.dev[kk];
     }
+    try{ applyPendingSt(); }catch(e){}               // 刚点过「踢出/允许」的，别被旧数据弹回去
     var r = document.querySelector('input[name=mode][value="'+(d.cfg.mode==="manual"?"manual":"open")+'"]');
     if(r) r.checked = true;
     $("devCard").style.display="block";
@@ -1615,6 +1617,7 @@ function doSave(){
 }
 
 var selected = {};                       // 勾选的设备（秒级刷新重画表格时保持勾选状态）
+var _devSig = "";                        // 设备卡片的「结构指纹」：没变就不重画，避免跳屏
 function selCount(){ var n = 0; for(var k in selected){ if(data && data.dev[k]) n++; } return n; }
 function toggleSel(id, on){ if(on) selected[id] = 1; else delete selected[id]; render(); }
 function selAllBox(on){
@@ -1699,7 +1702,7 @@ function _render(){
   rows.sort(function(a,b){ return (b.lastSeen||0)-(a.lastSeen||0); });
 
   var nAll=0,nA=0,nP=0,nB=0,nT=0,nOn=0;
-  var html = "";
+  var html = "", sigA = [];
   for(var i=0;i<rows.length;i++){
     var d = rows[i];
     var st = d.status || "active";
@@ -1735,20 +1738,24 @@ function _render(){
              + esc(String(d.id).slice(0, 10)) + '</span>'
              + ' · ' + esc(d.android ? "Android " + d.android : "系统未知")
              + ' · ' + (d.launches || 0) + "次"
-             + (online ? (d.ping ? ' · <b style="color:' + lagColor(dlag) + '">' + lagTxt(dlag) + '</b>' : " · 在线")
-                       : (d.lastSeen ? " · " + agoA(d.lastSeen) : " · 从未上线"))
-             + ((d.page && online) ? ' · <span class="pill">' + esc(d.page) + '</span>' : "");
+             + '<span class="devc-lag" data-did="' + esc(d.id) + '"></span>';
     html += '<div class="devc' + (selected[d.id] ? " sel" : "") + (st === "pending" ? " pend" : "") + '">'
       + '<div class="devc-top">' + chk
-      + '<span class="' + (online ? "on" : "off") + '">' + (online ? "●" : "○") + '</span>'
+      + '<span class="devc-dot" data-did="' + esc(d.id) + '"></span>'
       + '<div class="devc-nm">' + nmFull + '</div>'
       + (stale ? '<span class="badge b-off" style="font-size:10px;padding:1px 5px">久未上线</span>' : "")
       + '<span class="badge ' + cls + '">' + label + '</span></div>'
       + '<div class="devc-meta">' + meta + '</div>'
       + '<div class="devc-ops">' + ops + '</div></div>';
+    sigA.push(d.id + ":" + st + ":" + (d.note || "") + ":" + (selected[d.id] ? 1 : 0)
+              + ":" + (d.launches || 0) + ":" + (d.android || "") + ":" + (stale ? 1 : 0));
   }
+  // ⚡ 只有「结构」变了才整块重画（状态、选中、备注、机型…）；
+  //    在线圆点 / 延迟 / 停留页面每秒都在变，单独刷新，不重排卡片 → 不会跳屏、按钮永远点得中
+  var structSig = sigA.join("|") + "#" + kw + "#" + (canEdit() ? 1 : 0) + "#" + nAll;
   var gEl = $("devGrid");
-  if(gEl) gEl.innerHTML = html;
+  if(gEl && structSig !== _devSig){ _devSig = structSig; gEl.innerHTML = html; }
+  try{ updateDevLive(now); }catch(e){}
   var btn = $("delSelBtn");
   if(btn){
     var nSel = selCount();
@@ -1780,6 +1787,29 @@ function _render(){
   }
 }
 
+/* 只刷新「每秒都在变」的部分：在线圆点、延迟、停留页面。不动卡片结构 → 不跳屏、不打断点击 */
+function updateDevLive(now){
+  if(!data || !data.dev) return;
+  var i, el, d, g, on;
+  var dots = document.querySelectorAll(".devc-dot");
+  for(i = 0; i < dots.length; i++){
+    el = dots[i]; d = data.dev[el.getAttribute("data-did")];
+    if(!d) continue;
+    g = lagMs(d, now); on = isLive(d, now, g);
+    el.className = "devc-dot " + (on ? "on" : "off");
+    el.textContent = on ? "●" : "○";
+  }
+  var lags = document.querySelectorAll(".devc-lag");
+  for(i = 0; i < lags.length; i++){
+    el = lags[i]; d = data.dev[el.getAttribute("data-did")];
+    if(!d) continue;
+    g = lagMs(d, now); on = isLive(d, now, g);
+    el.innerHTML = (on ? (d.ping ? ' · <b style="color:' + lagColor(g) + '">' + lagTxt(g) + '</b>' : " · 在线")
+                       : (d.lastSeen ? " · " + agoA(d.lastSeen) : " · 从未上线"))
+                 + ((d.page && on) ? ' · <span class="pill">' + esc(d.page) + '</span>' : "");
+  }
+}
+
 function allowAll(){
   if(!data) return;
   var n = 0;
@@ -1790,11 +1820,27 @@ function allowAll(){
   }, "已允许 " + n + " 台设备");
 }
 
+/* 刚点过的状态：8 秒内不让「还没写上去的服务器旧数据」把界面弹回去 */
+var pendingSt = {};
+function applyPendingSt(){
+  if(!data || !data.dev) return;
+  var now = Date.now(), id;
+  for(id in pendingSt){
+    if(now - pendingSt[id].t > 8000){ delete pendingSt[id]; continue; }
+    if(data.dev[id]) data.dev[id].status = pendingSt[id].st;
+  }
+}
 function setStatus(id, st){
   if(!data || !data.dev){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
   if(!data.dev[id]) return;
+  var p = pendingSt[id];
+  if(p && p.st === st && Date.now() - p.t < 1500) return;   // 连点 / 重复点，忽略
+  // ⚡ 先本地立刻生效（点一下就变），再慢慢写服务器
+  data.dev[id].status = st;
+  pendingSt[id] = { st: st, t: Date.now() };
+  try{ _rLast = 0; _render(); }catch(e){}   // 立即重画，不等 100ms 节流
   mutate(function(){ data.dev[id].status = st; logAdd(st === "blocked" ? "blocked" : "allowed", id, curUser); },
-    st === "blocked" ? "已踢出，对方下次打开会被锁定" : "已允许，对方下次打开即可正常使用");
+    st === "blocked" ? "已踢出，对方立刻被锁定" : "已允许，对方立刻可以正常使用");
 }
 function setNote(id){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看，不能改备注。"); return; }
