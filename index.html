@@ -103,13 +103,18 @@ h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
   <div class="hidden" id="downloadContent">
     <div class="icon">📦</div>
     <h1>夜雨开心之上</h1>
-    <div class="version">v35 — 2026-10-09 更新</div>
+    <div class="version">v36 — 2026-10-09 更新</div>
     <div class="info">
-      <div><span>📋 版本：</span>v35 (yeyu-v35)</div>
+      <div><span>📋 版本：</span><span id="verName">v36 (yeyu-v36)</span></div>
       <div><span>🔧 签名：</span>v2 + v3</div>
-      <div><span>📱 最低系统：</span>Android 7.0+</div>
+      <div><span>📱 最低系统：</span>Android 7.0+（鸿蒙 4.x 及以下可用；鸿蒙 NEXT 请用下方网页版）</div>
       <div><span>✨ 本次更新：</span></div>
       <div style="padding-left:16px;color:#7ee787">
+        • <b style="color:#ffa657">修好了「后台点了允许，手机还是被禁用」</b>：手机不再拿旧数据把管理员刚改的状态覆盖掉<br><br>
+        • <b style="color:#ffa657">修好了「打电话提示呼叫失败 / 网络异常」</b>：写入自动降频，不再被服务器限流<br><br>
+        • 后台点「踢出 / 允许」后会自动复查一次，万一被冲掉会自己重写<br>
+        • 被踢出的手机停止上报，不再刷屏；整体请求更省，长时间开着也不卡<br>
+        • 服务器连续 20 分钟连不上，不会再被永久锁死<br><br>
         • <b>通话可以「收起」了</b>：点 🔻 把通话缩成右下角小条，照样能算圣遗物、开收纳篮、切页面；点小条随时回来<br><br>
         • <b>退到桌面也有声音</b>：通话时挂前台服务通知，系统不会再把麦克风掐静音，也不会把 app 杀掉<br><br>
         • <b>铃声可以自己换了</b>：设置页新增「📞 铃声」，来电 11 种 / 回铃 5 种随便选
@@ -171,18 +176,46 @@ h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
         • ⚠️ 新版会申请<b>麦克风权限</b>，装完请允许，否则只能选音频文件发语音
       </div>
     </div>
-    <a href="https://yeyu-ye.github.io/yeyu-v35.apk" class="download-btn" download>⬇ 下载 APK</a>
-    <div class="size">文件大小：8.7 MB · 直连下载</div>
-    <a href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v35/yeyu-v35.apk" class="alt-link">备用下载（jsDelivr 加速节点）</a>
+    <a id="dlBtn" href="https://yeyu-ye.github.io/yeyu-v36.apk" class="download-btn" download>⬇ 下载 APK</a>
+    <div class="size" id="dlSize">文件大小：8.7 MB · 直连下载</div>
+    <a id="dlAlt" href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v36/yeyu-v36.apk" class="alt-link">备用下载（jsDelivr 加速节点）</a>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #21262d">
       <div class="size" style="margin-bottom:6px">点上面没反应？复制下面的链接，到浏览器里打开 ↓</div>
       <div style="display:flex;gap:6px">
-        <input id="apkUrl" type="text" readonly value="https://yeyu-ye.github.io/yeyu-v35.apk"
+        <input id="apkUrl" type="text" readonly value="https://yeyu-ye.github.io/yeyu-v36.apk"
                style="flex:1;min-width:0;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:9px 10px;color:#8b949e;font-size:11px;font-family:monospace">
         <button onclick="copyApkUrl()" style="background:#238636;color:#fff;border:none;border-radius:8px;padding:0 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">复制</button>
       </div>
       <div id="copyTip" class="size" style="margin-top:6px;color:#7ee787"></div>
     </div>
+    <!-- ===== 网页版 / 鸿蒙专区 ===== -->
+    <div style="margin-top:16px;padding:14px;border:1px solid #30363d;border-radius:12px;background:#0d1117">
+      <div style="font-size:15px;font-weight:700;color:#58a6ff;margin-bottom:8px">🌐 装不了 APK？用网页版</div>
+      <div class="size" style="margin-bottom:10px;line-height:1.7">
+        <b>鸿蒙 NEXT（纯血鸿蒙 5.0+）</b>不支持安装 APK，只能用网页版；<br>
+        <b>苹果 iPhone</b> 同样只能用网页版。功能一样，不用装。
+      </div>
+      <a href="app.html" class="download-btn" style="background:#1f6feb">🌐 打开网页版</a>
+      <div class="size" style="margin-top:8px;line-height:1.7">
+        用手机浏览器打开后 → 点浏览器菜单 → <b>「添加到桌面 / 添加到主屏幕」</b><br>
+        之后点桌面图标就跟 APP 一样，消息 / 计算 / 通话都能用<br>
+        <span style="color:#8b949e">（网页版没有后台保声和原生音乐播放器，其余一样）</span>
+      </div>
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid #21262d">
+        <div style="font-size:14px;font-weight:700;color:#ffa657;margin-bottom:6px">📱 鸿蒙 4.x / 3.x / 2.x 装不上的看这里</div>
+        <div class="size" style="line-height:1.8;color:#8b949e">
+          这些版本底层还是安卓，<b style="color:#e6edf3">能装 APK</b>。装不上是被系统拦了，按下面 4 步来：<br>
+          ① 设置 → 系统和更新 → <b style="color:#e6edf3">纯净模式</b> → 关闭<br>
+          ② 设置 → 安全 → <b style="color:#e6edf3">更多安全设置</b> → 打开「<b style="color:#e6edf3">安装未知应用</b>」，给<b style="color:#e6edf3">浏览器</b>开权限<br>
+          ③ 一定用<b style="color:#e6edf3">浏览器</b>（华为浏览器 / Chrome）下载，别用微信内置浏览器<br>
+          ④ 安装时提示「风险应用 / 无法识别」→ 点<b style="color:#e6edf3">「仍要安装」/「继续安装」</b>，输入手机锁屏密码确认<br>
+          <span style="color:#6e7681">装完第一次打开，麦克风权限要点「允许」，不然发不了语音、打不了电话。</span>
+        </div>
+      </div>
+    </div>
+    <!-- ===== /网页版 / 鸿蒙专区 ===== -->
+
     <a href="admin.html" class="admin-btn">🛠 管理员后台 · 查看设备 / 授权 / 踢出</a>
     <div class="size" style="margin-top:6px">只有你自己用这个，密钥同样是 9178</div>
   </div>
@@ -222,6 +255,28 @@ function copyApkUrl(){
   if(tip) tip.textContent = ok ? "✅ 已复制，粘到浏览器地址栏打开就能下载"
                                : "复制失败，请长按上面的输入框全选后手动复制";
 }
+/* ===== 动态拉 version.json，自动同步最新版本号与下载链接 =====
+   以前版本号写死在页面上，升级后页面还指着旧版本（v35），用户下到的就是旧包。
+   现在以 version.json 为唯一真相，页面打开时自动对齐。 */
+function applyVer(j){
+  var code = j.code || j.ver || 36;
+  var file = j.file || ("yeyu-v" + code + ".apk");
+  var apk  = j.apk  || ("https://yeyu-ye.github.io/" + file);
+  var cdn  = j.cdn  || ("https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v" + code + "/" + file);
+  var b = document.getElementById("dlBtn"), a = document.getElementById("dlAlt"),
+      u = document.getElementById("apkUrl"), n = document.getElementById("verName"),
+      s = document.getElementById("dlSize"), t = document.querySelector(".version");
+  if(b) b.href = apk;
+  if(a) a.href = cdn;
+  if(u) u.value = apk;
+  if(n) n.textContent = "v" + code + " (" + String(file).replace(/\.apk$/, "") + ")";
+  if(t) t.textContent = "v" + code + (j.time ? " — " + j.time + " 更新" : " 更新");
+  if(s && j.size) s.textContent = "文件大小：" + (j.size / 1048576).toFixed(1) + " MB · 直连下载";
+}
+fetch("version.json?_t=" + Date.now())
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(j){ if(j && j.code) applyVer(j); })
+  .catch(function(){});   // 拉不到就用页面上写死的版本，不影响下载
 document.getElementById("keyInput").focus();
 </script>
 </body>
