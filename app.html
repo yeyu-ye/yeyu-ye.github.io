@@ -994,18 +994,18 @@ nav button.active{color:var(--gold);background:transparent}
       </div>
       <div id="devLockMeta" style="color:#8b949e;font-size:12px;margin-bottom:18px;word-break:break-all"></div>
 
-      <div style="text-align:left;background:#161b22;border:1px solid #30363d;border-radius:12px;padding:14px;margin-bottom:12px">
+      <div id="devLockLicBox" style="text-align:left;background:#161b22;border:1px solid #30363d;border-radius:12px;padding:14px;margin-bottom:12px">
         <div style="color:#8b949e;font-size:12px;margin-bottom:8px">输入授权码激活</div>
         <input id="devLockLic" type="text" placeholder="A7K3M9PQ2X-PERM" autocomplete="off" autocapitalize="characters" style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;border-radius:9px;padding:11px 12px;color:#e6edf3;font-size:15px;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;outline:none">
         <button onclick="activateLicense('devLockLic')" style="width:100%;margin-top:10px;background:#238636;color:#fff;border:none;border-radius:9px;padding:12px;font-size:15px;font-weight:600;cursor:pointer">✅ 立即激活</button>
       </div>
 
-      <button onclick="openAccModal()" style="width:100%;background:#1f6feb;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:600;cursor:pointer">👤 登录 / 注册</button>
-      <div style="color:#6e7681;font-size:11px;text-align:center;margin-top:6px">创始人 / 管理员登录后可直接进入；新注册的账号默认是成员，需等创始人或管理员同意</div>
+      <button id="devLockAccBtn" onclick="openAccModal()" style="width:100%;background:#1f6feb;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:600;cursor:pointer">👤 登录 / 注册</button>
+      <div id="devLockAccTip" style="color:#6e7681;font-size:11px;text-align:center;margin-top:6px">创始人 / 管理员登录后可直接进入；新注册的账号默认是成员，需等创始人或管理员同意</div>
 
       <button onclick="deviceRecheck(true)" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;border-radius:10px;padding:11px 26px;font-size:14px;cursor:pointer">🔄 重新检查</button>
       <div id="devLockFoot" style="color:#6e7681;font-size:11px;margin-top:14px;line-height:1.7"></div>
-      <div style="margin-top:14px"><button onclick="toggleLicenseLock()" style="background:none;border:none;color:#484f58;font-size:11px;text-decoration:underline;cursor:pointer">关闭授权锁</button></div>
+      <div id="devLockOffWrap" style="margin-top:14px"><button onclick="toggleLicenseLock()" style="background:none;border:none;color:#484f58;font-size:11px;text-decoration:underline;cursor:pointer">关闭授权锁</button></div>
     </div>
   </div>
 </div>
@@ -4535,6 +4535,12 @@ function licCheckLocal(){
 function activateLicense(inputId){
   var el = document.getElementById(inputId || "licInput");
   if(!el) return;
+  // ⚠️v37：授权码解除不了管理员的封禁（服务器说了算）。以前点了会短暂进去，
+  // 几秒后又被弹回禁用页，变成「点了没用、一直重复」。这里直接说清楚。
+  if(deviceStatus === "blocked"){
+    alert("🚫 这台设备已被管理员停用，授权码无法解除。\n\n请联系管理员在后台把本设备改回「已授权」。");
+    return;
+  }
   var v = String(el.value || "").trim();
   if(!v){ alert("请先输入授权码"); return; }
   deviceInfoCache = collectDeviceInfo();
@@ -4585,6 +4591,10 @@ function licLockOff(){
   try{ return localStorage.getItem("devLockOff") === "1"; }catch(e){ return false; }
 }
 function toggleLicenseLock(){
+  if(deviceStatus === "blocked"){
+    alert("🚫 这台设备已被管理员停用，关闭授权锁也无法进入。\n\n请联系管理员在后台把本设备改回「已授权」。");
+    return;
+  }
   if(licLockOff()){
     try{ localStorage.setItem("devLockOff", "0"); }catch(e){}
     deviceRecheck(true);
@@ -5106,7 +5116,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 36;
+var APP_CODE = 37;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -6014,6 +6024,25 @@ function pumpMut(){
   }
   gistRead(function(data){
     if(!data){ _mutQ.shift(); if(job.cb) job.cb(false); pumpMut(); return; }
+    // ⚠️v37：这份 data 是本地旧缓存（上一把请求超时 / 拉失败）。
+    // 拿它整份写回 = 把管理员刚点的「允许」盖回「禁用」→ 手机进去又被弹出来，无限循环。
+    // 先缓一下重试一次（这期间轮询多半已经把服务器最新数据拉回来了）；
+    // 还是拿不到就放弃这一笔 —— 反正真断网时写也写不上去，宁可不写也不能覆盖。
+    if(gistStale && !job._re){
+      job._re = 1;
+      setTimeout(function(){
+        gistRead(function(d2){
+          if(!d2 || gistStale){ _mutQ.shift(); if(job.cb) job.cb(false); pumpMut(); return; }
+          mutRun(job, d2);
+        });
+      }, 900);
+      return;
+    }
+    if(gistStale){ _mutQ.shift(); if(job.cb) job.cb(false); pumpMut(); return; }
+    mutRun(job, data);
+  });
+}
+function mutRun(job, data){
     var r = true;
     try{ r = job.fn(data); }catch(e){ r = false; }
     if(r === false){ _mutQ.shift(); if(job.cb) job.cb(false); pumpMut(); return; }
@@ -6023,7 +6052,6 @@ function pumpMut(){
       if(job.cb) job.cb(ok);
       pumpMut();
     });
-  });
 }
 
 /* ===== 消息 id / 撤回 ===== */
@@ -7336,11 +7364,18 @@ function _grFlush(d, err){
 function srvOkMark(){ try{ localStorage.setItem("yy_srv_ok", String(Date.now())); }catch(e){} }
 function srvOkAt(){ var t = 0; try{ t = parseInt(localStorage.getItem("yy_srv_ok") || "0", 10); }catch(e){} return t; }
 function srvDown(ms){ var t = srvOkAt(); return !t || (Date.now() - t) > (ms || 20 * 60 * 1000); }
+/* ⚠️v37：这次 gistRead 拿到的到底是不是「服务器刚确认过」的数据。
+   true = 用的是本地旧缓存（请求超时 / 拉失败 / 限流）。
+   拿旧数据还整份写回 = 拿几秒前的状态把管理员刚点的「允许」盖回「禁用」，
+   表现就是：后台点允许 → 手机进去了 → 过几秒又被弹出禁用页 → 再点允许 → 再弹 → 无限循环。
+   所以凡是「读-改-写」的地方，看到 gistStale=true 就【只能读，不能写】。 */
+var gistStale = false;
 function gistRead(cb, _retried){
   if(!gistEnabled()){ try{ cb(null, "未配置服务器"); }catch(e){} return; }
   _grQ.push(cb);
   if(_grBusy) return;                       // 已经有一个在飞了，排队等结果就行
   _grBusy = true;
+  gistStale = true;                         // 先当它是旧的，只有服务器真的回应了才置 false
   var done = false;
   var _t0 = Date.now();                     // 记一下这次请求花了多久 → 后台显示的「网络延迟」
   function fin(d, err){ if(done) return; done = true; _grFlush(d, err); }
@@ -7360,7 +7395,7 @@ function gistRead(cb, _retried){
           });
           return null;
         }
-        if(r.status === 304){ gistFreshAt = Date.now(); srvOkMark(); fin(gistDataCache || null, null); return null; }   // 没变，直接用缓存（且已确认缓存=服务器）
+        if(r.status === 304){ gistStale = false; gistFreshAt = Date.now(); srvOkMark(); fin(gistDataCache || null, null); return null; }   // 没变，直接用缓存（且已确认缓存=服务器）
         if(!r.ok) throw new Error("HTTP " + r.status);
         var et = "";
         try{ et = r.headers.get("ETag") || ""; }catch(e){}
@@ -7374,6 +7409,7 @@ function gistRead(cb, _retried){
           tokRotateN = 0;
           var _d = JSON.parse(f.content);
           gistDataCache = _d; gistCacheAt = Date.now(); gistFreshAt = Date.now(); srvOkMark();
+          gistStale = false;
           if(o.et) gistEtag = o.et;
           snapSave(_d);
           fin(_d);
@@ -7381,12 +7417,13 @@ function gistRead(cb, _retried){
         catch(e){ fin(null, "数据解析失败"); }
       })
       .catch(function(e){
-        // 拉失败也别让人干等：手里有缓存就先用缓存顶上
+        // 拉失败也别让人干等：手里有缓存就先用缓存顶上（但标记为「旧」，禁止写回）
+        gistStale = true;
         if(gistDataCache){ fin(gistDataCache, null); return; }
         fin(null, (e && e.message) ? e.message : "网络不可达");
       });
-  }catch(e){ fin(gistDataCache || null, "请求异常"); }
-  setTimeout(function(){ if(_grBusy) fin(gistDataCache || null, "连接超时"); }, 9000);
+  }catch(e){ gistStale = true; fin(gistDataCache || null, "请求异常"); }
+  setTimeout(function(){ if(_grBusy){ gistStale = true; fin(gistDataCache || null, "连接超时"); } }, 9000);
 }
 /* ===== 本地快照：下次打开 APP 不用等网络，先用上次的消息秒开 ===== */
 var SNAP_KEY = "yy_gist_snap";
@@ -7448,6 +7485,15 @@ function gistSync(cb){
   var id = d.id, now = Date.now();
   gistRead(function(data, err){
     if(!data){ syncDiag(false, err || "读取失败"); cb(null); return; }
+    // ⚠️v37 致命修复：这份 data 不是服务器刚确认的（超时 / 拉失败 / 限流，退回本地旧缓存）。
+    // 这时候【绝对不能写回】——整份覆盖会把管理员刚点的「允许」盖回「禁用」，
+    // 于是手机进去又被弹回禁用页，后台再点允许再被盖，无限循环。只读取、不写入。
+    if(gistStale){
+      syncDiag(false, "服务器未响应（只读不写，避免覆盖）");
+      var _m0 = data.dev ? data.dev[id] : null;
+      cb(_m0 ? (_m0.status || "active") : null);
+      return;
+    }
     if(!data.dev || typeof data.dev !== "object") data.dev = {};
     if(!data.cfg || typeof data.cfg !== "object") data.cfg = {};
     var mode = data.cfg.mode === "manual" ? "manual" : "open";
@@ -7599,14 +7645,21 @@ function enforceStatus(st){
     var changed = (deviceStatus !== st);
     deviceApply(st);                        // 服务器说了算，无条件施加
     if(changed){
+      // ⚠️v37：同一个状态只弹一次窗。以前每次被覆盖回 blocked 都弹一次，
+      // 「后台点允许 → 进去 → 又被盖回 → 又弹」看着就是一直在弹窗、永远进不去。
       try{
-        alert(st === "blocked"
-          ? "🚫 这台设备已被管理员停用。\n\n如需恢复，请联系管理员在后台把它改回「已授权」。"
-          : "⏳ 授权已被管理员收回，正在等待重新授权。\n\n请联系管理员在后台放行。");
+        var _la = localStorage.getItem("yy_alert_st") || "";
+        if(_la !== st){
+          localStorage.setItem("yy_alert_st", st);
+          alert(st === "blocked"
+            ? "🚫 这台设备已被管理员停用。\n\n如需恢复，请联系管理员在后台把它改回「已授权」。"
+            : "⏳ 授权已被管理员收回，正在等待重新授权。\n\n请联系管理员在后台放行。");
+        }
       }catch(e){}
     }
   } else if(st === "active" && deviceStatus !== "active"){
     deviceApply("active");                  // 管理员放行，无需重启即可继续使用
+    try{ localStorage.setItem("yy_alert_st", "active"); }catch(e){}   // 放行后重置，下次再被封会重新提示
   }
 }
 
@@ -7666,6 +7719,9 @@ function pollAndEnforce(){
 function heartBeat(){
   if(!gistEnabled()) return;
   if(document.hidden) return;
+  // ⚠️v37：被封禁时不再心跳上报。它整份写回，一旦读到旧快照就会把管理员的「允许」盖回去。
+  // 被禁用的设备本来也不用刷新在线时间，顺便省配额。
+  if(deviceStatus === "blocked") return;
   // 关了锁也要心跳上报，否则后台看不到这台设备（管理员就没法管它）
   gistSync(function(st){
     if(!st) return;
@@ -7876,6 +7932,7 @@ function devicePost(info, cb){
   }
 }
 
+function lockDis(id, v){ var e = document.getElementById(id); if(e) e.style.display = v; }
 function deviceApply(status){
   deviceStatus = status || "unknown";
   var lock = document.getElementById("deviceLock");
@@ -7895,7 +7952,18 @@ function deviceApply(status){
     setTxt("devLockId", d.id || "-");
     setTxt("devLockMeta", (d.model || "未知机型") + " · Android " + (d.android || "?"));
     setTxt("devLockFoot", "禁用期间本应用所有功能均不可用");
+    // ⚠️v37：被封禁时收起「激活授权码 / 登录 / 关闭授权锁」。
+    // 这几条路都抗不了封禁（服务器说了算），点了只会短暂进去、几秒后又被弹回来，
+    // 看着就是「一直重复、永远进不去」。收起来，只留一条明路：找管理员。
+    lockDis("devLockLicBox", "none");
+    lockDis("devLockAccBtn", "none");
+    lockDis("devLockAccTip", "none");
+    lockDis("devLockOffWrap", "none");
   } else if(deviceStatus === "pending" || deviceStatus === "lock"){
+    lockDis("devLockLicBox", "block");
+    lockDis("devLockAccBtn", "block");
+    lockDis("devLockAccTip", "block");
+    lockDis("devLockOffWrap", "block");
     if(lock) lock.style.display = "block";
     setTxt("devLockIcon", "🔑");
     setTxt("devLockTitle", "需要授权");
