@@ -1,9 +1,9 @@
 {
-  "code": 33,
-  "ver": "v33",
-  "apk": "https://yeyu-ye.github.io/yeyu-v33.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v33/yeyu-v33.apk",
+  "code": 34,
+  "ver": "v34",
+  "apk": "https://yeyu-ye.github.io/yeyu-v34.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v34/yeyu-v34.apk",
   "force": true,
-  "time": "2026-10-09 13:30",
-  "note": "• 打电话改成真·实时通话：像微信一样接通后直接说话对方就听到，不用再按住 🎤 录一段段发\n• 「正在呼叫」有回铃音了（嘟…嘟…）；来电铃声加重并带震动\n• 实时连不上自动退回对讲模式，不会干等；实时通话里 🎤 键变成静音开关"
+  "time": "2026-10-09 13:50",
+  "note": "• 通话可以「收起」了：点 🔻 缩成右下角小条，照样算圣遗物、开收纳篮、切页面，点小条随时回来\n• 退到桌面也有声音：通话时挂前台服务通知，系统不再把麦克风掐静音，也不会杀掉 app\n• 小条上直接显示通话时长和对方名字，右边就是挂断键"
 }
