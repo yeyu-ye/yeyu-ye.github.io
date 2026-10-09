@@ -379,13 +379,13 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div class="bar" style="margin-bottom:10px">
       <input type="text" id="logKw" placeholder="筛选机型 / 设备 ID / 页面" oninput="renderLog()" style="flex:1;min-width:170px">
       <select id="liveRate" onchange="liveRateSet(this.value)" style="width:auto;min-width:96px">
-        <option value="1000">⚡ 1 秒</option>
-        <option value="2000">2 秒</option>
+        <option value="1000">⚡ 1 秒（费配额）</option>
+        <option value="2000" selected>2 秒</option>
         <option value="5000">5 秒</option>
         <option value="0">手动</option>
       </select>
-      <label class="sw" style="margin:0;white-space:nowrap" title="打开后手机会每 1 秒上报一次，延迟显示才准">
-        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 1 秒上报</label>
+      <label class="sw" style="margin:0;white-space:nowrap" title="打开后手机会每 2 秒上报一次，在线状态和延迟显示才准">
+        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 2 秒上报</label>
       <button class="sm" onclick="load()">🔄 立即刷新</button>
       <button class="sm danger" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
     </div>
@@ -1836,7 +1836,7 @@ var ONLINE_MS_ADMIN = 5 * 60 * 1000;
    后台这里每秒重画一次，延迟和「停留在哪一页」都是实时的。 */
 /* ⚠️ 这个阈值必须比手机平时上报间隔（livePingGap 的 12 秒）大，否则永远判成掉线 */
 var LIVE_STALE = 35000;                 // 超过 35 秒没上报 = 掉线
-var logLiveTimer = null, logLiveMs = 1000;
+var logLiveTimer = null, logLiveMs = 2000;
 function lagMs(d, now){
   if(d.ping){ var l = now - d.ping; return l < 0 ? 0 : l; }
   return d.lastSeen ? (now - d.lastSeen) : -1;
@@ -1924,7 +1924,7 @@ function livePingSet(on){
   if(typeof canEdit === "function" && !canEdit()) return;   // 成员只读：静默跳过，不弹提示
   if(!!data.cfg.livePing === !!on) return;
   mutate(function(){ data.cfg.livePing = on ? 1 : 0; },
-    on ? "已让手机每 1 秒上报一次（延迟显示最准）" : "手机上报已恢复为 5 秒一次");
+    on ? "已让手机每 2 秒上报一次（延迟显示最准）" : "手机上报已恢复为 12 秒一次");
 }
 function liveAutoOn(){
   logLiveRestart();
@@ -2492,7 +2492,7 @@ function exportCsv(){
 function toggleAuto(){
   if(timer){ clearInterval(timer); timer = null; }
   var el = $("autoRef");
-  if(el && el.checked){ timer = setInterval(load, 1000); }   // 每秒刷新一次
+  if(el && el.checked){ timer = setInterval(load, 2000); }   // 2 秒刷新一次（GitHub 配额 5000/小时，1 秒太费）
 }
 
 // 启动时：有 90 天内的登录记录就直接进（免密），后台再静默联网校验
