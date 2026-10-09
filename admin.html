@@ -72,8 +72,10 @@ input[type=checkbox]{width:16px;height:16px;vertical-align:middle;accent-color:#
 .devc-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .devc-nm{flex:1;min-width:0;font-size:14px;font-weight:600;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .devc-meta{font-size:12px;color:#8b949e;line-height:1.55;word-break:break-all}
-.devc-id{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#79c0ff}
-.devc-ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.devc-id{font-family:ui-monospace,Consolas,monospace;font-size:11px;color:#79c0ff;cursor:pointer}
+.devc-id:hover{text-decoration:underline}
+.devc-ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.devc-ops .sm{padding:3px 10px;font-size:12px;line-height:1.6}
 .on{color:#3fb950}.off{color:#6e7681}
 /* ===== 设备日志：实时在线 / 延迟 / 停留页面 ===== */
 .livebar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:11px}
@@ -435,23 +437,6 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </div>
   </div>
 
-  <!-- 查看人：像微信那样，点一个人直接跳到和他的会话 -->
-  <div id="peoplePanel" onclick="if(event.target===this)closePeople()"
-       style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;
-              background:rgba(0,0,0,.58);align-items:center;justify-content:center;padding:18px">
-    <div style="width:min(560px,100%);max-height:82vh;display:flex;flex-direction:column;
-                background:#0d1117;border:1px solid #30363d;border-radius:14px;padding:16px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <b style="color:#e6edf3;font-size:15px">👥 查看人</b>
-        <span style="font-size:12px;color:#8b949e">点一下直接跳过去</span>
-        <span style="flex:1"></span>
-        <button class="sm" onclick="closePeople()">✕ 关闭</button>
-      </div>
-      <input type="text" id="peopleKw" placeholder="搜名字 / 设备 ID" oninput="renderPeople()"
-             style="width:100%;margin-bottom:10px">
-      <div id="peopleList" style="flex:1;overflow-y:auto"></div>
-    </div>
-  </div>
 
   <div class="card" id="userAdminCard" style="display:none">
     <h2>⑥ 账号管理（仅创始人可见）</h2>
@@ -483,6 +468,12 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div class="muted" style="margin-bottom:10px">
       <b>新注册</b>的账号默认是「成员」，<b style="color:#e6edf3">不能直接使用 APP</b>，需要你在这里同意。<br>
       成员在手机 APP 的「☰ 收纳篮 → 👤 我的账号」里<b>申请成为管理员</b>，也会出现在这里；同意后他立刻变成管理员。
+    </div>
+    <div class="bar" style="margin-bottom:10px;align-items:center">
+      <span class="muted" id="aplCnt">—</span>
+      <span style="flex:1"></span>
+      <button class="sm" onclick="clearApl('done')">🧹 清空已处理</button>
+      <button class="sm danger" onclick="clearApl('all')">🗑 清空全部记录</button>
     </div>
     <div id="aplBox"></div>
   </div>
@@ -586,6 +577,27 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </div>
   </div>
   </div>
+  </div>
+</div>
+
+<!-- 查看人：像微信那样，点一个人直接跳到和他的会话（必须放在 cardHost 外面，否则 display:none 出不来） -->
+<div id="peoplePanel" onclick="if(event.target===this)closePeople()"
+     style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;
+            background:rgba(3,6,12,.42);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+            align-items:center;justify-content:center;padding:18px">
+  <div style="width:min(560px,100%);max-height:82vh;display:flex;flex-direction:column;
+              background:rgba(13,17,23,.86);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+              border:1px solid rgba(120,150,185,.30);border-radius:14px;padding:16px;
+              box-shadow:0 22px 60px rgba(0,0,0,.5)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <b style="color:#e6edf3;font-size:15px">👥 查看人</b>
+      <span style="font-size:12px;color:#8b949e">点一下直接跳过去</span>
+      <span style="flex:1"></span>
+      <button class="sm" onclick="closePeople()">✕ 关闭</button>
+    </div>
+    <input type="text" id="peopleKw" placeholder="搜名字 / 设备 ID" oninput="renderPeople()"
+           style="width:100%;margin-bottom:10px">
+    <div id="peopleList" style="flex:1;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -769,6 +781,8 @@ function showErr(m){ var b=$("errBox"); b.textContent=m; b.style.display="block"
 function hideErr(){ $("errBox").style.display="none"; }
 function showOk(m){ var b=$("okBox"); b.textContent=m; b.style.display="block"; setTimeout(function(){ b.style.display="none"; },4000); }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+/* 放进 onclick="fn('…')" 里的字符串：先 HTML 转义，再把单引号/反斜杠转成 JS 转义 */
+function jesc(s){ return esc(s).replace(/\\/g,"\\\\").replace(/'/g,"\\'"); }
 function fmt(t){ if(!t) return "-"; var d=new Date(t), n=new Date();
   var s=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
   var diff=n.getTime()-t;
@@ -862,12 +876,53 @@ function setMgrLogin(v){
   }, v === "auth" ? "已设置：管理员登录后仍需你在设备列表放行" : "已设置：管理员登录后可直接使用");
 }
 // ---------- 管理员申请审批（仅创始人） ----------
+function aplKey(a){ return String((a && a.t) || 0) + "|" + String((a && a.u) || ""); }
+function aplIdxByKey(k){
+  var arr = (data && data.apl) ? data.apl : [];
+  for(var i = 0; i < arr.length; i++){ if(aplKey(arr[i]) === k) return i; }
+  return -1;
+}
+function delApl(k){
+  if(!canEdit()){ showErr("你的权限是「成员」，不能删除申请记录。"); return; }
+  var i = aplIdxByKey(k);
+  if(i < 0){ showOk("这条记录已经不在了"); return; }
+  var a = data.apl[i] || {};
+  if(!confirm("删除这条申请记录？\n\n账号：" + (a.u || "") + "\n（只是删掉这条记录，不影响账号本身）")) return;
+  mutate(function(){
+    var j = aplIdxByKey(k);
+    if(j >= 0) data.apl.splice(j, 1);
+  }, "已删除 1 条申请记录");
+}
+function clearApl(mode){
+  if(!canEdit()){ showErr("你的权限是「成员」，不能删除申请记录。"); return; }
+  var arr = (data && data.apl) ? data.apl : [];
+  if(!arr.length){ showOk("本来就没有记录"); return; }
+  if(mode === "all"){
+    if(!confirm("清空全部 " + arr.length + " 条申请记录？\n（只删记录，不影响已通过的账号）")) return;
+    mutate(function(){ data.apl = []; }, "已清空全部申请记录");
+    return;
+  }
+  var n = 0;
+  for(var i = 0; i < arr.length; i++){ if((arr[i] || {}).st !== "pending") n++; }
+  if(!n){ showOk("没有已处理的记录"); return; }
+  if(!confirm("清空 " + n + " 条「已同意 / 已拒绝」的记录？\n待处理的会保留。")) return;
+  mutate(function(){
+    var keep = [];
+    for(var i = 0; i < (data.apl || []).length; i++){
+      var a = data.apl[i];
+      if(a && a.st === "pending") keep.push(a);
+    }
+    data.apl = keep;
+  }, "已清空 " + n + " 条已处理记录");
+}
 function renderApl(){
   var box = $("aplBox");
   if(!box) return;
+  var cnt = $("aplCnt");
   var arr = (data && data.apl) ? data.apl : [], h = "";
   var pend = 0;
   for(var i = 0; i < arr.length; i++){ if(arr[i] && arr[i].st === "pending") pend++; }
+  if(cnt) cnt.textContent = "共 " + arr.length + " 条记录" + (pend ? "，其中 " + pend + " 条待处理" : "");
   if(!arr.length){
     box.innerHTML = '<div class="muted" style="text-align:center;padding:16px 0">还没有人申请</div>';
     return;
@@ -890,6 +945,7 @@ function renderApl(){
       h += '<button class="sm" onclick="doApl(' + j + ',1)">' + (isReg ? "✅ 同意使用" : "✅ 同意") + '</button>'
          + '<button class="sm danger" onclick="doApl(' + j + ',0)">✖ 拒绝</button>';
     }
+    if(canEdit()) h += '<button class="sm danger" onclick="delApl(\'' + jesc(aplKey(a)) + '\')" title="删掉这条历史记录">🗑</button>';
     h += "</div>";
   }
   box.innerHTML = h;
@@ -1658,37 +1714,36 @@ function _render(){
 
     var cls = st==="active"?"b-active":(st==="pending"?"b-pending":"b-blocked");
     var label = st==="active"?"已授权":(st==="pending"?"待授权":"已踢出");
-    var stale = (d.lastSeen && (now - d.lastSeen) > 7*86400000) ? '<span class="badge b-off">长期未上线</span>' : "";
+    var stale = !!(d.lastSeen && (now - d.lastSeen) > 7*86400000);
 
     var ops = "";
     if(canEdit()){
       ops = (st==="active"
-          ? '<button class="sm danger" onclick="setStatus(\''+d.id+'\',\'blocked\')">踢出</button> '
-          : '<button class="sm ok" onclick="setStatus(\''+d.id+'\',\'active\')">允许</button> ') +
-        '<button class="sm" onclick="setNote(\''+d.id+'\')">备注</button> ' +
-        '<button class="sm" onclick="copyId(\''+d.id+'\')">复制ID</button> ' +
-        '<button class="sm" onclick="del(\''+d.id+'\')">删除</button>';
+          ? '<button class="sm danger" onclick="setStatus(\''+jesc(d.id)+'\',\'blocked\')">踢出</button>'
+          : '<button class="sm ok" onclick="setStatus(\''+jesc(d.id)+'\',\'active\')">允许</button>')
+        + '<button class="sm" onclick="setNote(\''+jesc(d.id)+'\')">备注</button>'
+        + '<button class="sm danger" onclick="del(\''+jesc(d.id)+'\')">删除</button>';
     } else {
-      ops = '<button class="sm" onclick="copyId(\''+d.id+'\')">复制ID</button> <span class="muted">只读</span>';
+      ops = '<span class="muted" style="font-size:12px">只读（点 ID 可复制）</span>';
     }
     var chk = canEdit()
-      ? '<input type="checkbox" ' + (selected[d.id] ? "checked" : "") + ' onchange="toggleSel(\''+d.id+'\', this.checked)">'
+      ? '<input type="checkbox" ' + (selected[d.id] ? "checked" : "") + ' onchange="toggleSel(\''+jesc(d.id)+'\', this.checked)">'
       : "";
     var nmFull = esc((d.note ? d.note + " · " : "") + (d.brand ? d.brand + " " : "") + (d.model || "未知机型"));
+    var meta = '<span class="devc-id" title="点一下复制完整 ID" onclick="copyId(\'' + jesc(d.id) + '\')">'
+             + esc(String(d.id).slice(0, 10)) + '</span>'
+             + ' · ' + esc(d.android ? "Android " + d.android : "系统未知")
+             + ' · ' + (d.launches || 0) + "次"
+             + (online ? (d.ping ? ' · <b style="color:' + lagColor(dlag) + '">' + lagTxt(dlag) + '</b>' : " · 在线")
+                       : (d.lastSeen ? " · " + agoA(d.lastSeen) : " · 从未上线"))
+             + ((d.page && online) ? ' · <span class="pill">' + esc(d.page) + '</span>' : "");
     html += '<div class="devc' + (selected[d.id] ? " sel" : "") + (st === "pending" ? " pend" : "") + '">'
       + '<div class="devc-top">' + chk
       + '<span class="' + (online ? "on" : "off") + '">' + (online ? "●" : "○") + '</span>'
       + '<div class="devc-nm">' + nmFull + '</div>'
+      + (stale ? '<span class="badge b-off" style="font-size:10px;padding:1px 5px">久未上线</span>' : "")
       + '<span class="badge ' + cls + '">' + label + '</span></div>'
-      + '<div class="devc-meta">' + esc(d.android ? "Android " + d.android : "系统未知")
-      + ' · 启动 ' + (d.launches || 0) + " 次"
-      + (online ? (d.ping ? ' · 延迟 <b style="color:' + lagColor(dlag) + '">' + lagTxt(dlag) + '</b>' : " · 在线")
-               : (d.lastSeen ? " · " + agoA(d.lastSeen) : " · 从未上线")) + '</div>'
-      + (d.page && online
-          ? '<div class="devc-meta">正在看 <span class="pill">' + esc(d.page) + "</span> 停留 " + fmtDur(now - (d.pt || now)) + '</div>'
-          : "")
-      + '<div class="devc-meta devc-id">' + esc(d.id) + '</div>'
-      + (stale ? '<div class="devc-meta">' + stale + '</div>' : "")
+      + '<div class="devc-meta">' + meta + '</div>'
       + '<div class="devc-ops">' + ops + '</div></div>';
   }
   var gEl = $("devGrid");
@@ -2163,7 +2218,7 @@ function adminChipsHtml(){
     var u = ks[i], r = (data.users && data.users[u]) ? data.users[u] : null;
     var nm = (r && r.name) ? r.name : u;
     var sel = ($("chatTo") && $("chatTo").value === ("admin:" + u));
-    h += '<span onclick="pickPerson(\'admin:' + esc(u) + '\')" title="点一下切到 TA 的会话"'
+    h += '<span onclick="pickPerson(\'admin:' + jesc(u) + '\')" title="点一下切到 TA 的会话"'
        + ' style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:11px;cursor:pointer;'
        + 'font-size:12px;background:' + (sel ? "rgba(212,175,55,.28)" : "rgba(63,185,80,.16)")
        + ';border:1px solid ' + (sel ? "#d4af37" : "rgba(63,185,80,.5)") + ';color:#3fb950">'
@@ -2209,6 +2264,8 @@ function pickPerson(v){
   paintChanTab();
   renderChat();
   var b = $("chatList"); if(b) b.scrollTop = b.scrollHeight;
+  var inp = $("chatInput"); if(inp) inp.focus();
+  try{ showOk("已切到「" + v.replace(/^(dev|admin):/, "") + "」的会话"); }catch(e){}
 }
 function personLast(data, key){
   var arr = (data && data.chat) ? data.chat : [], lt = 0, last = "";
@@ -2244,7 +2301,7 @@ function renderPeople(){
     var txtm = ((rm.name || mu) + " " + mu).toLowerCase();
     if(kw && txtm.indexOf(kw) < 0) continue;
     var lm = personLast(data, key);
-    admh += '<div onclick="pickPerson(\'' + esc(key) + '\')" style="' + rowCss + '">'
+    admh += '<div onclick="pickPerson(\'' + jesc(key) + '\')" style="' + rowCss + '">'
           + '<span style="font-size:13px">' + (onm ? "🟢" : "⚪") + '</span>'
           + '<span style="flex:1;min-width:0">'
           + '<div style="font-size:13px;color:#e6edf3">' + esc(rm.name || mu)
@@ -2271,7 +2328,7 @@ function renderPeople(){
     var l2 = personLast(data, key2);
     var stx = (d.status === "blocked") ? '<span style="color:#f85149;font-size:11px">已踢出</span>'
             : (d.status === "pending") ? '<span style="color:#d29922;font-size:11px">待授权</span>' : '';
-    devh += '<div onclick="pickPerson(\'' + esc(key2) + '\')" style="' + rowCss + '">'
+    devh += '<div onclick="pickPerson(\'' + jesc(key2) + '\')" style="' + rowCss + '">'
           + '<span style="font-size:13px">' + (on2 ? "🟢" : "⚪") + '</span>'
           + '<span style="flex:1;min-width:0">'
           + '<div style="font-size:13px;color:#e6edf3">' + esc(nm2) + ' ' + stx + '</div>'
