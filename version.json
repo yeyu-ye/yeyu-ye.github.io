@@ -1,9 +1,9 @@
 {
-  "code": 31,
-  "ver": "v31",
-  "apk": "https://yeyu-ye.github.io/yeyu-v31.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v31/yeyu-v31.apk",
+  "code": 32,
+  "ver": "v32",
+  "apk": "https://yeyu-ye.github.io/yeyu-v32.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v32/yeyu-v32.apk",
   "force": true,
-  "time": "2026-10-09 05:45",
-  "note": "• 手机端日志不再频繁刷新：APP 日志页 2 秒 → 15 秒；平时状态上报 5 秒 → 15 秒（只有后台开着「④设备日志」时才临时 1 秒）\n• 后台日志改成每台设备一个折叠分组：点设备名展开只看这一台，有「全部展开/全部收起」\n• 弹窗更透明，并新增「🌗 透亮」滑杆（8%~92%，记住你的设置）"
+  "time": "2026-10-09 13:05",
+  "note": "• 修复「消息里点备注卡住退不出」：备注弹窗以前压在消息窗口后面，点了像死机；现在立刻弹出、能输入能关\n• 后台：「👥 查看人」点开能用了；账号申请可删单条 / 清空已处理 / 清空全部记录；设备管理卡片更简洁（点 ID 直接复制）"
 }
