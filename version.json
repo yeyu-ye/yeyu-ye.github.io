@@ -1,11 +1,11 @@
 {
-  "code": 35,
-  "ver": "v35",
-  "apk": "https://yeyu-ye.github.io/yeyu-v35.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v35/yeyu-v35.apk",
+  "code": 36,
+  "ver": "v36",
+  "apk": "https://yeyu-ye.github.io/yeyu-v36.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v36/yeyu-v36.apk",
   "force": true,
-  "time": "2026-10-09 14:15",
-  "note": "• 铃声可以自己换了：来电 11 种 / 回铃 5 种，可试听，还能用自己添加的音乐当铃声\n• 来电更快接到：单独 1.2 秒扫描，等接 60 秒，聊天里可一键回拨\n• 未接来电会提醒，消息里显示为「未接来电」\n• 后台在线状态更准：手机 12 秒上报，后台阈值 35 秒，打开后台设备页自动 2 秒上报",
-  "file": "yeyu-v35.apk",
+  "time": "2026-10-09 14:50",
+  "note": "• 修好「后台点了允许，手机还是被禁用」：手机不再拿旧数据把管理员刚改的状态覆盖掉\n• 修好「打电话提示呼叫失败 / 网络异常」：写入自动降频，不再被服务器限流（403）\n• 后台点「踢出 / 允许」后会自动复查一次，万一被冲掉会自己重写\n• 被踢出的手机停止上报，不再刷屏；整体请求更省，长时间开着也不卡\n• 服务器连续 20 分钟连不上不会再被永久锁死",
+  "file": "yeyu-v36.apk",
   "ts": 2026100901
 }
