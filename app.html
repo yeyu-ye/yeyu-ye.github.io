@@ -5116,7 +5116,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 37;
+var APP_CODE = 38;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -6244,7 +6244,7 @@ function voiceStart(e){
       if(recCancel){ showToast("已取消"); return; }
       if(!recChunks.length){ showToast("没录到声音，再说一次"); return; }
       var blob = new Blob(recChunks, {type: mediaRec.mimeType || "audio/webm"});
-      if(blob.size > 1200000){ showToast("语音太长了，短一点再发"); return; }
+      if(blob.size > 450000){ showToast("语音太长了，短一点再发"); return; }
       showToast("发送中…");
       readBlob(blob, function(dataUrl){ sendVoiceMsg(dataUrl, sec); });
     };
@@ -6285,7 +6285,7 @@ function pickAudioFile(){
     el.onchange = function(){
       var f = el.files && el.files[0];
       if(!f) return;
-      if(f.size > 1500000){ showToast("文件太大了（最多约 1.5MB）"); el.value = ""; return; }
+      if(f.size > 400000){ showToast("文件太大了（最多约 400KB，大概 3～4 分钟语音）"); el.value = ""; return; }
       showToast("发送中…");
       readBlob(f, function(dataUrl){ sendVoiceMsg(dataUrl, Math.max(1, Math.round(f.size / 8000))); });
       el.value = "";
@@ -6301,13 +6301,16 @@ function sendVoiceMsg(dataUrl, dur){
   var acc = mgrGet();
   gistMutate(function(data){
     if(!data.chat || typeof data.chat !== "object") data.chat = [];
-    // 语音是 base64 内嵌的，别让它把整个数据库撑爆：12 小时以上的语音只留个占位
+    // ⚠️v38：语音是 base64 内嵌的，而 Gist 只能整份读写 —— 它越大，每次「点踢出/发消息」
+    // 都要传越大一份，越容易撞 GitHub 二级限流（PATCH 403 = 点了没反应）。
+    // 线上就是被语音撑到 105KB 才出的事。现在：6 小时以上 或 语音总量超 80KB 就只留占位
+    // （80KB 够放 2～3 条最新语音，再多没必要永久占着服务器）。
     var nowMs = Date.now(), big = 0;
     for(var vi = 0; vi < data.chat.length; vi++){
       var vm = data.chat[vi] || {};
       if(vm.kind !== "voice" || !vm.data) continue;
       big += String(vm.data).length;
-      if(nowMs - (vm.t || 0) > 12 * 3600 * 1000 || big > 1500000){
+      if(nowMs - (vm.t || 0) > 6 * 3600 * 1000 || big > 80000){
         vm.data = ""; vm.text = "🎤 语音（已过期）";
       }
     }
@@ -7444,11 +7447,43 @@ function snapLoad(){
   }catch(e){ return null; }
 }
 
+/* ⚠️v38：写之前先给数据「瘦身」。
+   实测线上 Gist 被撑到 105KB —— 里面躺着 4 条语音消息（base64 音频，单条最大 33KB）
+   和 2 条用完没删的通话信令 SDP。Gist 只能整份读写，于是每次「点踢出 / 发消息」都要
+   传 105KB：又慢又吃配额，直接把 GitHub 的二级限流撞出来（PATCH 403，点了没反应）。
+   现在每次写入前自动清掉过期的语音和信令，把体积压在 30KB 上下。 */
+function chatSlim(data){
+  try{
+    var now = Date.now();
+    var ch = data && data.chat;
+    if(ch && ch.length){
+      for(var i = 0; i < ch.length; i++){
+        var m = ch[i];
+        if(!m) continue;
+        var t = parseInt(m.t, 10) || 0;
+        // 通话信令：接通后就没用了。只清 5 分钟以前的，别把正在进行的通话掐断
+        if(m.sdp && (now - t) > 5 * 60 * 1000) m.sdp = "";
+        // 语音 / 图片的 base64 大附件：6 小时以前的一律清内容，只留一条占位
+        if(typeof m.data === "string" && m.data.length > 2000 && (now - t) > 6 * 3600 * 1000){
+          m.data = ""; m._clr = 1;
+          if(!m.text || m.text.length > 40) m.text = "［语音消息·已过期清理］";
+        }
+      }
+    }
+    var lg = data && data.log;
+    if(lg && lg.length > 200) data.log = lg.slice(lg.length - 200);
+  }catch(e){}
+}
 function gistWrite(data, cb, retry, _rotated){
   if(!gistEnabled()){ if(cb) cb(false); return; }
+  try{ chatSlim(data); }catch(e){}          // v38：写之前先瘦身
   var n = retry || 0;
   var body = { files: {} };
   body.files[GIST_FILE] = { content: JSON.stringify(data) };
+  function _retry(){                       // 只有「网络抖动」才值得重试
+    if(n < 2){ setTimeout(function(){ gistWrite(data, cb, n+1, _rotated); }, 1500); }
+    else if(cb) cb(false);
+  }
   try{
     fetch("https://api.github.com/gists/" + GIST_ID, {
       method: "PATCH",
@@ -7463,6 +7498,7 @@ function gistWrite(data, cb, retry, _rotated){
         try{ _et = r.headers.get("ETag") || r.headers.get("etag") || ""; }catch(e){}
         gistEtag = _et || null;
         gistFreshAt = Date.now();          // 刚写进去的就是服务器上最新的内容
+        w403N = 0;                         // v38：写进去了，解除退避
         snapSave(data); if(cb) cb(true); return;
       }
       // 令牌被吊销 → 换一枚重来一次
@@ -7470,13 +7506,23 @@ function gistWrite(data, cb, retry, _rotated){
         rotateTok(function(ok){ if(ok) gistWrite(data, cb, 0, 1); else if(cb) cb(false); });
         return;
       }
-      if(n < 2){ setTimeout(function(){ gistWrite(data, cb, n+1, _rotated); }, 1500); }
-      else if(cb) cb(false);
-    }).catch(function(){
-      if(n < 2){ setTimeout(function(){ gistWrite(data, cb, n+1, _rotated); }, 1500); }
-      else if(cb) cb(false);
-    });
-  }catch(e){ if(cb) cb(false); }
+      // ⚠️v38：403 / 429 = GitHub 二级限流。这时候【绝对不能立刻重试】——
+      // 以前这里也盲目重试 2 次，17 台手机一起重试，限流窗口被越撑越长，永远解不开，
+      // 表现就是后台「点踢出 / 点允许 一直没反应」。现在：记下来，让上报按 2^n 成倍放慢。
+      if(r.status === 403 || r.status === 429){
+        r.text().then(function(t){
+          var m = (t || "").toLowerCase();
+          if(m.indexOf("rate limit") >= 0 || m.indexOf("secondary") >= 0 || m.indexOf("abuse") >= 0){
+            w403At = Date.now();
+            w403N = Math.min(w403N + 1, 4);
+            if(cb) cb(false);
+          } else _retry();
+        }).catch(function(){ _retry(); });
+        return;
+      }
+      _retry();
+    }).catch(_retry);
+  }catch(e){ _retry(); }
 }
 
 // 上报本机信息 + 取回自己在后台的状态（active / pending / blocked）
@@ -7554,7 +7600,7 @@ var statusPollTimer = null;
 var heartTimer = null;
 var POLL_MS = 6000;                  // 轮询间隔：6 秒（v36：原来 2 秒 + 每 2 秒一写，把 GitHub 的短时限流打爆了）
 var uiScrollUntil = 0;                // 正在滚动时跳过轮询，滚完再补，滑动更跟手
-var HEART_MS = 180000;               // 心跳：3 分钟完整上报一次（刷新最后上线时间）
+var HEART_MS = 600000;               // 心跳：10 分钟完整上报一次（v38：原 3 分钟；状态检查靠 6 秒轮询，够用）
 var POLL_BUSY = false;
 var gistEtag = null;                 // 条件请求用的 ETag：数据没变时返回 304，不消耗 API 配额
 var gistDataCache = null;
@@ -7737,20 +7783,35 @@ function heartBeat(){
    后台关掉那个页面就自动降回 5 秒一次，不浪费 API 配额；被限流自动降到 10 秒。 */
 var lastRttMs = 0;
 var livePingBusy = false, livePingAt = 0, livePingOn = false, livePingTimer = null;
-function livePingSync(data){ try{ if(data && data.cfg) livePingOn = !!data.cfg.livePing; }catch(e){} }
+var livePingOkAt = 0;                              // v38：最近一次确认「后台确实开着实时页」的时刻
+var w403At = 0, w403N = 0;                         // v38：最近一次写入被限流的时刻 / 连续被限流的次数
+function livePingSync(data){
+  try{ if(data && data.cfg){ livePingOn = !!data.cfg.livePing; if(livePingOn) livePingOkAt = Date.now(); } }catch(e){}
+}
+function livePingLive(){                           // 实时模式是否仍有效
+  // 后台关掉设备页后 cfg.livePing 会变 false，手机下次读就知道；
+  // 万一后台异常退出没关掉，最多再快写 3 分钟就自动降回慢速，不无限烧配额。
+  return livePingOn && (Date.now() - livePingOkAt) < 180000;
+}
 function livePingGap(){
-  if(gistSlow) return 60000;
-  // ⚠️v36：写入比读取金贵得多 —— 短时间反复改同一个 Gist 会被 GitHub 直接 403（短时限流），
-  // 一限流后台就「点允许没反应 / 点踢出不生效」，打电话也提示网络异常。
-  // 所以：后台开着设备页 → 12 秒一写（够实时了）；平时 60 秒一写（后台判离线阈值 90 秒，不会误判）。
-  // 配额快见底时再自动成倍放慢（quotaFactor）。
-  return (livePingOn ? 12000 : 60000) * quotaFactor();
+  // ⚠️v38 实测：17 台手机 × 每 60 秒写一次 = 每小时 1000+ 次写同一个 Gist
+  // → GitHub 二级限流（PATCH 403、X-RateLimit-Remaining:0，而 GET 还显示剩 4909）
+  // → 后台「点踢出 / 点允许 完全没反应」、打电话提示网络异常。
+  // 现在：平时 3 分钟一写；后台开着设备页 20 秒一写（且后台关掉后最多再快 3 分钟）。
+  var base;
+  if(w403N) base = Math.min(2880000, 180000 * Math.pow(2, w403N));   // 被限流过 → 成倍退避（最长 48 分钟）
+  else if(deviceStatus === "pending") base = 600000;                 // 待授权：10 分钟一次，别凑热闹
+  else base = livePingLive() ? 20000 : 180000;
+  if(gistSlow) base = Math.max(base, 300000);
+  return base * quotaFactor();
 }
 function livePingTick(){
   if(!gistEnabled() || document.hidden) return;
   // ⚠️v36：被踢出（blocked）时立刻停止上报。它每几秒一次「整份数据写回」，
   // 会拿旧快照把管理员刚点的「允许」覆盖成 blocked —— 表现就是「点允许了手机还是被禁用」。
   if(deviceStatus === "blocked") return;
+  // ⚠️v38：刚被限流就别再撞了，退避时间没到就安静等着（否则限流窗口被自己撑大）
+  if(w403N && (Date.now() - w403At) < 60000) return;
   if(livePingBusy) return;
   if(Date.now() - livePingAt < livePingGap() - 80) return;
   livePingAt = Date.now();
