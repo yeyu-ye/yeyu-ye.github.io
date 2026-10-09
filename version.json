@@ -1,12 +1,10 @@
 {
-  "code": 37,
-  "ver": "v37",
-  "apk": "https://yeyu-ye.github.io/yeyu-v37.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v37/yeyu-v37.apk",
-  "force": true,
-  "time": "2026-10-09 23:45",
-  "note": "• 修好「被踢出一次后，后台点允许 → 手机进去又被弹回禁用页 → 反复循环」：手机不再拿旧数据把管理员刚点的「允许」盖回去\n• 网络超时/拉不到服务器时，手机只读不写，绝不拿几秒前的旧快照整份覆盖\n• 被封禁期间手机停止上报，不再有机会冲掉管理员的操作\n• 同一个状态只提示一次，不会再一直弹窗\n• 被管理员封禁时收起「激活授权码 / 登录 / 关闭授权锁」—— 这三条路都解除不了封禁，点了只会短暂进去又被弹回来，看着像死循环；现在只留一条明路：找管理员在后台改回「已授权」",
-  "file": "yeyu-v37.apk",
-  "ts": 2026100902,
-  "size": 9163783
+  "code": 38,
+  "ver": "v38",
+  "file": "yeyu-v38.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v38.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v38/yeyu-v38.apk",
+  "size": 9167879,
+  "date": "2026-10-10",
+  "note": "修「后台点踢出没反应」：写入被 GitHub 二级限流；清理撑爆数据库的语音消息；上报降频"
 }
