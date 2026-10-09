@@ -1,0 +1,20 @@
+{
+  "name": "夜雨开心之上",
+  "short_name": "夜雨",
+  "description": "圣遗物计算器 · 设备管理与实时通话（网页版，鸿蒙 / 安卓 / 苹果都能用）",
+  "start_url": "app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1117",
+  "theme_color": "#0a0a14",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
