@@ -7598,7 +7598,10 @@ function gistSync(cb){
 // ===== 运行中轮询：管理员改状态后，不用重启 APP 也能立刻生效 =====
 var statusPollTimer = null;
 var heartTimer = null;
-var POLL_MS = 6000;                  // 轮询间隔：6 秒（v36：原来 2 秒 + 每 2 秒一写，把 GitHub 的短时限流打爆了）
+// ⚠️v38：读取也计费！17 台手机 × 每 6 秒一读 = 每小时 10000+ 次请求，
+// 而 GitHub 只有 5000 次/小时 —— 配额一干，点「踢出」照样写不进去（又是没反应）。
+// 现在 20 秒一读（约 3000 次/小时），配额吃紧时 quotaFactor 会自动再放慢到 40 / 80 秒。
+var POLL_MS = 20000;
 var uiScrollUntil = 0;                // 正在滚动时跳过轮询，滚完再补，滑动更跟手
 var HEART_MS = 600000;               // 心跳：10 分钟完整上报一次（v38：原 3 分钟；状态检查靠 6 秒轮询，够用）
 var POLL_BUSY = false;
@@ -7622,6 +7625,7 @@ function quotaRead(r){
   }catch(e){}
 }
 function quotaFactor(){                 // 1 = 正常；数字越大越慢
+  if(quotaLeft < 60) return 8;          // v38：快见底了，狠狠放慢（实测曾只剩 51 次）
   if(quotaLeft < 300) return 4;
   if(quotaLeft < 1200) return 2;
   return 1;
@@ -7721,9 +7725,9 @@ function pollRetune(){
 function pollAndEnforce(){
   if(!gistEnabled()) return;
   pollRetune();                        // 配额吃紧时自动把节奏放慢，绝不撞 403
-  // 被限流了就自动降到 30 秒一次，等配额恢复（不然会一直失败）
-  if(gistSlow && POLL_MS < 30000){
-    POLL_MS = 30000;
+  // 被限流了就自动降到 1 分钟一次，等配额恢复（不然会一直失败）
+  if(gistSlow && POLL_MS < 60000){
+    POLL_MS = 60000;
     if(statusPollTimer){ clearInterval(statusPollTimer); statusPollTimer = setInterval(pollAndEnforce, POLL_MS); }
   }
   try{ localStorage.setItem("devPollTime", String(Date.now())); }catch(e){}
