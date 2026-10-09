@@ -1,9 +1,9 @@
 {
-  "code": 32,
-  "ver": "v32",
-  "apk": "https://yeyu-ye.github.io/yeyu-v32.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v32/yeyu-v32.apk",
+  "code": 33,
+  "ver": "v33",
+  "apk": "https://yeyu-ye.github.io/yeyu-v33.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v33/yeyu-v33.apk",
   "force": true,
-  "time": "2026-10-09 13:05",
-  "note": "• 修复「消息里点备注卡住退不出」：备注弹窗以前压在消息窗口后面，点了像死机；现在立刻弹出、能输入能关\n• 后台：「👥 查看人」点开能用了；账号申请可删单条 / 清空已处理 / 清空全部记录；设备管理卡片更简洁（点 ID 直接复制）"
+  "time": "2026-10-09 13:30",
+  "note": "• 打电话改成真·实时通话：像微信一样接通后直接说话对方就听到，不用再按住 🎤 录一段段发\n• 「正在呼叫」有回铃音了（嘟…嘟…）；来电铃声加重并带震动\n• 实时连不上自动退回对讲模式，不会干等；实时通话里 🎤 键变成静音开关"
 }
