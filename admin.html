@@ -1393,7 +1393,8 @@ function quotaRead(r){
     if(rs) quotaResetAt = parseInt(rs, 10) * 1000;
   }catch(e){}
 }
-function quotaFactor(){ return quotaLeft < 300 ? 4 : (quotaLeft < 1200 ? 2 : 1); }
+// v38：配额快见底就狠狠放慢（实测只剩 51 次时，任何写入都会变成「点了没反应」）
+function quotaFactor(){ return quotaLeft < 60 ? 8 : (quotaLeft < 300 ? 4 : (quotaLeft < 1200 ? 2 : 1)); }
 function gh(path, method, body, _rotated){
   var h = { "Accept":"application/vnd.github+json", "Authorization":"Bearer "+token };
   if(body) h["Content-Type"] = "application/json";
