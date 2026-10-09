@@ -1383,12 +1383,24 @@ function rotateTok(cb){
   } else { tryNext(); }
 }
 
+/* v36：GitHub 每小时 5000 次是所有设备 + 后台共用的，快见底就自动放慢，绝不撞 403 */
+var quotaLeft = 5000, quotaResetAt = 0;
+function quotaRead(r){
+  try{
+    var v = r.headers ? r.headers.get("X-RateLimit-Remaining") : null;
+    if(v !== null && v !== undefined && v !== "") quotaLeft = parseInt(v, 10) || quotaLeft;
+    var rs = r.headers ? r.headers.get("X-RateLimit-Reset") : null;
+    if(rs) quotaResetAt = parseInt(rs, 10) * 1000;
+  }catch(e){}
+}
+function quotaFactor(){ return quotaLeft < 300 ? 4 : (quotaLeft < 1200 ? 2 : 1); }
 function gh(path, method, body, _rotated){
   var h = { "Accept":"application/vnd.github+json", "Authorization":"Bearer "+token };
   if(body) h["Content-Type"] = "application/json";
   else if(ghEtag) h["If-None-Match"] = ghEtag;
   return fetch(GH+path, { method:method||"GET", headers:h, body: body?JSON.stringify(body):undefined })
     .then(function(r){
+      quotaRead(r);                          // v36：顺手记下 GitHub 剩余请求次数
       if(!body && r.status === 304) return ghEtagData;    // 没变化，直接用上次的结果
       if(r.status === 401 && !_rotated){
         // 令牌被吊销 → 自动换下一枚重试（后台与 APK 共用同一套线上令牌池）
@@ -2584,7 +2596,14 @@ function exportCsv(){
 function toggleAuto(){
   if(timer){ clearInterval(timer); timer = null; }
   var el = $("autoRef");
-  if(el && el.checked){ timer = setInterval(load, 4000); }   // v36：4 秒刷新一次（2 秒太费，会把 GitHub 的短时限流打爆）
+  // v36：基础 4 秒；配额吃紧时按倍数跳过，实际间隔 4 / 8 / 16 秒（2 秒太费，会把 GitHub 的短时限流打爆）
+  if(el && el.checked){ timer = setInterval(autoLoad, 4000); }
+}
+var _autoSkip = 0;
+function autoLoad(){
+  var f = quotaFactor();
+  if(f > 1){ _autoSkip++; if(_autoSkip % f !== 0) return; }
+  try{ load(); }catch(e){}
 }
 
 // 启动时：有 90 天内的登录记录就直接进（免密），后台再静默联网校验
