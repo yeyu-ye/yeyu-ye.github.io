@@ -4,18 +4,34 @@
   var lsOK = ok(function(){ localStorage.setItem('__y','1');
     var v = localStorage.getItem('__y'); localStorage.removeItem('__y'); return v === '1'; });
   if(!lsOK){
+    /* 自己这份 localStorage 用不了，先试试父窗口（夜雨主壳）那一份 ——
+       它是 APP 的主页面，存储是打通的（夜雨自己的设置就存在那儿）。
+       这样「添加圣遗物」的数据才不会关掉就没了。 */
+    var prox = null;
     try{
-      var _s = Object.create(null);
-      var shim = {
-        getItem: function(k){ return Object.prototype.hasOwnProperty.call(_s,k) ? _s[k] : null; },
-        setItem: function(k,v){ _s[k] = String(v); },
-        removeItem: function(k){ delete _s[k]; },
-        clear: function(){ _s = Object.create(null); },
-        key: function(i){ var ks = Object.keys(_s); return i < ks.length ? ks[i] : null; }
-      };
-      Object.defineProperty(shim,'length',{get:function(){ return Object.keys(_s).length; }});
-      Object.defineProperty(window,'localStorage',{configurable:true,get:function(){ return shim; }});
+      if(window.parent && window.parent !== window && window.parent.localStorage){
+        var p = window.parent.localStorage;
+        p.setItem('__y','1');
+        if(p.getItem('__y') === '1'){ p.removeItem('__y'); prox = p; }
+      }
     }catch(e){}
+    if(prox){
+      try{ Object.defineProperty(window,'localStorage',{configurable:true,get:function(){ return prox; }}); }
+      catch(e){}
+    }else{
+      try{
+        var _s = Object.create(null);
+        var shim = {
+          getItem: function(k){ return Object.prototype.hasOwnProperty.call(_s,k) ? _s[k] : null; },
+          setItem: function(k,v){ _s[k] = String(v); },
+          removeItem: function(k){ delete _s[k]; },
+          clear: function(){ _s = Object.create(null); },
+          key: function(i){ var ks = Object.keys(_s); return i < ks.length ? ks[i] : null; }
+        };
+        Object.defineProperty(shim,'length',{get:function(){ return Object.keys(_s).length; }});
+        Object.defineProperty(window,'localStorage',{configurable:true,get:function(){ return shim; }});
+      }catch(e){}
+    }
   }
   var idbOK = ok(function(){
     if(typeof indexedDB === 'undefined' || !indexedDB) return false;
@@ -29,6 +45,22 @@
       try{ Object.defineProperty(window, n, {configurable:true, get:function(){ return undefined; }}); }catch(e){}
     });
   }
+  /* 外链（Github / 米游社 …）在壳里点了会变成一片空白 ——
+     拦下来交给系统浏览器。写在莫娜自己页面里，就不依赖父页面能不能读到 iframe。 */
+  document.addEventListener('click', function(e){
+    var t = e.target, a = null;
+    while(t && t.tagName !== 'A'){ t = t.parentElement; if(!t) break; }
+    if(t && t.tagName === 'A') a = t;
+    if(!a) return;
+    var h = a.getAttribute('href') || '';
+    if(!/^https?:/i.test(h)) return;                 // #/xxx 是它自己的路由，别管
+    e.preventDefault(); e.stopPropagation();
+    try{
+      var p = window.parent;
+      if(p && p.AndroidApp && p.AndroidApp.nativeOpenUrl){ p.AndroidApp.nativeOpenUrl(h); return; }
+    }catch(e2){}
+    try{ window.open(h, '_blank'); }catch(e2){}
+  }, true);
   function banner(t){
     try{
       var b = document.getElementById('__yyErrBox');
