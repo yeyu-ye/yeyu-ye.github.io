@@ -226,10 +226,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   max-width:none;width:100%;height:100%;max-height:none;border-radius:0;
   padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 14px);
 }
-/* ===== 莫娜圣遗物计算器（iframe 全屏嵌进收纳篮） =====
-   v44：整份莫娜（30MB，含 122 张角色立绘 + 2 个 wasm 求解器）内置在 assets/mona/，
+/* ===== 伤害计算器（7.1.10，iframe 全屏嵌进收纳篮） =====
+   v45：内置的是你本机跑的那套 7.1.10（25MB，含 122 张角色立绘），不再是旧的 7.1.09。
    断网也能开、能算、能添加圣遗物，不连任何外部服务。
-   壳子整层透明 —— 让莫娜自己的界面、以及后面夜雨的背景透出来，不再糊一层深色底。 */
+   壳子整层透明 —— 让它自己的界面、以及后面夜雨的背景透出来，不再糊一层深色底。 */
 #monaModal{background:transparent}                  /* 遮罩本身也透明，才看得到后面 */
 #monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:transparent;
   display:flex;flex-direction:column;border:0}
@@ -489,8 +489,8 @@ nav button.active{color:var(--gold);background:transparent}
     <button class="bin-item" onclick="openDeviceModal();closeBin()">
       <span class="bin-ico">📱</span><span class="bin-txt">设备</span>
     </button>
-    <button class="bin-item" onclick="openMona('calculate')">
-      <span class="bin-ico">🔮</span><span class="bin-txt">莫娜占卜铺</span>
+    <button class="bin-item" onclick="openMona('artifacts')">
+      <span class="bin-ico">⚔️</span><span class="bin-txt">伤害计算器</span>
     </button>
   </div>
 </div>
@@ -5171,7 +5171,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 44;
+var APP_CODE = 45;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -5401,23 +5401,22 @@ function logOnline(force){
   logAdd("online");
 }
 
-/* ---------- 莫娜圣遗物计算器（整份 dist 内置在 assets/mona/，全离线） ----------
-   v44：回到内置。整份莫娜（30MB，含 122 张角色立绘 + 2 个 wasm 求解器）都打包进 APK，
-   断网也能开、能算、能添加圣遗物，数据存在本机 localStorage 里。
+/* ---------- 伤害计算器（整份 dist 内置在 assets/mona/，全离线） ----------
+   v45：内置版本换成 7.1.10（用户本机跑的那套，路由/页面名与 7.1.09 不同）。
+   断网也能开、能算、能添加圣遗物，数据存在本机。
    ⚠️ 只负责「打开 / 关闭 / 切页」，绝不碰它的任何计算逻辑。 */
-var monaLoaded = false, monaCur = "calculate", monaPushed = false, monaHooked = false;
-/* 莫娜的全部功能页。路由是它自己的，这里只做「入口」——计算逻辑一个字都没碰。
+var monaLoaded = false, monaCur = "artifacts", monaPushed = false, monaHooked = false;
+/* 它的全部功能页。路由是它自己的，这里只做「入口」——计算逻辑一个字都没碰。
    这些路由都实测渲染正常（/playground 依赖被裁掉的编辑器，故不放入口）。 */
+/* 7.1.10 的真实路由（别拿 7.1.09 那套来套，页面名对不上点了就是空白） */
 var MONA_TABS = [
-  { r: "artifacts",         i: "📿", t: "圣遗物" },
-  { r: "best-set",          i: "🔮", t: "套装优化" },
-  { r: "calculate",         i: "⚔️", t: "计算" },
-  { r: "potential",         i: "📈", t: "潜力" },
-  { r: "team-optimization", i: "👥", t: "整队优化" },
-  { r: "character",         i: "👤", t: "角色" },
-  { r: "presets",           i: "⚙️", t: "预设" },
-  { r: "uid-data",          i: "🆔", t: "UID" },
-  { r: "setup",             i: "🔧", t: "设置" }
+  { r: "calculate",      i: "⚔️", t: "计算" },
+  { r: "artifacts",      i: "📿", t: "圣遗物" },
+  { r: "artifacts-kumi", i: "🔮", t: "套装" },
+  { r: "presets",        i: "⚙️", t: "预设" },
+  { r: "uid-data",       i: "🆔", t: "导入" },
+  { r: "account",        i: "👤", t: "账号" },
+  { r: "setup",          i: "🔧", t: "设置" }
 ];
 function monaRenderTabs(cur){
   var bar = document.getElementById("monaTabs");
@@ -5434,7 +5433,7 @@ function monaRenderTabs(cur){
   if(on && on.scrollIntoView) try{ on.scrollIntoView({ inline: "center", block: "nearest" }); }catch(e){}
 }
 /* ⚠️⚠️ loading 绝不能只等 iframe 的 load 事件（v42 血的教训）：
-   莫娜首屏一次渲染上百张角色立绘，load 要等这些图全部下完才触发 → 手机上长时间白屏。
+   首屏一次渲染上百张角色立绘，load 要等这些图全部下完才触发 → 手机上长时间白屏。
    正解是「轮询内容探针」：只要 iframe 里已经有内容就立刻收起，不等图片。
    v43 因为换成外接跨域服务读不到 DOM，探针被拆掉；v44 回到内置，同源又读得到了，装回来。 */
 var monaTimer = null, monaAutoRetried = false, monaLoadOk = false, monaContentOk = false;
@@ -5477,8 +5476,8 @@ function monaStartProbe(){
       return;
     }
     /* 8 秒兜底：就算什么信号都没拿到也把「正在打开」收掉。
-       loading 只是盖在 iframe 上的一层，收掉就能看见莫娜自己的
-       「莫娜正在仰望星空，请稍安勿躁」—— 比我们干等一张白图强得多。 */
+       loading 只是盖在 iframe 上的一层，收掉就能看见它自己的
+       「正在加载」提示 —— 比我们干等一张白图强得多。 */
     if(n === 32 && !monaLoadOk && !monaContentOk) monaHideLoading();
     if(n === 40 && !monaAutoRetried && !monaLoadOk && !monaContentOk){
       monaAutoRetried = true;                           // 10 秒真没动静：悄悄重载一次
@@ -5500,7 +5499,7 @@ function monaRetry(){
   if(ld) ld.style.display = "flex";
   if(!f) return;
   monaLoaded = true;
-  monaUrl(monaCur || "calculate");
+  monaUrl(monaCur || "artifacts");
   monaStartProbe();
 }
 function monaHardReload(){ monaAutoRetried = true; monaRetry(); }
@@ -5523,7 +5522,7 @@ function monaHookLoad(f){
       var d = f.contentDocument;
       if(!d || d.__yyHooked) return;
       d.__yyHooked = 1;
-      // 莫娜里有 GitHub 等外链，在 iframe 里点了会变成空白页 —— 交给系统浏览器打开
+      // 里面有米游社 / Github 等外链，在 iframe 里点了会变成空白页 —— 交给系统浏览器打开
       d.addEventListener("click", function(e){
         var t = e.target, a = null;
         while(t && t.tagName !== "A"){ t = t.parentElement; if(!t) break; }
@@ -5538,9 +5537,9 @@ function monaHookLoad(f){
     }catch(e){}
   });
 }
-/* 壳子做透明（v43 的要求保留）；莫娜自己 body 若有底色，那部分还是它自己的颜色。 */
+/* 壳子做透明（v43 的要求保留）；它自己 body 若有底色，那部分还是它自己的颜色。 */
 function openMona(route){
-  route = route || "calculate";
+  route = route || "artifacts";
   var m = document.getElementById("monaModal");
   var f = document.getElementById("monaFrame");
   if(!m || !f) return;
@@ -8633,17 +8632,17 @@ function closeDeviceModal(){
 </div>
 
 <!-- 与后台聊天弹窗 -->
-<!-- ===== 莫娜圣遗物计算器（iframe 全屏，第一次点开才加载） ===== -->
+<!-- ===== 伤害计算器（iframe 全屏，第一次点开才加载） ===== -->
 <div class="modal-overlay fullscreen over-lock" id="monaModal" onclick="if(event.target===this)closeMona()">
   <div class="modal-box">
     <div id="monaHead">
-      <span class="mh-title">🔮 莫娜占卜铺</span>
+      <span class="mh-title">⚔️ 伤害计算器</span>
       <div id="monaTabs"></div>
       <button class="mona-cfg" onclick="monaHardReload()" title="重新加载">⟳</button>
       <button class="mona-x" onclick="closeMona()">✕</button>
     </div>
     <div id="monaWrap">
-      <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
+      <div id="monaLoading">⚔️ 正在打开伤害计算器…</div>
       <div id="monaFail">
         <div class="mf-ico">🔮</div>
         <div class="mf-msg" id="monaFailMsg"></div>
