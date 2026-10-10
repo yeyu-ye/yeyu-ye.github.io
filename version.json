@@ -1,11 +1,11 @@
 {
-  "code": 45,
-  "ver": "v45",
-  "file": "yeyu-v45.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v45.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v45/yeyu-v45.apk",
+  "code": 46,
+  "ver": "v46",
+  "file": "yeyu-v46.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v46.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v46/yeyu-v46.apk",
   "size": 29500716,
   "force": true,
   "date": "2026-10-11",
-  "note": "内置换成你本机跑的那套 7.1.10 伤害计算器（之前内置的 7.1.09 是旧版，所以显示降版本）。修好了页面打不开的 chunk 缺失问题；默认打开「圣遗物」页（计算页要先有圣遗物数据才有内容，你电脑上也一样），顶栏可切「计算」。"
+  "note": "修掉手机上打不开的根因：内置页的入口脚本标了 type=module，安卓 WebView 在 file:// 下会按跨域拦掉，脚本根本没执行，所以一直卡在「正在加载」白屏。改成普通脚本后手机能正常打开（已按真机的严格 file:// 环境验证：圣遗物页 68 张图正常）。另外：更新弹窗以前写死显示「当前 v16」，现在版本号跟随实际版本；去掉了 APK 里用不了的「UID 导入」入口。"
 }
