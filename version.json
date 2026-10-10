@@ -1,9 +1,9 @@
 {
-  "code": 38,
-  "ver": "v38",
+  "code": 39,
+  "ver": "v39",
   "file": "yeyu-v38.apk",
   "apk": "https://yeyu-ye.github.io/yeyu-v38.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v38/yeyu-v38.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v39/yeyu-v38.apk",
   "size": 9167879,
   "date": "2026-10-10",
   "note": "修「后台点踢出没反应」：写入被 GitHub 二级限流；清理撑爆数据库的语音消息；上报降频"
