@@ -489,8 +489,8 @@ nav button.active{color:var(--gold);background:transparent}
     <button class="bin-item" onclick="openDeviceModal();closeBin()">
       <span class="bin-ico">📱</span><span class="bin-txt">设备</span>
     </button>
-    <button class="bin-item" onclick="openMona('artifacts')">
-      <span class="bin-ico">⚔️</span><span class="bin-txt">伤害计算器</span>
+    <button class="bin-item" onclick="openMona('calculate')">
+      <span class="bin-ico">⚔️</span><span class="bin-txt">莫娜计算器</span>
     </button>
   </div>
 </div>
@@ -5170,7 +5170,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 46;
+var APP_CODE = 48;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -5401,21 +5401,26 @@ function logOnline(force){
   logAdd("online");
 }
 
-/* ---------- 伤害计算器（整份 dist 内置在 assets/mona/，全离线） ----------
-   v45：内置版本换成 7.1.10（用户本机跑的那套，路由/页面名与 7.1.09 不同）。
+/* ---------- 莫娜计算器（整份 dist 内置在 assets/mona/，全离线） ----------
+   v48：回退到 7.1.09（用户截图确认要这个界面：底部「计算/圣遗物/UID数据/全部功能」、
+   顶部「角色与配置/圣遗物与伤害/面板与曲线」）。7.1.10 是伤害计算器，界面完全不同。
    断网也能开、能算、能添加圣遗物，数据存在本机。
    ⚠️ 只负责「打开 / 关闭 / 切页」，绝不碰它的任何计算逻辑。 */
-var monaLoaded = false, monaCur = "artifacts", monaPushed = false, monaHooked = false;
-/* 它的全部功能页。路由是它自己的，这里只做「入口」——计算逻辑一个字都没碰。
-   这些路由都实测渲染正常（/playground 依赖被裁掉的编辑器，故不放入口）。 */
-/* 7.1.10 的真实路由（别拿 7.1.09 那套来套，页面名对不上点了就是空白） */
+var monaLoaded = false, monaCur = "calculate", monaPushed = false, monaHooked = false;
+/* 7.1.09 的真实路由。这些路由实测渲染正常：
+   /playground 依赖被裁掉的 Monaco 编辑器，故不放入口。 */
 var MONA_TABS = [
-  { r: "calculate",      i: "⚔️", t: "计算" },
-  { r: "artifacts",      i: "📿", t: "圣遗物" },
-  { r: "artifacts-kumi", i: "🔮", t: "套装" },
-  { r: "presets",        i: "⚙️", t: "预设" },
-  { r: "account",        i: "👤", t: "账号" },
-  { r: "setup",          i: "🔧", t: "设置" }
+  { r: "calculate",          i: "⚔️", t: "计算" },
+  { r: "artifacts",          i: "📿", t: "圣遗物" },
+  { r: "uid-data",           i: "📥", t: "UID 数据" },
+  { r: "character",          i: "🧙", t: "角色" },
+  { r: "artifacts-kumi",     i: "🔮", t: "套装" },
+  { r: "best-set",           i: "🎯", t: "套装优化" },
+  { r: "potential",          i: "💎", t: "圣遗物潜力" },
+  { r: "team-optimization",  i: "👥", t: "整队优化" },
+  { r: "presets",            i: "⚙️", t: "预设" },
+  { r: "account",            i: "👤", t: "账号" },
+  { r: "setup",              i: "🔧", t: "设置" }
 ];
 function monaRenderTabs(cur){
   var bar = document.getElementById("monaTabs");
@@ -8635,7 +8640,7 @@ function closeDeviceModal(){
 <div class="modal-overlay fullscreen over-lock" id="monaModal" onclick="if(event.target===this)closeMona()">
   <div class="modal-box">
     <div id="monaHead">
-      <span class="mh-title">⚔️ 伤害计算器</span>
+      <span class="mh-title">🔮 莫娜计算器</span>
       <div id="monaTabs"></div>
       <button class="mona-cfg" onclick="monaHardReload()" title="重新加载">⟳</button>
       <button class="mona-x" onclick="closeMona()">✕</button>
