@@ -1,11 +1,11 @@
 {
-  "code": 44,
-  "ver": "v44",
-  "file": "yeyu-v44.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v44.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v44/yeyu-v44.apk",
-  "size": 28748350,
+  "code": 45,
+  "ver": "v45",
+  "file": "yeyu-v45.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v45.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v45/yeyu-v45.apk",
+  "size": 29500716,
   "force": true,
   "date": "2026-10-11",
-  "note": "莫娜改成完整内置：整套计算器（含 122 张角色立绘、套装优化求解器）都装进 APP 里，断网也能打开、能计算、能添加圣遗物，数据存本机；不再是外接网页。顶栏 ⟳ 可重新加载，9 个功能标签（圣遗物/套装优化/计算/潜力/整队优化/角色/预设/UID/设置）都在。"
+  "note": "内置换成你本机跑的那套 7.1.10 伤害计算器（之前内置的 7.1.09 是旧版，所以显示降版本）。修好了页面打不开的 chunk 缺失问题；默认打开「圣遗物」页（计算页要先有圣遗物数据才有内容，你电脑上也一样），顶栏可切「计算」。"
 }
