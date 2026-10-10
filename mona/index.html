@@ -4,9 +4,6 @@
   var lsOK = ok(function(){ localStorage.setItem('__y','1');
     var v = localStorage.getItem('__y'); localStorage.removeItem('__y'); return v === '1'; });
   if(!lsOK){
-    /* 自己这份 localStorage 用不了，先试试父窗口（夜雨主壳）那一份 ——
-       它是 APP 的主页面，存储是打通的（夜雨自己的设置就存在那儿）。
-       这样「添加圣遗物」的数据才不会关掉就没了。 */
     var prox = null;
     try{
       if(window.parent && window.parent !== window && window.parent.localStorage){
@@ -33,27 +30,14 @@
       }catch(e){}
     }
   }
-  var idbOK = ok(function(){
-    if(typeof indexedDB === 'undefined' || !indexedDB) return false;
-    if(typeof indexedDB.open !== 'function') return false;
-    var r = indexedDB.open('__yprobe__', 1);
-    try{ indexedDB.deleteDatabase('__yprobe__'); }catch(e){}
-    return !!r;
-  });
-  if(!idbOK){
-    ['indexedDB','webkitIndexedDB','mozIndexedDB','msIndexedDB'].forEach(function(n){
-      try{ Object.defineProperty(window, n, {configurable:true, get:function(){ return undefined; }}); }catch(e){}
-    });
-  }
-  /* 外链（Github / 米游社 …）在壳里点了会变成一片空白 ——
-     拦下来交给系统浏览器。写在莫娜自己页面里，就不依赖父页面能不能读到 iframe。 */
+  /* 外链（米游社 / Github …）在壳里点了会变成一片空白 —— 交给系统浏览器 */
   document.addEventListener('click', function(e){
     var t = e.target, a = null;
     while(t && t.tagName !== 'A'){ t = t.parentElement; if(!t) break; }
     if(t && t.tagName === 'A') a = t;
     if(!a) return;
     var h = a.getAttribute('href') || '';
-    if(!/^https?:/i.test(h)) return;                 // #/xxx 是它自己的路由，别管
+    if(!/^https?:/i.test(h)) return;
     e.preventDefault(); e.stopPropagation();
     try{
       var p = window.parent;
@@ -80,10 +64,10 @@
     var r = e && e.reason; banner('未处理的异常：' + ((r && r.message) || String(r)));
   });
 })();
-</script><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,莫娜占卜铺"><link rel="icon" href="./favicon.ico"><title>莫娜占卜铺</title><style>.loading {
+</script><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,伤害计算器"><link rel="icon" href="./favicon.ico"><title>伤害计算器</title><style>.loading {
             height: 100vh;
             width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
-        }</style><script defer="defer" type="module" src="./js/chunk-vendors.f7a2064f.js"></script><script defer="defer" type="module" src="./js/app.9857be0c.js"></script><link href="./css/chunk-vendors.fb1a9135.css" rel="stylesheet"><link href="./css/app.f15ebb96.css" rel="stylesheet"></head><body><noscript><strong>好家伙，这年头还有不开启javascript的人吗</strong></noscript><div id="app"><div class="loading" style="display: flex; flex-direction: column; align-items: center"><p style="margin-top: 12px">莫娜正在仰望星空，请稍安勿躁（狗头）</p></div></div></body></html>
+        }</style><script defer="defer" type="module" src="./js/chunk-vendors.3f70930d.js"></script><script defer="defer" type="module" src="./js/app.3828ec8b.js"></script><link href="./css/chunk-vendors.608950d3.css" rel="stylesheet"><link href="./css/app.83a2ed21.css" rel="stylesheet"></head><body><noscript><strong>好家伙，这年头还有不开启javascript的人吗</strong></noscript><div id="app"><div class="loading" style="display: flex; flex-direction: column; align-items: center"><p style="margin-top: 12px">正在加载</p></div></div></body></html>
