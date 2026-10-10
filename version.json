@@ -1,11 +1,11 @@
 {
-  "code": 40,
-  "ver": "v40",
-  "file": "yeyu-v40.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v40.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v40/yeyu-v40.apk",
-  "size": 13460773,
+  "code": 41,
+  "ver": "v41",
+  "file": "yeyu-v41.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v41.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v41/yeyu-v41.apk",
+  "size": 28723707,
   "force": true,
   "date": "2026-10-10",
-  "note": "莫娜占卜铺统一收纳：收纳篮只留一个「莫娜占卜铺」入口，进去后顶部标签可切 圣遗物/套装优化/计算/潜力/整队优化/角色/预设/UID/设置，莫娜全部功能都在；打开即提示更新"
+  "note": "补回 122 张角色立绘（之前角色页/计算页选人一片空白，就是缺这个）；外壳换成夜雨同款深色+金色顶栏，不再压住莫娜自己的顶栏；计算页的角色、BUFF、预设等全部功能入口照常可用"
 }
