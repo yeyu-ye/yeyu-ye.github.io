@@ -1,11 +1,11 @@
 {
-  "code": 46,
-  "ver": "v46",
-  "file": "yeyu-v46.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v46.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v46/yeyu-v46.apk",
+  "code": 47,
+  "ver": "v47",
+  "file": "yeyu-v47.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v47.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v47/yeyu-v47.apk",
   "size": 29500716,
   "force": true,
   "date": "2026-10-11",
-  "note": "修掉手机上打不开的根因：内置页的入口脚本标了 type=module，安卓 WebView 在 file:// 下会按跨域拦掉，脚本根本没执行，所以一直卡在「正在加载」白屏。改成普通脚本后手机能正常打开（已按真机的严格 file:// 环境验证：圣遗物页 68 张图正常）。另外：更新弹窗以前写死显示「当前 v16」，现在版本号跟随实际版本；去掉了 APK 里用不了的「UID 导入」入口。"
+  "note": "v47：1) 过滤真机上常见的 ResizeObserver loop 非致命错误，避免底部一直飘红条「页面出错」；2) 伤害计算器入口默认/首位改为「圣遗物」页，空数据时也能直接点「+」添加圣遗物，避免一打开「计算」页就是空白。v46 的 module 白屏与 v16 版本号修复已包含。"
 }
