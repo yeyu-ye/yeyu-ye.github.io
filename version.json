@@ -1,10 +1,11 @@
 {
-  "code": 39,
-  "ver": "v39",
-  "file": "yeyu-v39.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v39.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v39/yeyu-v39.apk",
-  "size": 13456677,
+  "code": 40,
+  "ver": "v40",
+  "file": "yeyu-v40.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v40.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v40/yeyu-v40.apk",
+  "size": 13460773,
+  "force": true,
   "date": "2026-10-10",
-  "note": "收纳篮内置「莫娜占卜铺」圣遗物计算器：圣遗物录入、潜力评分、套装优化，计算逻辑原样保留"
+  "note": "莫娜占卜铺统一收纳：收纳篮只留一个「莫娜占卜铺」入口，进去后顶部标签可切 圣遗物/套装优化/计算/潜力/整队优化/角色/预设/UID/设置，莫娜全部功能都在；打开即提示更新"
 }
