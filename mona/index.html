@@ -1,4 +1,54 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,莫娜占卜铺"><link rel="icon" href="./favicon.ico"><title>莫娜占卜铺</title><style>.loading {
+<!doctype html><html lang="en"><head><script>
+(function(){
+  function ok(fn){ try{ return !!fn(); }catch(e){ return false; } }
+  var lsOK = ok(function(){ localStorage.setItem('__y','1');
+    var v = localStorage.getItem('__y'); localStorage.removeItem('__y'); return v === '1'; });
+  if(!lsOK){
+    try{
+      var _s = Object.create(null);
+      var shim = {
+        getItem: function(k){ return Object.prototype.hasOwnProperty.call(_s,k) ? _s[k] : null; },
+        setItem: function(k,v){ _s[k] = String(v); },
+        removeItem: function(k){ delete _s[k]; },
+        clear: function(){ _s = Object.create(null); },
+        key: function(i){ var ks = Object.keys(_s); return i < ks.length ? ks[i] : null; }
+      };
+      Object.defineProperty(shim,'length',{get:function(){ return Object.keys(_s).length; }});
+      Object.defineProperty(window,'localStorage',{configurable:true,get:function(){ return shim; }});
+    }catch(e){}
+  }
+  var idbOK = ok(function(){
+    if(typeof indexedDB === 'undefined' || !indexedDB) return false;
+    if(typeof indexedDB.open !== 'function') return false;
+    var r = indexedDB.open('__yprobe__', 1);
+    try{ indexedDB.deleteDatabase('__yprobe__'); }catch(e){}
+    return !!r;
+  });
+  if(!idbOK){
+    ['indexedDB','webkitIndexedDB','mozIndexedDB','msIndexedDB'].forEach(function(n){
+      try{ Object.defineProperty(window, n, {configurable:true, get:function(){ return undefined; }}); }catch(e){}
+    });
+  }
+  function banner(t){
+    try{
+      var b = document.getElementById('__yyErrBox');
+      if(!b){
+        b = document.createElement('div'); b.id = '__yyErrBox';
+        b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#fee2e2;' +
+          'color:#7f1d1d;font-size:12px;padding:8px 12px;line-height:1.6;word-break:break-all';
+        (document.body || document.documentElement).appendChild(b);
+      }
+      b.textContent = t;
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    banner('页面出错：' + ((e && e.message) || '未知错误'));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var r = e && e.reason; banner('未处理的异常：' + ((r && r.message) || String(r)));
+  });
+})();
+</script><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,莫娜占卜铺"><link rel="icon" href="./favicon.ico"><title>莫娜占卜铺</title><style>.loading {
             height: 100vh;
             width: 100vw;
             display: flex;
