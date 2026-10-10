@@ -1,10 +1,10 @@
 {
   "code": 39,
   "ver": "v39",
-  "file": "yeyu-v38.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v38.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v39/yeyu-v38.apk",
-  "size": 9167879,
+  "file": "yeyu-v39.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v39.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v39/yeyu-v39.apk",
+  "size": 13456677,
   "date": "2026-10-10",
-  "note": "修「后台点踢出没反应」：写入被 GitHub 二级限流；清理撑爆数据库的语音消息；上报降频"
+  "note": "收纳篮内置「莫娜占卜铺」圣遗物计算器：圣遗物录入、潜力评分、套装优化，计算逻辑原样保留"
 }
