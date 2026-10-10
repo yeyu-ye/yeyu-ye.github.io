@@ -1,11 +1,11 @@
 {
-  "code": 42,
-  "ver": "v42",
-  "file": "yeyu-v42.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v42.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v42/yeyu-v42.apk",
-  "size": 28744254,
+  "code": 43,
+  "ver": "v43",
+  "file": "yeyu-v43.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v43.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v43/yeyu-v43.apk",
+  "size": 9171975,
   "force": true,
   "date": "2026-10-11",
-  "note": "修复莫娜计算器打不开/白屏：不再死等上百张角色立绘下完才显示，内容一出来就立刻呈现；加载不出来会给提示和重试按钮；顺带绕开 WebView 缓存的旧版本页面"
+  "note": "莫娜改成直连本机服务：默认打开 http://localhost:8080/#/calculate，顶栏 ⚙ 可改地址（手机填电脑局域网 IP）；外壳整层透明；同时删掉了包里内置的 27MB 莫娜，APK 从 27.4MB 瘦到 9.2MB"
 }
