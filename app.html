@@ -248,9 +248,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;cursor:pointer}
 #monaHead .mona-x:active{transform:scale(.9)}
 #monaWrap{position:relative;flex:1;min-height:0}
-#monaFrame{width:100%;height:100%;border:0;display:block;background:#f5f7fb}
+/* 用绝对定位撑满，不依赖父级 flex 计算 —— 真机 WebView 上 flex:1 偶发算成 0 高会整片白 */
+#monaFrame{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
+  border:0;display:block;background:#f5f7fb}
 #monaLoading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;
   background:#f5f7fb;color:#5a6270;font-size:15px;letter-spacing:.5px}
+/* 加载不出来时给个说法，别让用户对着白屏猜 */
+#monaFail{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;
+  background:#f5f7fb;color:#5a6270}
+#monaFail .mf-ico{font-size:38px}
+#monaFail .mf-msg{font-size:14px;line-height:1.7;color:#6b7280;max-width:300px}
+#monaFail button{background:#D4AF37;border:0;color:#14100a;font-weight:700;
+  border-radius:14px;padding:11px 26px;font-size:15px;cursor:pointer}
+#monaFail button:active{transform:scale(.95)}
 /* ===== 流畅度：长列表只渲染看得见的那一段 ===== */
 .filter-item{content-visibility:auto;contain-intrinsic-size:auto 54px}
 .filter-group{contain:layout style}
@@ -5144,7 +5155,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 41;
+var APP_CODE = 42;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -5405,12 +5416,78 @@ function monaRenderTabs(cur){
   var on = bar.querySelector("button.on");
   if(on && on.scrollIntoView) try{ on.scrollIntoView({ inline: "center", block: "nearest" }); }catch(e){}
 }
+/* 加载态：以前是等 iframe 的 load 事件才收起「正在打开」——
+   莫娜首屏会一次渲染上百张角色立绘，load 要等这些图全部下完才触发，
+   手机上就长时间卡在白屏。改成「只要页面里已经有内容就立刻显示」。 */
+var monaTimer = null, monaAutoRetried = false;
+function monaHideLoading(){
+  var ld = document.getElementById("monaLoading");
+  if(ld) ld.style.display = "none";
+  if(monaTimer){ clearInterval(monaTimer); monaTimer = null; }
+}
+function monaShowFail(msg){
+  var e = document.getElementById("monaFail");
+  var t = document.getElementById("monaFailMsg");
+  if(t && msg) t.textContent = msg;
+  if(e) e.style.display = "flex";
+  monaHideLoading();
+}
+function monaProbe(){
+  var f = document.getElementById("monaFrame");
+  if(!f) return false;
+  try{
+    var d = f.contentDocument;
+    if(!d) return false;
+    var a = d.getElementById("app");
+    if(a && (a.innerHTML || "").length > 200){ monaHideLoading(); return true; }
+    if(d.body && (d.body.innerHTML || "").length > 500){ monaHideLoading(); return true; }
+  }catch(e){}
+  return false;
+}
+function monaStartProbe(){
+  if(monaTimer) clearInterval(monaTimer);
+  if(monaProbe()) return;
+  var n = 0;
+  monaTimer = setInterval(function(){
+    n++;
+    if(monaProbe()) return;                 // 探针命中会自己清掉定时器
+    if(n === 40 && !monaAutoRetried){       // 10 秒还没内容：悄悄重载一次
+      monaAutoRetried = true;
+      try{ monaRetry(); }catch(e){}
+      return;
+    }
+    if(n > 100){                            // 25 秒还没内容：给个说法，别干等
+      clearInterval(monaTimer); monaTimer = null;
+      monaShowFail("计算器加载超时。可以点下面的按钮重试，或者退出重进一次。");
+    }
+  }, 250);
+}
+function monaRetry(){
+  var f = document.getElementById("monaFrame");
+  var e = document.getElementById("monaFail");
+  var ld = document.getElementById("monaLoading");
+  if(e) e.style.display = "none";
+  if(ld) ld.style.display = "flex";
+  if(!f) return;
+  monaLoaded = true;
+  monaUrl(monaCur || "artifacts");
+  monaStartProbe();
+}
+/* 带上版本号当缓存戳：APK 升级后 URL 变了，
+   免得 WebView 还拿着上一版缓存下来的 mona/index.html */
+function monaUrl(route){
+  var f = document.getElementById("monaFrame");
+  if(!f) return;
+  try{ f.src = "mona/index.html?_v=" + (window.APP_CODE || 0) + "#/" + route; }
+  catch(e){ f.src = "mona/index.html#/" + route; }
+}
 function monaHookLoad(f){
   if(monaHooked) return;
   monaHooked = true;
   f.addEventListener("load", function(){
-    var ld = document.getElementById("monaLoading");
-    if(ld) ld.style.display = "none";
+    // 真的 load 了：收起加载态；至于里面有没有内容，交给探针兜底
+    if(monaProbe()) return;
+    monaHideLoading();
     try{
       var d = f.contentDocument;
       if(!d || d.__yyHooked) return;
@@ -5441,13 +5518,18 @@ function openMona(route){
     var ld = document.getElementById("monaLoading");
     if(ld) ld.style.display = "flex";
     monaHookLoad(f);
-    f.src = "mona/index.html#/" + route;           // 首次：整份加载
+    monaAutoRetried = false;
+    monaUrl(route);                                 // 首次：整份加载
     monaLoaded = true; monaCur = route;
+    monaStartProbe();
   } else if(monaCur !== route){
     // 已经在里面了：只改 hash，让 Vue Router 内部跳，不用重新解析 7MB
     try{ f.contentWindow.location.hash = "/" + route; }
-    catch(e){ f.src = "mona/index.html#/" + route; }
+    catch(e){ monaUrl(route); }
     monaCur = route;
+    var fe = document.getElementById("monaFail");
+    if(fe) fe.style.display = "none";
+    monaStartProbe();
   }
   monaRenderTabs(route);
   // 返回键：压一条历史，返回时只关计算器，别把整个 APP 退掉
@@ -5456,6 +5538,7 @@ function openMona(route){
 function closeMona(){
   var m = document.getElementById("monaModal");
   if(m) m.classList.remove("show");
+  if(monaTimer){ clearInterval(monaTimer); monaTimer = null; }   // 别在后台空转轮询
   if(monaPushed){ monaPushed = false; try{ history.back(); }catch(e){} }
 }
 window.addEventListener("popstate", function(){
@@ -8528,6 +8611,11 @@ function closeDeviceModal(){
     </div>
     <div id="monaWrap">
       <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
+      <div id="monaFail">
+        <div class="mf-ico">🔮</div>
+        <div class="mf-msg" id="monaFailMsg">计算器没能加载出来。可能是这台设备的浏览器内核有点旧，点下面的按钮重试一次。</div>
+        <button onclick="monaRetry()">重新加载</button>
+      </div>
       <iframe id="monaFrame" src=""></iframe>
     </div>
   </div>
