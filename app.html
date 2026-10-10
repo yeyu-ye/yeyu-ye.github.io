@@ -229,8 +229,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 /* ===== 莫娜圣遗物计算器（iframe 全屏嵌进收纳篮） ===== */
 #monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:#f5f7fb}
 #monaFrame{position:absolute;top:0;left:0;width:100%;height:100%;border:0;display:block;background:#f5f7fb}
-#monaBar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:10px;z-index:5;display:flex;gap:6px;align-items:center}
+#monaBar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;right:10px;z-index:5;
+  display:flex;gap:6px;align-items:center;justify-content:flex-end}
+/* 功能多了就横向滑，别挤成一团 */
+#monaTabs{display:flex;gap:6px;flex:1;justify-content:flex-end;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+#monaTabs::-webkit-scrollbar{display:none}
 #monaBar button{
+  flex:0 0 auto;white-space:nowrap;
   background:rgba(20,24,33,.82);color:#e6e9ef;border:1px solid rgba(255,255,255,.16);
   border-radius:16px;padding:7px 13px;font-size:13px;cursor:pointer;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
@@ -452,10 +458,7 @@ nav button.active{color:var(--gold);background:transparent}
       <span class="bin-ico">📱</span><span class="bin-txt">设备</span>
     </button>
     <button class="bin-item" onclick="openMona('artifacts')">
-      <span class="bin-ico">📿</span><span class="bin-txt">圣遗物</span>
-    </button>
-    <button class="bin-item" onclick="openMona('best-set')">
-      <span class="bin-ico">🔮</span><span class="bin-txt">套装优化</span>
+      <span class="bin-ico">🔮</span><span class="bin-txt">莫娜占卜铺</span>
     </button>
   </div>
 </div>
@@ -5136,7 +5139,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 39;
+var APP_CODE = 40;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -5370,6 +5373,33 @@ function logOnline(force){
    整份莫娜 dist 放在 assets/mona/，第一次点开才加载（避免启动时白等 7MB JS）。
    ⚠️ 只负责「打开 / 关闭 / 切页」，绝不碰它的任何计算逻辑。 */
 var monaLoaded = false, monaCur = "", monaPushed = false, monaHooked = false;
+/* 莫娜的全部功能页。路由是它自己的，这里只做「入口」——计算逻辑一个字都没碰。
+   这些路由都实测渲染正常（/playground 依赖被裁掉的编辑器，故不放入口）。 */
+var MONA_TABS = [
+  { r: "artifacts",         i: "📿", t: "圣遗物" },
+  { r: "best-set",          i: "🔮", t: "套装优化" },
+  { r: "calculate",         i: "⚔️", t: "计算" },
+  { r: "potential",         i: "📈", t: "潜力" },
+  { r: "team-optimization", i: "👥", t: "整队优化" },
+  { r: "character",         i: "👤", t: "角色" },
+  { r: "presets",           i: "⚙️", t: "预设" },
+  { r: "uid-data",          i: "🆔", t: "UID" },
+  { r: "setup",             i: "🔧", t: "设置" }
+];
+function monaRenderTabs(cur){
+  var bar = document.getElementById("monaTabs");
+  if(!bar) return;
+  var h = "";
+  for(var i = 0; i < MONA_TABS.length; i++){
+    var x = MONA_TABS[i];
+    h += '<button class="' + (x.r === cur ? "on" : "") + '" onclick="openMona(\'' + x.r + '\')">'
+       + x.i + " " + x.t + "</button>";
+  }
+  bar.innerHTML = h;
+  // 把当前页滚到看得见的地方（tab 多了会横向滑）
+  var on = bar.querySelector("button.on");
+  if(on && on.scrollIntoView) try{ on.scrollIntoView({ inline: "center", block: "nearest" }); }catch(e){}
+}
 function monaHookLoad(f){
   if(monaHooked) return;
   monaHooked = true;
@@ -5414,9 +5444,7 @@ function openMona(route){
     catch(e){ f.src = "mona/index.html#/" + route; }
     monaCur = route;
   }
-  var a = document.getElementById("monaTabArt"), s = document.getElementById("monaTabSet");
-  if(a) a.className = (route === "artifacts") ? "on" : "";
-  if(s) s.className = (route === "best-set") ? "on" : "";
+  monaRenderTabs(route);
   // 返回键：压一条历史，返回时只关计算器，别把整个 APP 退掉
   if(!monaPushed){ try{ history.pushState({ mona: 1 }, ""); monaPushed = true; }catch(e){} }
 }
@@ -8489,8 +8517,7 @@ function closeDeviceModal(){
 <div class="modal-overlay fullscreen over-lock" id="monaModal" onclick="if(event.target===this)closeMona()">
   <div class="modal-box">
     <div id="monaBar">
-      <button id="monaTabArt" onclick="openMona('artifacts')">📿 圣遗物</button>
-      <button id="monaTabSet" onclick="openMona('best-set')">🔮 套装</button>
+      <div id="monaTabs"></div>
       <button class="mona-x" onclick="closeMona()">✕</button>
     </div>
     <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
