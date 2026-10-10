@@ -227,13 +227,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 14px);
 }
 /* ===== 莫娜圣遗物计算器（iframe 全屏嵌进收纳篮） =====
-   v41：外壳换成夜雨自己的深色+金色风格；顶部改成「占位」而不是浮层 ——
-   以前浮层压在莫娜自己的顶栏上，把它左上角的「全部功能」按钮挡住了，等于功能找不着。 */
-#monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:#0a0a14;
+   v43：不再内置那份 27MB 的莫娜 dist，改成直连你本机跑的服务
+   （默认 http://localhost:8080/#/calculate，点 ⚙ 可以改地址）。
+   壳子整层透明 —— 让莫娜自己的界面、以及后面夜雨的背景透出来，不再糊一层深色底。 */
+#monaModal{background:transparent}                  /* 遮罩本身也透明，才看得到后面 */
+#monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:transparent;
   display:flex;flex-direction:column;border:0}
 #monaHead{flex-shrink:0;display:flex;align-items:center;gap:8px;
   padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 9px;
-  background:#0d0d18;border-bottom:1px solid rgba(255,255,255,.10)}
+  background:rgba(13,13,24,.50);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  border-bottom:1px solid rgba(255,255,255,.10)}
 #monaHead .mh-title{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:1px;flex-shrink:0}
 #monaTabs{flex:1;display:flex;gap:6px;justify-content:flex-end;overflow-x:auto;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
@@ -244,24 +247,37 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   transition:transform .15s,background .15s;-webkit-transition:transform .15s,background .15s}
 #monaTabs button:active{transform:scale(.94)}
 #monaTabs button.on{background:var(--gold);border-color:var(--gold);color:#14100a;font-weight:700}
-#monaHead .mona-x{width:34px;height:34px;flex-shrink:0;border-radius:50%;font-size:15px;
+#monaHead .mona-x,#monaHead .mona-cfg{width:34px;height:34px;flex-shrink:0;border-radius:50%;font-size:15px;
   background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;cursor:pointer}
-#monaHead .mona-x:active{transform:scale(.9)}
-#monaWrap{position:relative;flex:1;min-height:0}
+#monaHead .mona-x:active,#monaHead .mona-cfg:active{transform:scale(.9)}
+#monaWrap{position:relative;flex:1;min-height:0;background:transparent}
 /* 用绝对定位撑满，不依赖父级 flex 计算 —— 真机 WebView 上 flex:1 偶发算成 0 高会整片白 */
 #monaFrame{position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;
-  border:0;display:block;background:#f5f7fb}
+  border:0;display:block;background:transparent}
 #monaLoading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;
-  background:#f5f7fb;color:#5a6270;font-size:15px;letter-spacing:.5px}
-/* 加载不出来时给个说法，别让用户对着白屏猜 */
+  background:transparent;color:#e9e9f2;font-size:15px;letter-spacing:.5px;
+  text-shadow:0 1px 4px rgba(0,0,0,.65);pointer-events:none}
+/* 连不上时给个说法，别让用户对着白屏猜 */
 #monaFail{position:absolute;inset:0;z-index:5;display:none;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;padding:28px;text-align:center;
-  background:#f5f7fb;color:#5a6270}
+  background:rgba(10,10,20,.78);color:#e9e9f2}
 #monaFail .mf-ico{font-size:38px}
-#monaFail .mf-msg{font-size:14px;line-height:1.7;color:#6b7280;max-width:300px}
+#monaFail .mf-msg{font-size:14px;line-height:1.7;color:#dcdce6;max-width:320px;white-space:pre-line}
+#monaFail .mf-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #monaFail button{background:#D4AF37;border:0;color:#14100a;font-weight:700;
   border-radius:14px;padding:11px 26px;font-size:15px;cursor:pointer}
+#monaFail button.ghost{background:rgba(255,255,255,.12);color:#fff;font-weight:400}
 #monaFail button:active{transform:scale(.95)}
+/* 改服务地址那一行（点 ⚙ 展开）：手机要连电脑就填电脑的局域网 IP */
+#monaAddrRow{display:none;flex-shrink:0;align-items:center;gap:8px;padding:8px 12px;
+  background:rgba(13,13,24,.72);border-bottom:1px solid rgba(255,255,255,.10)}
+#monaAddrRow input{flex:1;min-width:0;font-size:13px;padding:9px 10px;border-radius:10px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff;outline:none}
+#monaAddrRow button{flex:0 0 auto;font-size:13px;padding:9px 14px;border-radius:10px;border:0;
+  background:var(--gold);color:#14100a;font-weight:700;cursor:pointer}
+#monaAddrRow button:active{transform:scale(.95)}
+#monaAddrHint{display:none;flex-shrink:0;font-size:11px;line-height:1.6;color:rgba(255,255,255,.60);
+  padding:6px 12px 9px;background:rgba(13,13,24,.60)}
 /* ===== 流畅度：长列表只渲染看得见的那一段 ===== */
 .filter-item{content-visibility:auto;contain-intrinsic-size:auto 54px}
 .filter-group{contain:layout style}
@@ -473,7 +489,7 @@ nav button.active{color:var(--gold);background:transparent}
     <button class="bin-item" onclick="openDeviceModal();closeBin()">
       <span class="bin-ico">📱</span><span class="bin-txt">设备</span>
     </button>
-    <button class="bin-item" onclick="openMona('artifacts')">
+    <button class="bin-item" onclick="openMona('calculate')">
       <span class="bin-ico">🔮</span><span class="bin-txt">莫娜占卜铺</span>
     </button>
   </div>
@@ -5155,7 +5171,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 42;
+var APP_CODE = 43;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -5385,10 +5401,48 @@ function logOnline(force){
   logAdd("online");
 }
 
-/* ---------- 莫娜圣遗物计算器（嵌在收纳篮里的全屏 iframe） ----------
-   整份莫娜 dist 放在 assets/mona/，第一次点开才加载（避免启动时白等 7MB JS）。
+/* ---------- 莫娜圣遗物计算器（外接本机 / 局域网服务，iframe 全屏） ----------
+   v43：不再内置那份 27MB 的莫娜 dist，改成直连你本机跑起来的服务 ——
+   默认 http://localhost:8080/#/calculate，点顶栏 ⚙ 可以改地址（存在本地）。
+   ⚠️ 手机上 localhost 指的是手机自己，要连电脑必须填电脑的局域网 IP。
    ⚠️ 只负责「打开 / 关闭 / 切页」，绝不碰它的任何计算逻辑。 */
-var monaLoaded = false, monaCur = "", monaPushed = false, monaHooked = false;
+var MONA_DEF = "http://localhost:8080";
+var monaBase = MONA_DEF, monaLoaded = false, monaCur = "calculate", monaPushed = false, monaHooked = false;
+try{ monaBase = localStorage.getItem("yy_mona_base") || MONA_DEF; }catch(e){}
+function monaNorm(s){
+  s = (s || "").trim().replace(/\/+$/, "");
+  if(!s) return MONA_DEF;
+  if(!/^https?:\/\//i.test(s)) s = "http://" + s;   // 没写协议就按 http 补
+  return s;
+}
+/* 顶栏 ⚙：展开 / 收起「改服务地址」那一行 */
+function monaAddrToggle(on){
+  var r = document.getElementById("monaAddrRow");
+  var h = document.getElementById("monaAddrHint");
+  if(!r) return;
+  if(on === undefined || on === null) on = (r.style.display !== "flex");
+  r.style.display = on ? "flex" : "none";
+  if(h) h.style.display = on ? "block" : "none";
+  if(on){
+    var el = document.getElementById("monaAddrInput");
+    if(el){ el.value = monaBase; try{ el.focus(); el.select(); }catch(e){} }
+  }
+}
+function monaBaseSave(){
+  var el = document.getElementById("monaAddrInput");
+  monaBase = monaNorm(el ? el.value : "");
+  try{ localStorage.setItem("yy_mona_base", monaBase); }catch(e){}
+  monaAddrToggle(false);
+  monaHardReload();
+}
+/* 实在连不上时，交给系统浏览器打开，至少还能用 */
+function monaOpenBrowser(){
+  var u = monaBase + "/#/" + (monaCur || "calculate");
+  try{
+    if(window.AndroidApp && window.AndroidApp.nativeOpenUrl){ window.AndroidApp.nativeOpenUrl(u); return; }
+  }catch(e){}
+  try{ window.open(u, "_blank"); }catch(e){}
+}
 /* 莫娜的全部功能页。路由是它自己的，这里只做「入口」——计算逻辑一个字都没碰。
    这些路由都实测渲染正常（/playground 依赖被裁掉的编辑器，故不放入口）。 */
 var MONA_TABS = [
@@ -5416,10 +5470,9 @@ function monaRenderTabs(cur){
   var on = bar.querySelector("button.on");
   if(on && on.scrollIntoView) try{ on.scrollIntoView({ inline: "center", block: "nearest" }); }catch(e){}
 }
-/* 加载态：以前是等 iframe 的 load 事件才收起「正在打开」——
-   莫娜首屏会一次渲染上百张角色立绘，load 要等这些图全部下完才触发，
-   手机上就长时间卡在白屏。改成「只要页面里已经有内容就立刻显示」。 */
-var monaTimer = null, monaAutoRetried = false;
+/* 跨域 iframe 读不到里面的 DOM，v42 那套「内容探针」用不上了 ——
+   改成：load 事件一到就收起「正在连接」；15 秒还没动静就判定连不上，给个说法。 */
+var monaTimer = null, monaLoadOk = false;
 function monaHideLoading(){
   var ld = document.getElementById("monaLoading");
   if(ld) ld.style.display = "none";
@@ -5432,37 +5485,38 @@ function monaShowFail(msg){
   if(e) e.style.display = "flex";
   monaHideLoading();
 }
-function monaProbe(){
+function monaUrl(route){
   var f = document.getElementById("monaFrame");
-  if(!f) return false;
-  try{
-    var d = f.contentDocument;
-    if(!d) return false;
-    var a = d.getElementById("app");
-    if(a && (a.innerHTML || "").length > 200){ monaHideLoading(); return true; }
-    if(d.body && (d.body.innerHTML || "").length > 500){ monaHideLoading(); return true; }
-  }catch(e){}
-  return false;
+  if(!f) return;
+  monaLoadOk = false;
+  f.src = monaBase + "/#/" + route;
 }
-function monaStartProbe(){
+function monaHookLoad(f){
+  if(monaHooked) return;
+  monaHooked = true;
+  f.addEventListener("load", function(){
+    monaLoadOk = true;
+    monaHideLoading();
+    var fe = document.getElementById("monaFail");
+    if(fe) fe.style.display = "none";
+  });
+}
+function monaStartWatch(){
   if(monaTimer) clearInterval(monaTimer);
-  if(monaProbe()) return;
   var n = 0;
   monaTimer = setInterval(function(){
     n++;
-    if(monaProbe()) return;                 // 探针命中会自己清掉定时器
-    if(n === 40 && !monaAutoRetried){       // 10 秒还没内容：悄悄重载一次
-      monaAutoRetried = true;
-      try{ monaRetry(); }catch(e){}
-      return;
-    }
-    if(n > 100){                            // 25 秒还没内容：给个说法，别干等
+    if(monaLoadOk){ clearInterval(monaTimer); monaTimer = null; return; }
+    if(n * 250 >= 15000){                    // 15 秒还没动静，基本就是连不上
       clearInterval(monaTimer); monaTimer = null;
-      monaShowFail("计算器加载超时。可以点下面的按钮重试，或者退出重进一次。");
+      monaShowFail("连不上 " + monaBase + "\n\n"
+        + "1. 先确认电脑上莫娜服务已经跑起来了（默认 http://localhost:8080）；\n"
+        + "2. 手机上用的话别填 localhost —— 那是手机自己，要填电脑的局域网 IP，比如 192.168.1.5:8080；\n"
+        + "3. 电脑防火墙要放行这个端口。");
     }
   }, 250);
 }
-function monaRetry(){
+function monaHardReload(){
   var f = document.getElementById("monaFrame");
   var e = document.getElementById("monaFail");
   var ld = document.getElementById("monaLoading");
@@ -5470,45 +5524,14 @@ function monaRetry(){
   if(ld) ld.style.display = "flex";
   if(!f) return;
   monaLoaded = true;
-  monaUrl(monaCur || "artifacts");
-  monaStartProbe();
+  monaUrl(monaCur || "calculate");
+  monaStartWatch();
 }
-/* 带上版本号当缓存戳：APK 升级后 URL 变了，
-   免得 WebView 还拿着上一版缓存下来的 mona/index.html */
-function monaUrl(route){
-  var f = document.getElementById("monaFrame");
-  if(!f) return;
-  try{ f.src = "mona/index.html?_v=" + (window.APP_CODE || 0) + "#/" + route; }
-  catch(e){ f.src = "mona/index.html#/" + route; }
-}
-function monaHookLoad(f){
-  if(monaHooked) return;
-  monaHooked = true;
-  f.addEventListener("load", function(){
-    // 真的 load 了：收起加载态；至于里面有没有内容，交给探针兜底
-    if(monaProbe()) return;
-    monaHideLoading();
-    try{
-      var d = f.contentDocument;
-      if(!d || d.__yyHooked) return;
-      d.__yyHooked = 1;
-      // 莫娜里有 GitHub 等外链，在 iframe 里点了会变成空白页 —— 交给系统浏览器打开
-      d.addEventListener("click", function(e){
-        var t = e.target, a = null;
-        while(t && t.tagName !== "A"){ t = t.parentElement; if(!t) break; }
-        if(t && t.tagName === "A") a = t;
-        if(!a) return;
-        var h = a.getAttribute("href") || "";
-        if(!/^https?:/i.test(h)) return;          // #/xxx 是它自己的路由，别管
-        e.preventDefault();
-        if(window.AndroidApp && window.AndroidApp.nativeOpenUrl) window.AndroidApp.nativeOpenUrl(h);
-        else window.open(h, "_blank");
-      }, true);
-    }catch(e){}
-  });
-}
+function monaRetry(){ monaHardReload(); }
+/* 跨域 iframe 里没法注入 CSS，只能把壳子做透明；
+   莫娜自己页面如果 body 有底色，那部分还是它自己的颜色。 */
 function openMona(route){
-  route = route || "artifacts";
+  route = route || "calculate";
   var m = document.getElementById("monaModal");
   var f = document.getElementById("monaFrame");
   if(!m || !f) return;
@@ -5518,18 +5541,16 @@ function openMona(route){
     var ld = document.getElementById("monaLoading");
     if(ld) ld.style.display = "flex";
     monaHookLoad(f);
-    monaAutoRetried = false;
-    monaUrl(route);                                 // 首次：整份加载
+    monaUrl(route);
     monaLoaded = true; monaCur = route;
-    monaStartProbe();
+    monaStartWatch();
   } else if(monaCur !== route){
-    // 已经在里面了：只改 hash，让 Vue Router 内部跳，不用重新解析 7MB
+    // 已经连上了：只改 hash，让 Vue Router 内部跳，不用整页重载
     try{ f.contentWindow.location.hash = "/" + route; }
     catch(e){ monaUrl(route); }
     monaCur = route;
     var fe = document.getElementById("monaFail");
     if(fe) fe.style.display = "none";
-    monaStartProbe();
   }
   monaRenderTabs(route);
   // 返回键：压一条历史，返回时只关计算器，别把整个 APP 退掉
@@ -8607,16 +8628,26 @@ function closeDeviceModal(){
     <div id="monaHead">
       <span class="mh-title">🔮 莫娜占卜铺</span>
       <div id="monaTabs"></div>
+      <button class="mona-cfg" onclick="monaAddrToggle()" title="改服务地址">⚙</button>
       <button class="mona-x" onclick="closeMona()">✕</button>
     </div>
+    <div id="monaAddrRow">
+      <input id="monaAddrInput" type="text" placeholder="http://192.168.1.5:8080" onkeydown="if(event.key==='Enter')monaBaseSave()">
+      <button onclick="monaBaseSave()">保存并重连</button>
+    </div>
+    <div id="monaAddrHint">默认 http://localhost:8080。⚠️ 手机上 localhost 指的是手机自己 —— 要连电脑就填电脑的局域网 IP（cmd 里 ipconfig 看 IPv4），电脑也要放行 8080 端口。</div>
     <div id="monaWrap">
-      <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
+      <div id="monaLoading">🔮 正在连接莫娜服务…</div>
       <div id="monaFail">
         <div class="mf-ico">🔮</div>
-        <div class="mf-msg" id="monaFailMsg">计算器没能加载出来。可能是这台设备的浏览器内核有点旧，点下面的按钮重试一次。</div>
-        <button onclick="monaRetry()">重新加载</button>
+        <div class="mf-msg" id="monaFailMsg"></div>
+        <div class="mf-row">
+          <button onclick="monaRetry()">重新连接</button>
+          <button class="ghost" onclick="monaAddrToggle(true)">改地址</button>
+          <button class="ghost" onclick="monaOpenBrowser()">浏览器打开</button>
+        </div>
       </div>
-      <iframe id="monaFrame" src=""></iframe>
+      <iframe id="monaFrame" src="" allowtransparency="true" referrerpolicy="no-referrer"></iframe>
     </div>
   </div>
 </div>
