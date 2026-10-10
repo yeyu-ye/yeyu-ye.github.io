@@ -1,11 +1,11 @@
 {
-  "code": 43,
-  "ver": "v43",
-  "file": "yeyu-v43.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v43.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v43/yeyu-v43.apk",
-  "size": 9171975,
+  "code": 44,
+  "ver": "v44",
+  "file": "yeyu-v44.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v44.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v44/yeyu-v44.apk",
+  "size": 28748350,
   "force": true,
   "date": "2026-10-11",
-  "note": "莫娜改成直连本机服务：默认打开 http://localhost:8080/#/calculate，顶栏 ⚙ 可改地址（手机填电脑局域网 IP）；外壳整层透明；同时删掉了包里内置的 27MB 莫娜，APK 从 27.4MB 瘦到 9.2MB"
+  "note": "莫娜改成完整内置：整套计算器（含 122 张角色立绘、套装优化求解器）都装进 APP 里，断网也能打开、能计算、能添加圣遗物，数据存本机；不再是外接网页。顶栏 ⟳ 可重新加载，9 个功能标签（圣遗物/套装优化/计算/潜力/整队优化/角色/预设/UID/设置）都在。"
 }
