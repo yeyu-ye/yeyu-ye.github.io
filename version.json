@@ -1,11 +1,11 @@
 {
-  "code": 41,
-  "ver": "v41",
-  "file": "yeyu-v41.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v41.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v41/yeyu-v41.apk",
-  "size": 28723707,
+  "code": 42,
+  "ver": "v42",
+  "file": "yeyu-v42.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v42.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v42/yeyu-v42.apk",
+  "size": 28744254,
   "force": true,
-  "date": "2026-10-10",
-  "note": "补回 122 张角色立绘（之前角色页/计算页选人一片空白，就是缺这个）；外壳换成夜雨同款深色+金色顶栏，不再压住莫娜自己的顶栏；计算页的角色、BUFF、预设等全部功能入口照常可用"
+  "date": "2026-10-11",
+  "note": "修复莫娜计算器打不开/白屏：不再死等上百张角色立绘下完才显示，内容一出来就立刻呈现；加载不出来会给提示和重试按钮；顺带绕开 WebView 缓存的旧版本页面"
 }
