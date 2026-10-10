@@ -226,24 +226,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   max-width:none;width:100%;height:100%;max-height:none;border-radius:0;
   padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 14px);
 }
-/* ===== 莫娜圣遗物计算器（iframe 全屏嵌进收纳篮） ===== */
-#monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:#f5f7fb}
-#monaFrame{position:absolute;top:0;left:0;width:100%;height:100%;border:0;display:block;background:#f5f7fb}
-#monaBar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;right:10px;z-index:5;
-  display:flex;gap:6px;align-items:center;justify-content:flex-end}
-/* 功能多了就横向滑，别挤成一团 */
-#monaTabs{display:flex;gap:6px;flex:1;justify-content:flex-end;overflow-x:auto;
+/* ===== 莫娜圣遗物计算器（iframe 全屏嵌进收纳篮） =====
+   v41：外壳换成夜雨自己的深色+金色风格；顶部改成「占位」而不是浮层 ——
+   以前浮层压在莫娜自己的顶栏上，把它左上角的「全部功能」按钮挡住了，等于功能找不着。 */
+#monaModal .modal-box{padding:0;overflow:hidden;position:relative;background:#0a0a14;
+  display:flex;flex-direction:column;border:0}
+#monaHead{flex-shrink:0;display:flex;align-items:center;gap:8px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 9px;
+  background:#0d0d18;border-bottom:1px solid rgba(255,255,255,.10)}
+#monaHead .mh-title{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:1px;flex-shrink:0}
+#monaTabs{flex:1;display:flex;gap:6px;justify-content:flex-end;overflow-x:auto;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
 #monaTabs::-webkit-scrollbar{display:none}
-#monaBar button{
-  flex:0 0 auto;white-space:nowrap;
-  background:rgba(20,24,33,.82);color:#e6e9ef;border:1px solid rgba(255,255,255,.16);
-  border-radius:16px;padding:7px 13px;font-size:13px;cursor:pointer;
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-}
-#monaBar button:active{transform:scale(.94)}
-#monaBar button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
-#monaBar .mona-x{padding:7px 11px;font-weight:700}
+#monaTabs button{flex:0 0 auto;white-space:nowrap;font-size:13px;padding:6px 12px;border-radius:14px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  color:rgba(255,255,255,.72);cursor:pointer;
+  transition:transform .15s,background .15s;-webkit-transition:transform .15s,background .15s}
+#monaTabs button:active{transform:scale(.94)}
+#monaTabs button.on{background:var(--gold);border-color:var(--gold);color:#14100a;font-weight:700}
+#monaHead .mona-x{width:34px;height:34px;flex-shrink:0;border-radius:50%;font-size:15px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#fff;cursor:pointer}
+#monaHead .mona-x:active{transform:scale(.9)}
+#monaWrap{position:relative;flex:1;min-height:0}
+#monaFrame{width:100%;height:100%;border:0;display:block;background:#f5f7fb}
 #monaLoading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;
   background:#f5f7fb;color:#5a6270;font-size:15px;letter-spacing:.5px}
 /* ===== 流畅度：长列表只渲染看得见的那一段 ===== */
@@ -5139,7 +5144,7 @@ function renderMgrSection(){
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
 var APP_VER  = "v16";
-var APP_CODE = 40;
+var APP_CODE = 41;
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
@@ -8516,12 +8521,15 @@ function closeDeviceModal(){
 <!-- ===== 莫娜圣遗物计算器（iframe 全屏，第一次点开才加载） ===== -->
 <div class="modal-overlay fullscreen over-lock" id="monaModal" onclick="if(event.target===this)closeMona()">
   <div class="modal-box">
-    <div id="monaBar">
+    <div id="monaHead">
+      <span class="mh-title">🔮 莫娜占卜铺</span>
       <div id="monaTabs"></div>
       <button class="mona-x" onclick="closeMona()">✕</button>
     </div>
-    <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
-    <iframe id="monaFrame" src=""></iframe>
+    <div id="monaWrap">
+      <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
+      <iframe id="monaFrame" src=""></iframe>
+    </div>
   </div>
 </div>
 
