@@ -238,6 +238,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 #monaBar button:active{transform:scale(.94)}
 #monaBar button.on{background:#1f6feb;border-color:#1f6feb;color:#fff}
 #monaBar .mona-x{padding:7px 11px;font-weight:700}
+#monaLoading{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;
+  background:#f5f7fb;color:#5a6270;font-size:15px;letter-spacing:.5px}
 /* ===== 流畅度：长列表只渲染看得见的那一段 ===== */
 .filter-item{content-visibility:auto;contain-intrinsic-size:auto 54px}
 .filter-group{contain:layout style}
@@ -5367,7 +5369,32 @@ function logOnline(force){
 /* ---------- 莫娜圣遗物计算器（嵌在收纳篮里的全屏 iframe） ----------
    整份莫娜 dist 放在 assets/mona/，第一次点开才加载（避免启动时白等 7MB JS）。
    ⚠️ 只负责「打开 / 关闭 / 切页」，绝不碰它的任何计算逻辑。 */
-var monaLoaded = false, monaCur = "", monaPushed = false;
+var monaLoaded = false, monaCur = "", monaPushed = false, monaHooked = false;
+function monaHookLoad(f){
+  if(monaHooked) return;
+  monaHooked = true;
+  f.addEventListener("load", function(){
+    var ld = document.getElementById("monaLoading");
+    if(ld) ld.style.display = "none";
+    try{
+      var d = f.contentDocument;
+      if(!d || d.__yyHooked) return;
+      d.__yyHooked = 1;
+      // 莫娜里有 GitHub 等外链，在 iframe 里点了会变成空白页 —— 交给系统浏览器打开
+      d.addEventListener("click", function(e){
+        var t = e.target, a = null;
+        while(t && t.tagName !== "A"){ t = t.parentElement; if(!t) break; }
+        if(t && t.tagName === "A") a = t;
+        if(!a) return;
+        var h = a.getAttribute("href") || "";
+        if(!/^https?:/i.test(h)) return;          // #/xxx 是它自己的路由，别管
+        e.preventDefault();
+        if(window.AndroidApp && window.AndroidApp.nativeOpenUrl) window.AndroidApp.nativeOpenUrl(h);
+        else window.open(h, "_blank");
+      }, true);
+    }catch(e){}
+  });
+}
 function openMona(route){
   route = route || "artifacts";
   var m = document.getElementById("monaModal");
@@ -5376,6 +5403,9 @@ function openMona(route){
   closeBin();
   m.classList.add("show");
   if(!monaLoaded){
+    var ld = document.getElementById("monaLoading");
+    if(ld) ld.style.display = "flex";
+    monaHookLoad(f);
     f.src = "mona/index.html#/" + route;           // 首次：整份加载
     monaLoaded = true; monaCur = route;
   } else if(monaCur !== route){
@@ -8463,6 +8493,7 @@ function closeDeviceModal(){
       <button id="monaTabSet" onclick="openMona('best-set')">🔮 套装</button>
       <button class="mona-x" onclick="closeMona()">✕</button>
     </div>
+    <div id="monaLoading">🔮 正在打开圣遗物计算器…</div>
     <iframe id="monaFrame" src=""></iframe>
   </div>
 </div>
