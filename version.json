@@ -1,11 +1,11 @@
 {
-  "code": 48,
-  "ver": "v48",
-  "file": "yeyu-v48.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v48.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v48/yeyu-v48.apk",
-  "size": 28748350,
+  "code": 49,
+  "ver": "v49",
+  "file": "yeyu-v49.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v49.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v49/yeyu-v49.apk",
+  "size": 31468166,
   "force": true,
   "date": "2026-10-11",
-  "note": "v48：根据截图确认目标界面是「莫娜计算器 本机离线版 7.1.09」，回退内置版本并修复：1) 去掉入口 type=module，防止安卓 WebView 在 file:// 下白屏；2) 过滤 ResizeObserver loop 红条；3) 屏蔽自带的新版本提示弹窗（把版本号改为 7.1.99，避免每次都弹 7.1.10 更新）。默认打开「计算」页，保留圣遗物/UID数据/角色/套装/潜力/整队/预设/账号/设置入口。"
+  "note": "v49 修掉了「打开就白屏」的真正根因：计算器的求解核心是 WebAssembly，它在 file:// 下用 fetch 拉不到本地 wasm 文件，页面就一直卡在 Loading（你看到的就是一片空白）。现在两个 wasm 已直接打进包里并拦截 fetch 直接喂字节，计算页能真正跑起来。同时内置了一套初始圣遗物和套装，装好打开就有角色、武器、面板和伤害结果，不用先自己一件件添加圣遗物。"
 }
