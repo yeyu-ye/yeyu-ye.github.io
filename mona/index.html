@@ -4,6 +4,9 @@
   var lsOK = ok(function(){ localStorage.setItem('__y','1');
     var v = localStorage.getItem('__y'); localStorage.removeItem('__y'); return v === '1'; });
   if(!lsOK){
+    /* 自己这份 localStorage 用不了，先试试父窗口（夜雨主壳）那一份 ——
+       它是 APP 的主页面，存储是打通的（夜雨自己的设置就存在那儿）。
+       这样「添加圣遗物」的数据才不会关掉就没了。 */
     var prox = null;
     try{
       if(window.parent && window.parent !== window && window.parent.localStorage){
@@ -30,14 +33,27 @@
       }catch(e){}
     }
   }
-  /* 外链（米游社 / Github …）在壳里点了会变成一片空白 —— 交给系统浏览器 */
+  var idbOK = ok(function(){
+    if(typeof indexedDB === 'undefined' || !indexedDB) return false;
+    if(typeof indexedDB.open !== 'function') return false;
+    var r = indexedDB.open('__yprobe__', 1);
+    try{ indexedDB.deleteDatabase('__yprobe__'); }catch(e){}
+    return !!r;
+  });
+  if(!idbOK){
+    ['indexedDB','webkitIndexedDB','mozIndexedDB','msIndexedDB'].forEach(function(n){
+      try{ Object.defineProperty(window, n, {configurable:true, get:function(){ return undefined; }}); }catch(e){}
+    });
+  }
+  /* 外链（Github / 米游社 …）在壳里点了会变成一片空白 ——
+     拦下来交给系统浏览器。写在莫娜自己页面里，就不依赖父页面能不能读到 iframe。 */
   document.addEventListener('click', function(e){
     var t = e.target, a = null;
     while(t && t.tagName !== 'A'){ t = t.parentElement; if(!t) break; }
     if(t && t.tagName === 'A') a = t;
     if(!a) return;
     var h = a.getAttribute('href') || '';
-    if(!/^https?:/i.test(h)) return;
+    if(!/^https?:/i.test(h)) return;                 // #/xxx 是它自己的路由，别管
     e.preventDefault(); e.stopPropagation();
     try{
       var p = window.parent;
@@ -57,17 +73,72 @@
       b.textContent = t;
     }catch(e){}
   }
+  /* 预置一套圣遗物：装好就打开就能算，不用先自己一件件加。
+     只在本地还没有圣遗物数据时写入，用户自己加过就不动他的。 */
+  (function(){
+    try{
+      var raw = localStorage.getItem('artifacts');
+      if(raw){
+        try{
+          var o = JSON.parse(raw);
+          if(o && (o.flower || o.feather || o.sand || o.cup || o.head)) return;
+        }catch(e){}
+      }
+      var S = 'CrimsonWitchOfFlames';
+      var ID = { flower:900101, feather:900102, sand:900103, cup:900104, head:900105 };
+      localStorage.setItem('artifacts', JSON.stringify({
+        flower:  [{ id:ID.flower,  setName:S, position:'flower',  star:5, level:20, omit:false,
+                    mainTag:{ name:'lifeStatic', value:4780 },
+                    normalTags:[{name:'criticalDamage',value:0.077},{name:'critical',value:0.0389},
+                                {name:'attackPercentage',value:0.0575},{name:'elementalMastery',value:23}] }],
+        feather: [{ id:ID.feather, setName:S, position:'feather', star:5, level:20, omit:false,
+                    mainTag:{ name:'attackStatic', value:311 },
+                    normalTags:[{name:'criticalDamage',value:0.077},{name:'critical',value:0.0389},
+                                {name:'recharge',value:0.0645},{name:'attackStatic',value:18}] }],
+        sand:    [{ id:ID.sand,    setName:S, position:'sand',    star:5, level:20, omit:false,
+                    mainTag:{ name:'attackPercentage', value:0.466 },
+                    normalTags:[{name:'criticalDamage',value:0.077},{name:'critical',value:0.0389},
+                                {name:'elementalMastery',value:23},{name:'attackStatic',value:18}] }],
+        cup:     [{ id:ID.cup,     setName:S, position:'cup',     star:5, level:20, omit:false,
+                    mainTag:{ name:'fireBonus', value:0.466 },
+                    normalTags:[{name:'criticalDamage',value:0.077},{name:'critical',value:0.0389},
+                                {name:'attackPercentage',value:0.0575},{name:'attackStatic',value:18}] }],
+        head:    [{ id:ID.head,    setName:S, position:'head',    star:5, level:20, omit:false,
+                    mainTag:{ name:'criticalDamage', value:0.622 },
+                    normalTags:[{name:'critical',value:0.0389},{name:'attackPercentage',value:0.0575},
+                                {name:'elementalMastery',value:23},{name:'attackStatic',value:18}] }]
+      }));
+      /* 再把这五件收成一个套装 —— 计算页点「选择套装」就能整套穿上，
+         不用一件件手动挑。 */
+      try{
+        if(!localStorage.getItem('kumi2')){
+          localStorage.setItem('kumi2', JSON.stringify({
+            "0":  { id:0,  title:"默认收藏夹", dir:true, children:[900001] },
+            "1":  { id:1,  title:"游戏中导入", dir:true, children:[] },
+            "900001": { id:900001, title:"初始配装", dir:false,
+                        artifactIds:[ID.flower, ID.feather, ID.sand, ID.cup, ID.head] }
+          }));
+        }
+      }catch(e2){}
+    }catch(e){}
+  })();
+  function ignoreErr(m){ return /ResizeObserver loop|ResizeObserver Loop/.test(m || ''); }
   window.addEventListener('error', function(e){
-    banner('页面出错：' + ((e && e.message) || '未知错误'));
+    var m = (e && e.message) || '未知错误';
+    if(ignoreErr(m)) return;
+    banner('页面出错：' + m);
   });
   window.addEventListener('unhandledrejection', function(e){
-    var r = e && e.reason; banner('未处理的异常：' + ((r && r.message) || String(r)));
+    var r = e && e.reason;
+    var m = (r && r.message) || String(r);
+    if(ignoreErr(m)) return;
+    banner('未处理的异常：' + m);
   });
 })();
-</script><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,伤害计算器"><link rel="icon" href="./favicon.ico"><title>伤害计算器</title><style>.loading {
+</script><meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="keywords" content="原神,圣遗物,圣遗物搭配,圣遗物配装,自动配装,莫娜占卜铺"><link rel="icon" href="./favicon.ico"><title>莫娜占卜铺</title><style>.loading {
             height: 100vh;
             width: 100vw;
             display: flex;
             align-items: center;
             justify-content: center;
-        }</style><script defer="defer" src="./js/chunk-vendors.3f70930d.js"></script><script defer="defer" src="./js/app.3828ec8b.js"></script><link href="./css/chunk-vendors.608950d3.css" rel="stylesheet"><link href="./css/app.83a2ed21.css" rel="stylesheet"></head><body><noscript><strong>好家伙，这年头还有不开启javascript的人吗</strong></noscript><div id="app"><div class="loading" style="display: flex; flex-direction: column; align-items: center"><p style="margin-top: 12px">正在加载</p></div></div></body></html>
+        }</style><script defer="defer" src="./wasm-inline.js"></script><script defer="defer" src="./js/chunk-vendors.f7a2064f.js"></script><script defer="defer" src="./js/app.9857be0c.js"></script><link href="./css/chunk-vendors.fb1a9135.css" rel="stylesheet"><link href="./css/app.f15ebb96.css" rel="stylesheet"></head><body><noscript><strong>好家伙，这年头还有不开启javascript的人吗</strong></noscript><div id="app"><div class="loading" style="display: flex; flex-direction: column; align-items: center"><p style="margin-top: 12px">莫娜正在仰望星空，请稍安勿躁（狗头）</p></div></div></body></html>
