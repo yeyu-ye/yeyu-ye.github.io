@@ -5483,13 +5483,13 @@ function monaStartProbe(){
        loading 只是盖在 iframe 上的一层，收掉就能看见它自己的
        「正在加载」提示 —— 比我们干等一张白图强得多。 */
     if(n === 32 && !monaLoadOk && !monaContentOk) monaHideLoading();
-    if(n === 40 && !monaAutoRetried && !monaLoadOk && !monaContentOk){
-      monaAutoRetried = true;                           // 10 秒真没动静：悄悄重载一次
+    if(n === 120 && !monaAutoRetried && !monaLoadOk && !monaContentOk){
+      monaAutoRetried = true;                           // 30 秒真没动静：悄悄重载一次
       clearInterval(monaTimer); monaTimer = null;
       try{ monaRetry(); }catch(e){}
       return;
     }
-    if(n > 140 && !monaLoadOk && !monaContentOk){       // 35 秒：给个说法，别干等
+    if(n > 240 && !monaLoadOk && !monaContentOk){       // 60 秒：给个说法，别干等
       clearInterval(monaTimer); monaTimer = null;
       monaShowFail("计算器没能加载出来。\n\n可以点下面的按钮重试一次，或者完全退出 APP 再进一次。");
     }
