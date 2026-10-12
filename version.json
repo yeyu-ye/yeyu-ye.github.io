@@ -1,11 +1,11 @@
 {
-  "code": 49,
-  "ver": "v49",
-  "file": "yeyu-v49.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v49.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v49/yeyu-v49.apk",
+  "code": 50,
+  "ver": "v50",
+  "file": "yeyu-v50.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v50.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v50/yeyu-v50.apk",
   "size": 31468166,
   "force": true,
-  "date": "2026-10-11",
-  "note": "v49 修掉了「打开就白屏」的真正根因：计算器的求解核心是 WebAssembly，它在 file:// 下用 fetch 拉不到本地 wasm 文件，页面就一直卡在 Loading（你看到的就是一片空白）。现在两个 wasm 已直接打进包里并拦截 fetch 直接喂字节，计算页能真正跑起来。同时内置了一套初始圣遗物和套装，装好打开就有角色、武器、面板和伤害结果，不用先自己一件件添加圣遗物。"
+  "date": "2026-10-12",
+  "note": "修掉「新装的设备后台检测不到、没法授权」：APK 里没有内置令牌（防 GitHub 扫描吊销），每次启动要去线上拉令牌池，而以前只在启动时试一次，失败就彻底不再重试——没有令牌就上报不上去，后台自然永远看不到这台设备。现在改成三条取令牌的通道（官网 / jsDelivr / 公开 Gist），并且拿不到就按 10、20、40、80、160 秒一直重试，拿到后立刻补一次上报把自己登记进后台；新设备登记失败也会递增重试。后台页面同样加了 Gist 取令牌通道，避免它自己读不出设备列表。"
 }
