@@ -5170,7 +5170,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 49;
+var APP_CODE = 50;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -7525,7 +7525,8 @@ function gistEnabled(){ return !!(GIST_ID && gistToken()); }
 function fetchTokPool(cb){
   var i = 0;
   function next(){
-    if(i >= TOK_URLS.length){ if(cb) cb(false); return; }
+    // v50：两个静态源都拿不到（Pages / CDN 被墙）→ 再试公开 Gist（只需能连 api.github.com）
+    if(i >= TOK_URLS.length){ fetchTokFromGist(function(ok){ if(cb) cb(ok); }); return; }
     var base = TOK_URLS[i++];
     var u = base + (base.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
     var fin = false;
@@ -7556,6 +7557,75 @@ function fetchTokPool(cb){
     setTimeout(fail, 8000);
   }
   next();
+}
+
+/* v50：第三条自举通道 —— 公开 Gist 里也存了一份令牌池（同样是 XOR+base64 混淆）。
+   Gist 是公开的，不带令牌也能 GET，只要手机能连 api.github.com 就能拿到令牌，
+   不再完全依赖 yeyu-ye.github.io / jsDelivr（这两个在国内经常被墙/超时）。
+   注意：这里故意不带 Authorization —— 就是要在「一枚可用令牌都没有」时也能用。 */
+function fetchTokFromGist(cb){
+  var fin = false;
+  function done(ok){ if(fin) return; fin = true; if(cb) cb(ok); }
+  try{
+    fetch("https://api.github.com/gists/" + GIST_ID + "?_t=" + Date.now(), { method: "GET", cache: "no-store" })
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(g){
+        var txt = g && g.files && g.files[GIST_FILE] && g.files[GIST_FILE].content;
+        if(!txt) throw 0;
+        var d = JSON.parse(txt);
+        var arr = d && d.tok;
+        if(!arr || !arr.length) throw 0;
+        var out = [];
+        for(var i = 0; i < arr.length; i++){
+          var t = deobfTok(arr[i]);
+          if(t && /^ghp_/.test(t)) out.push(t);
+        }
+        if(!out.length) throw 0;
+        tokDL = out; tokDLAt = Date.now(); tokTried = {};
+        if(!curToken) curToken = out[0];      // 必须立刻赋值，gistEnabled() 只看 curToken
+        done(true);
+      })
+      .catch(function(){ done(false); });
+  }catch(e){ done(false); }
+  setTimeout(function(){ done(false); }, 10000);
+}
+
+/* v50：令牌没拿到就绝不躺平 —— 没有令牌 = 上报不上去 = 后台永远看不到这台设备，
+   管理员自然点不了「允许」。以前只在启动时拉一次，失败就彻底放弃
+   （pollAndEnforce 里 !gistEnabled() 直接 return，之后再也没人重试）。
+   现在按 10/20/40/80/160 秒递增重试，拿到令牌立刻补一次完整上报把自己写进后台。 */
+var tokRetryN = 0, tokRetryTimer = null, tokRetryBusy = false;
+var tokBootTried = false;      // 启动那次「等令牌池」只做一次，之后交给 ensureToken 持续重试
+var TOK_WAITS = [10000, 20000, 40000, 80000, 160000];
+function ensureToken(after){
+  if(gistEnabled()){ tokRetryN = 0; if(after) after(true); return; }
+  if(tokRetryBusy) return;
+  tokRetryBusy = true;
+  var wait = TOK_WAITS[Math.min(tokRetryN, TOK_WAITS.length - 1)];
+  tokRetryN++;
+  clearTimeout(tokRetryTimer);
+  tokRetryTimer = setTimeout(function(){
+    if(gistEnabled()){ tokRetryBusy = false; if(after) after(true); return; }
+    fetchTokPool(function(){
+      tokRetryBusy = false;
+      if(gistEnabled()){
+        tokRetryN = 0;
+        // 令牌刚到手：立刻完整上报一次，把自己登记进后台设备表
+        try{
+          gistSync(function(st){
+            if(!st){ syncDiag(false, "服务器无响应"); return; }
+            gistRegistered = true;
+            syncDiag(true, "");
+            try{ deviceApply(st); }catch(e){}
+          });
+        }catch(e){}
+        if(after) after(true);
+      } else {
+        syncDiag(false, "连不上服务器（第 " + tokRetryN + " 次重试）");
+        ensureToken(after);
+      }
+    });
+  }, wait);
 }
 
 // 换下一枚可用令牌（401 时调用）
@@ -7608,6 +7678,10 @@ function srvDown(ms){ var t = srvOkAt(); return !t || (Date.now() - t) > (ms || 
    表现就是：后台点允许 → 手机进去了 → 过几秒又被弹出禁用页 → 再点允许 → 再弹 → 无限循环。
    所以凡是「读-改-写」的地方，看到 gistStale=true 就【只能读，不能写】。 */
 var gistStale = false;
+/* v50：读超时做成可变的。默认 9 秒；新设备首次登记进后台时临时放宽到 25 秒。
+   国内访问 api.github.com 经常要十几秒，9 秒一超时就会走「只读不写」，
+   新设备就永远登记不上（老设备有本地快照不受影响，所以只有新用户中招）。 */
+var gistReadTimeoutMs = 9000;
 function gistRead(cb, _retried){
   if(!gistEnabled()){ try{ cb(null, "未配置服务器"); }catch(e){} return; }
   _grQ.push(cb);
@@ -7661,7 +7735,7 @@ function gistRead(cb, _retried){
         fin(null, (e && e.message) ? e.message : "网络不可达");
       });
   }catch(e){ gistStale = true; fin(gistDataCache || null, "请求异常"); }
-  setTimeout(function(){ if(_grBusy){ gistStale = true; fin(gistDataCache || null, "连接超时"); } }, 9000);
+  setTimeout(function(){ if(_grBusy){ gistStale = true; fin(gistDataCache || null, "连接超时"); } }, gistReadTimeoutMs);
 }
 /* ===== 本地快照：下次打开 APP 不用等网络，先用上次的消息秒开 ===== */
 var SNAP_KEY = "yy_gist_snap";
@@ -7760,6 +7834,41 @@ function gistWrite(data, cb, retry, _rotated){
   }catch(e){ _retry(); }
 }
 
+/* v50：新设备「登记进后台」的重试机制 —— 修的就是「新下载的 APK 后台检测不到、没法授权」。
+   老设备在服务器里已经有记录，网络再差也能靠本地快照继续用；
+   而【新设备必须成功读一次服务器才能把自己写进去】，读到一半超时 → 按 v37 的规矩
+   「只允许读、不允许写」 → 它就永远登不上后台 → 管理员在后台根本看不到这台设备，
+   自然也就点不了「允许」。表现就是：用户装了新 APK，一直卡在等待授权，后台却空空如也。
+   现在登记失败后按 15s / 30s / 60s / 120s / 300s 递增重试（比干等 10 分钟心跳快得多），
+   且重试时把读超时放宽到 25 秒。 */
+var gistRegistered = false;            // 这台设备是否已在服务器 dev 表里有记录
+var regRetryN = 0, regRetryTimer = null;
+var REG_WAITS = [15000, 30000, 60000, 120000, 300000];
+function deviceRegisterRetry(){
+  if(gistRegistered || regRetryN >= REG_WAITS.length) return;
+  var wait = REG_WAITS[regRetryN];
+  regRetryN++;
+  clearTimeout(regRetryTimer);
+  regRetryTimer = setTimeout(function(){
+    if(gistRegistered) return;
+    var oldTmo = gistReadTimeoutMs;
+    gistReadTimeoutMs = 25000;                 // 国内连 GitHub 慢，登记时给足时间
+    try{
+      gistSync(function(st){
+        gistReadTimeoutMs = oldTmo;
+        if(st){
+          gistRegistered = true; regRetryN = 0;
+          syncDiag(true, "");
+          try{ deviceApply(st); }catch(e){}
+        } else {
+          syncDiag(false, "登记后台未成功（已重试 " + regRetryN + " 次）");
+          deviceRegisterRetry();
+        }
+      });
+    }catch(e){ gistReadTimeoutMs = oldTmo; deviceRegisterRetry(); }
+  }, wait);
+}
+
 // 上报本机信息 + 取回自己在后台的状态（active / pending / blocked）
 function gistSync(cb){
   var d = deviceInfoCache || collectDeviceInfo();
@@ -7779,6 +7888,7 @@ function gistSync(cb){
     if(!data.cfg || typeof data.cfg !== "object") data.cfg = {};
     var mode = data.cfg.mode === "manual" ? "manual" : "open";
     var me = data.dev[id];
+    if(me) gistRegistered = true;      // v50：服务器里已经有这台设备 = 后台看得到它
     var changed = false;
     cfgCache = data.cfg;
     // 登录过的创始人 / 管理员 → 标记在线（后台管理员频道顶部会显示）
@@ -7805,7 +7915,7 @@ function gistSync(cb){
       };
       data.dev[id] = me;
       data.cfg.mode = mode;
-      gistWrite(data, function(){ cb(me.status); });
+      gistWrite(data, function(ok){ if(ok) gistRegistered = true; cb(me.status); });
       return;
     }
 
@@ -7958,7 +8068,8 @@ function pollRetune(){
   statusPollTimer = setInterval(pollAndEnforce, want);
 }
 function pollAndEnforce(){
-  if(!gistEnabled()) return;
+  // v50：没有令牌就一辈子不上报 → 后台永远看不到这台设备。转入持续重试，别躺着等死。
+  if(!gistEnabled()){ ensureToken(); return; }
   pollRetune();                        // 配额吃紧时自动把节奏放慢，绝不撞 403
   // 被限流了就自动降到 1 分钟一次，等配额恢复（不然会一直失败）
   if(gistSlow && POLL_MS < 60000){
@@ -8330,13 +8441,20 @@ function deviceRecheck(manual){
   // 1) 在线后台（Gist）：最优先，保证后台踢出一定生效
   //    注意：即使本机点过「关闭授权锁」也要先上报服务器，否则后台永远看不到这台设备，
   //    管理员也就永远踢不掉 —— 关锁只能"防自锁"，不能"抗封禁"。
-  if(!gistEnabled() && !tokFetching){
-    // 包内没有内置令牌（防 GitHub 扫描吊销）→ 先等线上令牌池拉下来再判定，最多等 6 秒
+  if(!gistEnabled() && !tokFetching && (!tokBootTried || manual)){
+    // 包内没有内置令牌（防 GitHub 扫描吊销）→ 先等线上令牌池拉下来再判定
+    // v50：原来只等 6 秒，国内连 GitHub Pages / jsDelivr 经常不够，放宽到 10 秒；
+    //      而且失败后必须转入 ensureToken() 持续重试，否则这台设备永远登不上后台。
+    tokBootTried = true;
     tokFetching = true;
     var tokDone = false;
-    function tokFin(){ if(tokDone) return; tokDone = true; tokFetching = false; deviceRecheck(manual); }
+    function tokFin(){
+      if(tokDone) return; tokDone = true; tokFetching = false;
+      if(!gistEnabled()) ensureToken();
+      deviceRecheck(manual);
+    }
     try{ fetchTokPool(tokFin); }catch(e){ tokFin(); }
-    setTimeout(tokFin, 6000);
+    setTimeout(tokFin, 10000);
     return;
   }
   if(gistEnabled()){
@@ -8365,6 +8483,9 @@ function deviceRecheck(manual){
       }
       // 服务器查不到自己 / 无响应 → 本机关了锁就放行（防自锁）
       if(licLockOff()){ deviceApply("active"); return; }
+      // v50：服务器没回应 = 这台新设备还没登记进后台，管理员在后台根本看不到它，
+      // 自然也点不了「允许」。排一次递增重试，别让用户一直卡在等待授权而后台空空如也。
+      if(!gistRegistered) deviceRegisterRetry();
       deviceOfflineFallback(manual);
     });
     return;
