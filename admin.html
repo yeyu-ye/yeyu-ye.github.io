@@ -1340,10 +1340,36 @@ function deobfTok(b64){
     return out;
   }catch(e){ return ""; }
 }
+/* v50：第三条自举通道 —— 公开 Gist 里也存了一份令牌池（同样是 XOR+base64 混淆）。
+   Gist 是公开的，不带令牌也能 GET：只要能连 api.github.com 就能拿到令牌，
+   不再完全依赖 yeyu-ye.github.io / jsDelivr（国内这两个经常被墙）。
+   以前两个源都挂了 → 后台一张设备都读不出来，表现就是「新设备后台检测不到」。 */
+function fetchTokFromGist(cb){
+  var fin = false;
+  function done(ok){ if(fin) return; fin = true; if(cb) cb(ok); }
+  try{
+    var gid = (typeof gistId !== "undefined" && gistId) ? gistId : (typeof DEFAULT_GIST !== "undefined" ? DEFAULT_GIST : "");
+    if(!gid){ done(false); return; }
+    fetch("https://api.github.com/gists/" + gid + "?_t=" + Date.now(), { method:"GET", cache:"no-store" })
+      .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(g){
+        var f = g && g.files && (g.files["devices.json"] || g.files[Object.keys(g.files)[0]]);
+        var txt = f && f.content; if(!txt) throw 0;
+        var d = JSON.parse(txt), arr = d && d.tok;
+        if(!arr || !arr.length) throw 0;
+        var out = [];
+        for(var i=0;i<arr.length;i++){ var t = deobfTok(arr[i]); if(t && /^ghp_/.test(t)) out.push(t); }
+        if(!out.length) throw 0;
+        tokDL = out; tokTried = {};
+        done(true);
+      }).catch(function(){ done(false); });
+  }catch(e){ done(false); }
+  setTimeout(function(){ done(false); }, 10000);
+}
 function fetchTokPool(cb){
   var i = 0;
   function next(){
-    if(i >= TOK_URLS.length){ if(cb) cb(false); return; }
+    if(i >= TOK_URLS.length){ fetchTokFromGist(function(ok){ if(cb) cb(ok); }); return; }
     var u = TOK_URLS[i++] + "?_t=" + Date.now();
     var fin = false;
     function fail(){ if(fin) return; fin = true; next(); }
