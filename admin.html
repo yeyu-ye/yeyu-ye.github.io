@@ -498,64 +498,55 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="calcCard" style="display:none">
-    <h2>🧮 计算器数据（同步所有设备）</h2>
+    <h2>🧮 计算器数据管理（同步所有设备）</h2>
     <div class="muted" style="margin-bottom:10px">
-      这里添加的数值会按位置下发到<b style="color:#e6edf3">所有手机</b>的莫娜计算器里：
-      打开 APP →「☰ 收纳篮 → 🔮 莫娜计算器 → 📿 圣遗物 / ⚔️ 计算」就能看到，并参与伤害计算。
-      百分比、生命、精通、暴击、充能、元素伤害都能加。保存后每台设备联网时自动同步一次。
+      在这里直接添加数值：<b style="color:#e6edf3">百分比</b>、<b style="color:#e6edf3">生命</b>、<b style="color:#e6edf3">精通</b>，
+      并指定对应的位置（花 / 毛 / 沙 / 杯 / 头）。保存后会下发到<b style="color:#e6edf3">所有手机</b>的
+      APP「设置 → 数据管理」里，直接参与圣遗物组合计算。<br>
+      后台删掉的数值，手机上也会跟着删掉；用户自己在手机上加的数值不会被清掉。
     </div>
     <div id="calcState" class="muted" style="margin-bottom:8px">—</div>
 
     <div class="seclab">添加数值</div>
     <div class="sec">
       <div>
+        <label>类型</label>
+        <select id="calcType" onchange="calcOnTypeChange()">
+          <option value="percent">百分比（46.6 就是 46.6%）</option>
+          <option value="life">生命（固定值，如 4780）</option>
+          <option value="mastery">精通（如 187）</option>
+        </select>
+      </div>
+      <div>
         <label>位置</label>
-        <select id="calcPos">
-          <option value="flower">🌸 花</option>
-          <option value="feather">🪶 毛</option>
-          <option value="sand">⏳ 沙</option>
-          <option value="cup">🍷 杯</option>
-          <option value="head">👑 头</option>
+        <select id="calcPart">
+          <option value="花">🌸 花</option>
+          <option value="毛">🪶 毛</option>
+          <option value="沙">⏳ 沙</option>
+          <option value="杯">🍷 杯</option>
+          <option value="头">👑 头</option>
         </select>
       </div>
       <div>
-        <label>主属性 / 副词条</label>
-        <select id="calcKind">
-          <option value="main">主属性（一个位置一条）</option>
-          <option value="sub">副词条（一个位置最多 4 条）</option>
-        </select>
+        <label>数值</label>
+        <input type="number" id="calcVal" step="0.01" placeholder="46.6">
       </div>
       <div>
-        <label>属性</label>
-        <select id="calcTag"></select>
-      </div>
-      <div>
-        <label>数值（百分比填 46.6 = 46.6%）</label>
-        <input type="number" id="calcVal" step="0.1" placeholder="46.6">
-      </div>
-      <div>
-        <label>星级 / 等级</label>
-        <div class="bar">
-          <select id="calcStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select>
-          <input type="number" id="calcLevel" value="20" min="0" max="20" style="width:72px">
-        </div>
-      </div>
-      <div>
-        <label>套装</label>
-        <select id="calcSet"></select>
+        <label>星级（生命用得上，其它类型随便）</label>
+        <select id="calcStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select>
       </div>
     </div>
     <div class="bar" style="margin-bottom:10px">
       <button class="p" onclick="calcAdd()">➕ 添加</button>
-      <button class="sm" onclick="calcDemo()">🎁 填入示例五件套</button>
+      <button class="sm" onclick="calcDemo()">🎁 填入示例数值</button>
       <button class="sm" onclick="calcPushNow()">📡 立即下发一次</button>
       <span style="flex:1"></span>
       <button class="sm danger" onclick="calcClear()">🗑 清空列表</button>
     </div>
     <div id="calcList" style="max-height:340px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
     <div class="muted" style="margin-top:8px">
-      同一个位置：1 条主属性 + 最多 4 条副词条。没填主属性的位置会自动用默认主属性补齐，保证能算。
-      下发按位置覆盖设备上的圣遗物（设备上原有的会自动备份一份）。
+      同一个「类型 + 位置 + 星级」只留一条（重复添加会自动覆盖数值）。
+      每台设备联网时自动同步一次；想马上生效就点「📡 立即下发一次」。
     </div>
   </div>
 
@@ -1075,94 +1066,64 @@ function clearNotice(){
    kind = main（主属性，一个位置一条）/ sub（副词条，最多 4 条）
    tag/value 用莫娜自己的键名和单位：百分比类存小数（0.466 = 46.6%），固定值存整数。
    手机端每次联网读到 rev 变了就重新生成本地圣遗物 → 打开计算器就能算。 */
-var CALC_POS = [
-  { k: "flower",  n: "🌸 花" },
-  { k: "feather", n: "🪶 毛" },
-  { k: "sand",    n: "⏳ 沙" },
-  { k: "cup",     n: "🍷 杯" },
-  { k: "head",    n: "👑 头" }
+var CALC_PARTS = [
+  { k: "花", n: "🌸 花" },
+  { k: "毛", n: "🪶 毛" },
+  { k: "沙", n: "⏳ 沙" },
+  { k: "杯", n: "🍷 杯" },
+  { k: "头", n: "👑 头" }
 ];
-var CALC_TAGS = [
-  { k: "lifePercentage",    n: "生命 %",            p: 1 },
-  { k: "attackPercentage",  n: "攻击 %",            p: 1 },
-  { k: "defensePercentage", n: "防御 %",            p: 1 },
-  { k: "critical",          n: "暴击率 %",          p: 1 },
-  { k: "criticalDamage",    n: "暴击伤害 %",        p: 1 },
-  { k: "recharge",          n: "充能效率 %",        p: 1 },
-  { k: "cureEffect",        n: "治疗加成 %",        p: 1 },
-  { k: "fireBonus",         n: "火元素伤害加成 %",  p: 1 },
-  { k: "waterBonus",        n: "水元素伤害加成 %",  p: 1 },
-  { k: "thunderBonus",      n: "雷元素伤害加成 %",  p: 1 },
-  { k: "iceBonus",          n: "冰元素伤害加成 %",  p: 1 },
-  { k: "windBonus",         n: "风元素伤害加成 %",  p: 1 },
-  { k: "rockBonus",         n: "岩元素伤害加成 %",  p: 1 },
-  { k: "dendroBonus",       n: "草元素伤害加成 %",  p: 1 },
-  { k: "physicalBonus",     n: "物理伤害加成 %",    p: 1 },
-  { k: "lifeStatic",        n: "生命（固定值）",    p: 0 },
-  { k: "attackStatic",      n: "攻击（固定值）",    p: 0 },
-  { k: "defenseStatic",     n: "防御（固定值）",    p: 0 },
-  { k: "elementalMastery",  n: "元素精通",          p: 0 }
+var CALC_TYPES = [
+  { k: "percent", n: "百分比", unit: "%", step: "0.01", ph: "46.6" },
+  { k: "life",    n: "生命",   unit: "",   step: "1",    ph: "4780" },
+  { k: "mastery", n: "精通",   unit: "",   step: "1",    ph: "187" }
 ];
-var CALC_SETS = [
-  { k: "CrimsonWitchOfFlames",     n: "炽烈的炎之魔女" },
-  { k: "GladiatorsFinale",         n: "角斗士的终幕礼" },
-  { k: "WanderersTroupe",          n: "流浪大地的乐团" },
-  { k: "NoblesseOblige",           n: "昔日宗室之仪" },
-  { k: "ViridescentVenerer",       n: "翠绿之影" },
-  { k: "MaidenBeloved",            n: "被怜爱的少女" },
-  { k: "ThunderingFury",           n: "如雷的盛怒" },
-  { k: "BlizzardStrayer",          n: "冰风迷途的勇士" },
-  { k: "EmblemOfSeveredFate",      n: "绝缘之旗印" },
-  { k: "ShimenawasReminiscence",   n: "追忆之注连" },
-  { k: "HuskOfOpulentDreams",      n: "华馆梦醒形骸记" },
-  { k: "DeepwoodMemories",         n: "深林的记忆" },
-  { k: "GildedDreams",             n: "乐园遗落之花" },
-  { k: "DesertPavilionChronicle",  n: "沙上楼阁史话" },
-  { k: "MarechausseeHunter",       n: "逐影猎人" },
-  { k: "VermillionHereafter",      n: "辰砂往生录" },
-  { k: "EchoesOfAnOffering",       n: "来歆余响" },
-  { k: "Instructor",               n: "教官" },
-  { k: "Berserker",                n: "战狂" }
-];
-function calcTagInfo(k){
-  for(var i = 0; i < CALC_TAGS.length; i++) if(CALC_TAGS[i].k === k) return CALC_TAGS[i];
-  return { k: k, n: String(k || "?"), p: 0 };
+function calcTypeInfo(k){
+  for(var i = 0; i < CALC_TYPES.length; i++) if(CALC_TYPES[i].k === k) return CALC_TYPES[i];
+  return CALC_TYPES[0];
 }
-function calcPosName(k){
-  for(var i = 0; i < CALC_POS.length; i++) if(CALC_POS[i].k === k) return CALC_POS[i].n;
+function calcPartName(k){
+  for(var i = 0; i < CALC_PARTS.length; i++) if(CALC_PARTS[i].k === k) return CALC_PARTS[i].n;
   return String(k || "?");
-}
-function calcSetName(k){
-  for(var i = 0; i < CALC_SETS.length; i++) if(CALC_SETS[i].k === k) return CALC_SETS[i].n;
-  return k ? String(k) : "—";
 }
 function calcNewId(){ return "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function calcEnsure(){
   if(!data.calc || typeof data.calc !== "object") data.calc = { rev: 0, ts: 0, items: [] };
   if(!Array.isArray(data.calc.items)) data.calc.items = [];
+  /* 上一版后台存的是莫娜属性键，翻成新格式，别让老数据变成废数据 */
+  var TAG2TYPE = { lifeStatic:"life", attackStatic:"life", defenseStatic:"life", elementalMastery:"mastery" };
+  var POS2PART = { flower:"花", feather:"毛", sand:"沙", cup:"杯", head:"头" };
+  for(var i = 0; i < data.calc.items.length; i++){
+    var it = data.calc.items[i];
+    if(!it || (it.type && it.part)) continue;
+    var t = TAG2TYPE[String(it.tag || "")] || "percent";
+    it.type = t;
+    it.part = POS2PART[String(it.pos || "")] || it.part || "花";
+    if(t === "percent" && typeof it.value === "number" && it.value > 0 && it.value < 1){
+      it.value = Math.round(it.value * 1e6) / 1e4;        // 0.466 → 46.6
+    }
+  }
   return data.calc;
 }
 function calcInitSelects(){
-  var t = $("calcTag"), s = $("calcSet");
+  var t = $("calcType"), v = $("calcVal");
   if(t){
-    var h = '<optgroup label="百分比（填 46.6 就是 46.6%）">';
-    for(var i = 0; i < CALC_TAGS.length; i++){ if(CALC_TAGS[i].p) h += '<option value="' + CALC_TAGS[i].k + '">' + CALC_TAGS[i].n + '</option>'; }
-    h += '</optgroup><optgroup label="固定数值（直接填数字）">';
-    for(var j = 0; j < CALC_TAGS.length; j++){ if(!CALC_TAGS[j].p) h += '<option value="' + CALC_TAGS[j].k + '">' + CALC_TAGS[j].n + '</option>'; }
-    h += '</optgroup>';
+    var h = "";
+    for(var i = 0; i < CALC_TYPES.length; i++) h += '<option value="' + CALC_TYPES[i].k + '">' + CALC_TYPES[i].n + '</option>';
     t.innerHTML = h;
   }
-  if(s){
-    var g = "";
-    for(var m = 0; m < CALC_SETS.length; m++) g += '<option value="' + CALC_SETS[m].k + '">' + CALC_SETS[m].n + '</option>';
-    s.innerHTML = g;
+  if(v){
+    try{
+      var info = calcTypeInfo(t ? t.value : "percent");
+      v.step = info.step; v.placeholder = info.ph;
+    }catch(e){}
   }
 }
-/* 列表里显示的数值：百分比还原成 46.6 这种写法，固定值取整 */
-function calcShowVal(it){
-  var info = calcTagInfo(it.tag), v = Number(it.value) || 0;
-  if(info.p) return String(parseFloat((v * 100).toFixed(2)));
-  return String(Math.round(v));
+function calcOnTypeChange(){
+  try{
+    var info = calcTypeInfo($("calcType").value), v = $("calcVal");
+    v.step = info.step; v.placeholder = info.ph;
+  }catch(e){}
 }
 function calcRender(){
   var box = $("calcList"); if(!box) return;
@@ -1171,26 +1132,30 @@ function calcRender(){
   if(st) st.textContent = "共 " + c.items.length + " 条 · 版本 rev " + (c.rev || 0)
         + (c.ts ? " · 最近保存 " + new Date(c.ts).toLocaleString("zh-CN") : " · 还没保存过");
   if(!c.items.length){
-    box.innerHTML = '<div class="muted">还没有添加任何数值。上面选好「位置 / 属性 / 数值」后点「➕ 添加」。</div>';
+    box.innerHTML = '<div class="muted">还没有添加任何数值。上面选好「类型 / 位置 / 数值」后点「➕ 添加」。</div>';
     return;
   }
   var h = '<table style="width:100%;border-collapse:collapse">'
-        + '<tr><th style="text-align:left">位置</th><th style="text-align:left">类型</th><th style="text-align:left">属性</th>'
-        + '<th style="text-align:left">数值</th><th style="text-align:left">星级/等级</th><th style="text-align:left">套装</th><th></th></tr>';
-  for(var p = 0; p < CALC_POS.length; p++){
-    var pk = CALC_POS[p].k, rows = [];
-    for(var i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].pos === pk) rows.push(c.items[i]); }
-    for(var r = 0; r < rows.length; r++){
-      var it = rows[r];
-      h += '<tr>'
-        + '<td>' + (r === 0 ? calcPosName(pk) : '') + '</td>'
-        + '<td>' + (it.kind === 'main' ? '<b style="color:#79c0ff">主属性</b>' : '副词条') + '</td>'
-        + '<td>' + calcTagInfo(it.tag).n + '</td>'
-        + '<td><input type="number" step="0.1" value="' + calcShowVal(it) + '" style="width:92px" onchange="calcEditVal(\'' + it.id + '\', this.value)"></td>'
-        + '<td>' + (it.star || 5) + '★ / ' + (it.level == null ? 20 : it.level) + '</td>'
-        + '<td>' + calcSetName(it.setName) + '</td>'
-        + '<td style="text-align:right"><button class="sm danger" onclick="calcDel(\'' + it.id + '\')">删</button></td>'
-        + '</tr>';
+        + '<tr><th style="text-align:left">位置</th><th style="text-align:left">类型</th><th style="text-align:left">数值</th><th style="text-align:left">星级</th><th></th></tr>';
+  for(var pi = 0; pi < CALC_PARTS.length; pi++){
+    var pk = CALC_PARTS[pi].k;
+    for(var ti = 0; ti < CALC_TYPES.length; ti++){
+      var tk = CALC_TYPES[ti].k, rows = [];
+      for(var i = 0; i < c.items.length; i++){
+        var it = c.items[i];
+        if(it && it.part === pk && (it.type || "percent") === tk) rows.push(it);
+      }
+      rows.sort(function(x, y){ return (x.value || 0) - (y.value || 0); });
+      for(var r = 0; r < rows.length; r++){
+        var o = rows[r], info = calcTypeInfo(tk);
+        h += '<tr>'
+          + '<td>' + (r === 0 ? calcPartName(pk) : '') + '</td>'
+          + '<td>' + info.n + '</td>'
+          + '<td><input type="number" step="' + info.step + '" value="' + (o.value == null ? "" : o.value) + '" style="width:110px" onchange="calcEditVal(\'' + o.id + '\', this.value)">' + info.unit + '</td>'
+          + '<td>' + ((o.star || 5) + '★') + '</td>'
+          + '<td style="text-align:right"><button class="sm danger" onclick="calcDel(\'' + o.id + '\')">删</button></td>'
+          + '</tr>';
+      }
     }
   }
   h += '</table>';
@@ -1198,32 +1163,19 @@ function calcRender(){
 }
 function calcAdd(){
   if(!canEdit()){ showErr('你的权限是「成员」，只能查看，不能修改。'); return; }
-  var pos = $("calcPos").value, kind = $("calcKind").value, tag = $("calcTag").value;
+  var type = $("calcType").value, part = $("calcPart").value;
   var raw = parseFloat($("calcVal").value);
-  if(isNaN(raw)){ showErr('请填数值：百分比填 46.6（表示 46.6%），生命/精通直接填数字。'); return; }
-  var info = calcTagInfo(tag);
-  var v = info.p ? raw / 100 : raw;
+  if(isNaN(raw)){ showErr('请填数值：百分比填 46.6（表示 46.6%），生命 / 精通直接填整数。'); return; }
+  var v = Math.round(raw * 100) / 100;
   var star = parseInt($("calcStar").value, 10) || 5;
-  var lv = parseInt($("calcLevel").value, 10); if(isNaN(lv)) lv = 20;
-  var setK = $("calcSet").value;
   mutate(function(){
-    var c = calcEnsure();
-    if(kind === "main"){
-      var done = false;
-      for(var i = 0; i < c.items.length; i++){
-        if(c.items[i] && c.items[i].pos === pos && c.items[i].kind === "main"){
-          c.items[i].tag = tag; c.items[i].value = v; c.items[i].star = star; c.items[i].level = lv;
-          if(setK) c.items[i].setName = setK;
-          done = true; break;
-        }
-      }
-      if(!done) c.items.push({ id: calcNewId(), pos: pos, kind: "main", tag: tag, value: v, star: star, level: lv, setName: setK });
-    } else {
-      var n = 0;
-      for(var j = 0; j < c.items.length; j++){ if(c.items[j] && c.items[j].pos === pos && c.items[j].kind === "sub") n++; }
-      if(n >= 4){ showErr("这个位置的副词条已经 4 条了，先删一条再加。"); return; }
-      c.items.push({ id: calcNewId(), pos: pos, kind: "sub", tag: tag, value: v, star: star, level: lv, setName: setK });
+    var c = calcEnsure(), hit = null;
+    for(var i = 0; i < c.items.length; i++){
+      var it = c.items[i];
+      if(it && it.part === part && (it.type || "percent") === type && (it.star || 5) === star){ hit = it; break; }
     }
+    if(hit){ hit.value = v; }
+    else { c.items.push({ id: calcNewId(), type: type, part: part, value: v, star: star }); }
     c.rev = (c.rev || 0) + 1; c.ts = Date.now();
   }, "已添加 · 正在同步到所有设备");
   $("calcVal").value = "";
@@ -1236,8 +1188,7 @@ function calcEditVal(id, v){
     var c = calcEnsure();
     for(var i = 0; i < c.items.length; i++){
       if(c.items[i] && c.items[i].id === id){
-        c.items[i].value = calcTagInfo(c.items[i].tag).p ? raw / 100 : raw;
-        break;
+        c.items[i].value = Math.round(raw * 100) / 100; break;
       }
     }
     c.rev = (c.rev || 0) + 1; c.ts = Date.now();
@@ -1253,7 +1204,7 @@ function calcDel(id){
 }
 function calcClear(){
   if(!canEdit()){ showErr('你的权限是「成员」，不能清空。'); return; }
-  if(!confirm("清空这份数值列表？所有设备上的配装也会一起撤掉（恢复到它自己本地的数据）。")) return;
+  if(!confirm("清空这份数值列表？所有手机上的对应数值也会一起撤掉（用户在手机上自己加的不会被清）。")) return;
   mutate(function(){
     var c = calcEnsure();
     c.items = []; c.rev = (c.rev || 0) + 1; c.ts = Date.now();
@@ -1268,25 +1219,15 @@ function calcPushNow(){
 }
 function calcDemo(){
   if(!canEdit()){ showErr('你的权限是「成员」，只能查看，不能修改。'); return; }
-  if(!confirm("填入一套示例五件套？会覆盖当前列表（可以先抄下来）。")) return;
+  if(!confirm("填入一组示例数值？会覆盖当前列表。")) return;
   mutate(function(){
-    var S = "CrimsonWitchOfFlames";
-    var c = calcEnsure();
-    c.items = [
-      { id: calcNewId(), pos: "flower",  kind: "main", tag: "lifeStatic",       value: 4780,  star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "flower",  kind: "sub",  tag: "criticalDamage",   value: 0.077, star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "flower",  kind: "sub",  tag: "critical",         value: 0.0389,star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "feather", kind: "main", tag: "attackStatic",     value: 311,   star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "feather", kind: "sub",  tag: "criticalDamage",   value: 0.077, star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "sand",    kind: "main", tag: "attackPercentage", value: 0.466, star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "sand",    kind: "sub",  tag: "elementalMastery", value: 23,    star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "cup",     kind: "main", tag: "fireBonus",        value: 0.466, star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "cup",     kind: "sub",  tag: "critical",         value: 0.0389,star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "head",    kind: "main", tag: "criticalDamage",   value: 0.622, star: 5, level: 20, setName: S },
-      { id: calcNewId(), pos: "head",    kind: "sub",  tag: "attackPercentage", value: 0.0575,star: 5, level: 20, setName: S }
-    ];
-    c.rev = (c.rev || 0) + 1; c.ts = Date.now();
-  }, "已填入示例五件套 · 正在同步到所有设备");
+    var c = calcEnsure(), arr = [];
+    var push = function(t, p, v, st){ arr.push({ id: calcNewId(), type: t, part: p, value: v, star: st || 5 }); };
+    push("life", "花", 4780); push("life", "毛", 2390); push("life", "沙", 3580);
+    push("percent", "沙", 46.6); push("percent", "杯", 46.6); push("percent", "头", 31.1);
+    push("percent", "头", 62.2, 4); push("mastery", "花", 187); push("mastery", "沙", 187);
+    c.items = arr; c.rev = (c.rev || 0) + 1; c.ts = Date.now();
+  }, "已填入示例数值 · 正在同步到所有设备");
 }
 try{ calcInitSelects(); }catch(e){}
 
