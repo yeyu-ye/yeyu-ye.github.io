@@ -1,11 +1,11 @@
 {
-  "code": 54,
-  "ver": "v54",
-  "file": "yeyu-v54.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v54.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v54/yeyu-v54.apk",
+  "code": 55,
+  "ver": "v55",
+  "file": "yeyu-v55.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v55.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v55/yeyu-v55.apk",
   "size": 31476358,
   "force": true,
   "date": "2026-10-28",
-  "note": "收纳篮新增「🧬 生命求解器」：填角色基础生命、最大允许误差、圣遗物目标生命，一键列出误差范围内的全部圣遗物组合（电脑上那个生命计算小工具的 APP 版）。自带「数值库」：参与求解的所有数值（花/毛/沙/杯/头 + 百分比档）都能查看、删除、一键恢复，和「设置 → 数据管理」共用同一份数据。顺带修了「禁用百分比档位不生效」的老 bug。"
+  "note": "生命求解器改用「生命(1).exe」内置的原数据：从软件本体逆向提取的 39+16 个固定值与 11 档百分比，算法与 exe 完全一致（固定值之和 + 基础生命×百分比之和，五槽：花/沙/杯/副词条×2，每槽可空），输出格式与 exe 相同（固定 5 项、2 位小数）。数值库改为管理这份原数据，可查看/删除/一键恢复。"
 }
