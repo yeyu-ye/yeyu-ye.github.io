@@ -492,6 +492,9 @@ nav button.active{color:var(--gold);background:transparent}
     <button class="bin-item" onclick="openMona('calculate')">
       <span class="bin-ico">⚔️</span><span class="bin-txt">莫娜计算器</span>
     </button>
+    <button class="bin-item" onclick="openLifeSolver()">
+      <span class="bin-ico">🧬</span><span class="bin-txt">生命求解器</span>
+    </button>
   </div>
 </div>
 
@@ -668,6 +671,46 @@ nav button.active{color:var(--gold);background:transparent}
     </div>
 
     <!-- 自定义数据弹窗（生命/百分比/精通） -->
+    <div class="modal-overlay" id="lifeSvModal" onclick="if(event.target===this)closeLifeSolver()">
+      <div class="modal-box" style="max-width:470px;padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:sticky;top:0;background:var(--bg);padding-bottom:8px;z-index:2">
+          <span style="font-size:16px;font-weight:600;color:var(--gold)">🧬 生命求解器</span>
+          <span style="cursor:pointer;color:var(--sub);font-size:22px;padding:4px 8px;line-height:1" onclick="closeLifeSolver()">✕</span>
+        </div>
+        <div class="input-group" style="margin-bottom:10px">
+          <div class="label">角色基础生命</div>
+          <input type="number" id="lifeSvBase" step="1" placeholder="如 10000">
+        </div>
+        <div class="row" style="gap:10px;margin-bottom:10px">
+          <div style="flex:1">
+            <div class="label">最大允许误差</div>
+            <input type="number" id="lifeSvErr" step="0.01" placeholder="如 1">
+          </div>
+          <div style="flex:1">
+            <div class="label">圣遗物目标生命</div>
+            <input type="number" id="lifeSvTarget" step="0.0001" placeholder="如 9989">
+          </div>
+        </div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn btn-primary" id="lifeSvBtn" onclick="lifeSvRun()" style="flex:2">🧮 开始求解</button>
+          <button class="btn" onclick="lifeSvCopy()" style="flex:1;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:10px">📋 复制</button>
+        </div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn btn-ghost" onclick="lifeSvLibToggle()" style="width:100%;font-size:13px">📚 数值库（查看 / 删除）</button>
+        </div>
+        <div id="lifeSvLib" style="display:none"></div>
+        <div class="label" style="margin-top:6px">求解结果</div>
+        <div id="lifeSvResult" style="max-height:40vh;overflow-y:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--card-border);border-radius:10px;padding:10px;font-size:12px;color:var(--sub)">填好上面三项后点「开始求解」。</div>
+        <div style="color:var(--sub);font-size:11px;margin-top:8px;line-height:1.6">
+          规则与电脑上的「生命(1).exe」完全一致，用的就是它内置的原数据：
+          花 → 固定值池选一个；沙 → 基础生命×百分比档；杯 / 两个副词条 → 百分比档 + 小数固定值池；
+          每一槽都可以留空（0）。结果 = 固定值之和 + 基础生命 × 百分比之和，
+          列出总和落在 目标±误差 内的全部组合。
+          数值库里删掉的数值不再参与求解，随时可以恢复。
+        </div>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="customDataModal" onclick="if(event.target===this)closeCustomDataModal()">
       <div class="modal-box" style="max-height:65vh;overflow-y:auto;-webkit-overflow-scrolling:touch;max-width:440px;padding:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:rgba(10,10,20,.98);padding-bottom:8px;z-index:2">
@@ -865,6 +908,14 @@ nav button.active{color:var(--gold);background:transparent}
           <button class="btn" onclick="openCustomDataModal('life')" style="flex:1;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:10px;padding:10px;font-size:14px">生命</button>
           <button class="btn" onclick="openCustomDataModal('percent')" style="flex:1;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:10px;padding:10px;font-size:14px">百分比</button>
           <button class="btn" onclick="openCustomDataModal('mastery')" style="flex:1;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:10px;padding:10px;font-size:14px">精通</button>
+        </div>
+        <div style="color:var(--sub);font-size:12px;line-height:1.6;margin-bottom:8px">
+          三类数值都按「花 / 毛 / 沙 / 杯 / 头」分别添加，加进去就参与组合计算。
+          后台「🧮 计算器数据管理」下发的数值会自动合并到这里（带 ☁ 标记），后台删掉手机上也会跟着删。
+        </div>
+        <div id="dmAdminInfo" class="now-playing" style="margin-bottom:8px;text-align:center"></div>
+        <div class="btn-row" style="margin-bottom:8px">
+          <button class="btn btn-ghost" onclick="calcPullNow()" style="flex:1;font-size:14px">🔄 立即从后台拉取</button>
         </div>
         <div class="btn-row" style="margin-bottom:8px">
           <button class="btn btn-primary" onclick="openSourceCodeModal()" style="flex:1;font-size:14px">📋 一键复制全部代码</button>
@@ -1469,7 +1520,7 @@ function switchPage(name){
   requestAnimationFrame(function(){
     setTimeout(function(){
       if(name==="filter") renderFilter();
-      if(name==="settings") updateDisabledCount();
+      if(name==="settings"){ updateDisabledCount(); try{ renderDmAdmin(); }catch(e){} }
       if(name==="calculator") renderCalcMastery();
     }, 0);
   });
@@ -1939,7 +1990,7 @@ function renderCustomDataList(){
   for(var i=0;i<data.length;i++){
     var p = data[i].part;
     if(!groups[p]) groups[p] = [];
-    groups[p].push({value:data[i].value, star:data[i].star||5, index:i});
+    groups[p].push({value:data[i].value, star:data[i].star||5, index:i, admin:!!data[i].aid});
   }
   var html = "";
   var partOrder = ["花","毛","沙","杯","头"];
@@ -1955,12 +2006,250 @@ function renderCustomDataList(){
     for(var j=0;j<items.length;j++){
       var starLabel = (currentCustomType === "life") ? (items[j].star+"星 ") : "";
       html += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:5px 8px;border-radius:6px;margin-bottom:3px;font-size:12px">';
-      html += '<span style="color:var(--text);font-family:monospace">'+starLabel+items[j].value+'</span>';
+      html += '<span style="color:var(--text);font-family:monospace">'+(items[j].admin?'<span title="后台下发">☁</span> ':'')+starLabel+items[j].value+'</span>';
       html += '<span style="color:var(--danger);cursor:pointer;font-size:16px;padding:2px 6px" onclick="removeCustomData('+items[j].index+')">✕</span>';
       html += '</div>';
     }
   }
   list.innerHTML = html;
+}
+
+// ==================== 生命求解器（收纳篮 · 生命(1).exe 原版数据） ====================
+/* 数据来源：对桌面「生命(1).exe」本体逆向提取的内置原数据，公式与它一致：
+   结果 = Σ固定值 + 角色基础生命 × Σ百分比（百分比按 0.466=46.6% 存）
+   槽位（与 exe 输出一致）：花=固定值池，沙=百分比池，杯/副词条×2=百分比+小数固定值池；每槽可选 0（空） */
+var SV_REMOVED_KEY = "yy_sv_removed";
+var SV_FLATS_INT = [129, 178, 258, 275, 324, 331, 430, 478, 551, 552, 645, 674, 717, 796, 828, 918, 920, 1011, 1040, 1123, 1162, 1194, 1283, 1326, 1377, 1405, 1527, 1530, 1559, 1649, 1733, 1742, 1771, 1892, 1925, 1936, 2108, 2139, 4780];
+var SV_FLATS_DEC = [23.9, 29.88, 50.19, 60.95, 71.7, 100.38, 114.72, 129.06, 143.4, 167.3, 191.2, 209.13, 215.1, 239, 266.88, 298.75];
+var SV_PCTS = [0.0163, 0.0198, 0.0233, 0.0245, 0.028, 0.031, 0.0315, 0.0326, 0.035, 0.037, 0.466];
+/* vid 前缀：原值_int_ / 原值_dec_ / 原值_pct_（数值用精确值存，恢复按字符串比对） */
+function svOrigVid(kind, v){ return "原值_" + kind + "_" + v; }
+function svOrigOff(kind, v){ return state.disabled.has(svOrigVid(kind, v)); }
+
+function openLifeSolver(){
+  closeBin();
+  var m = document.getElementById("lifeSvModal");
+  if(!m) return;
+  m.classList.add("show");
+  try{ lifeSvLibRender(); }catch(e){}
+}
+function closeLifeSolver(){
+  var m = document.getElementById("lifeSvModal");
+  if(m) m.classList.remove("show");
+}
+function lifeSvLibToggle(){
+  var el = document.getElementById("lifeSvLib");
+  if(!el) return;
+  if(el.style.display === "none"){ el.style.display = ""; try{ lifeSvLibRender(); }catch(e){} }
+  else el.style.display = "none";
+}
+function svRemovedLoad(){ try{ return JSON.parse(localStorage.getItem(SV_REMOVED_KEY)||"[]"); }catch(e){ return []; } }
+function svRemovedSave(a){ try{ localStorage.setItem(SV_REMOVED_KEY, JSON.stringify(a)); }catch(e){} }
+
+function lifeSvRun(){
+  var base = parseFloat(document.getElementById("lifeSvBase").value);
+  var err = parseFloat(document.getElementById("lifeSvErr").value);
+  var target = parseFloat(document.getElementById("lifeSvTarget").value);
+  var out = document.getElementById("lifeSvResult");
+  if(isNaN(base) || base <= 0){ out.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:8px">请先填有效的「角色基础生命」</div>'; return; }
+  if(isNaN(err) || err < 0){ out.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:8px">请填有效的「最大允许误差」</div>'; return; }
+  if(isNaN(target)){ out.innerHTML = '<div style="color:#ff6b6b;text-align:center;padding:8px">请填有效的「圣遗物目标生命」</div>'; return; }
+  var btn = document.getElementById("lifeSvBtn");
+  btn.textContent = "计算中..."; btn.disabled = true;
+  setTimeout(function(){
+    try{
+      var t0 = Date.now();
+      var r = lifeSvCompute(base, target - err, target + err);
+      var t1 = Date.now();
+      out.innerHTML = r.html;
+      window._lifeSvText = r.text;
+      if(r.total > 0) showToast("找到 " + r.total + " 个组合" + (r.total > 2000 ? "（显示前 2000 条）" : "") + "，用时 " + ((t1-t0)/1000).toFixed(2) + "s");
+    }catch(e){
+      out.innerHTML = '<div style="color:#ff6b6b">计算出错：' + ((e && e.message) || e) + '</div>';
+    }
+    btn.textContent = "🧮 开始求解"; btn.disabled = false;
+  }, 30);
+}
+
+/* 每个「槽」的可选项：{v: 贡献值, flat: 精确固定值|null, pct: 百分比小数|null} */
+function svOrigOptions(){
+  var fInt = [], fDec = [], pcts = [];
+  var i;
+  for(i = 0; i < SV_FLATS_INT.length; i++){ if(!svOrigOff("int", SV_FLATS_INT[i])) fInt.push(SV_FLATS_INT[i]); }
+  for(i = 0; i < SV_FLATS_DEC.length; i++){ if(!svOrigOff("dec", SV_FLATS_DEC[i])) fDec.push(SV_FLATS_DEC[i]); }
+  for(i = 0; i < SV_PCTS.length; i++){ if(!svOrigOff("pct", SV_PCTS[i])) pcts.push(SV_PCTS[i]); }
+  fInt.sort(function(a,b){ return a-b; });
+  fDec.sort(function(a,b){ return a-b; });
+  return { fInt: fInt, fDec: fDec, pcts: pcts };
+}
+
+function lifeSvCompute(base, minV, maxV){
+  var o = svOrigOptions();
+  /* 槽位定义（顺序 = exe 输出的 5 项）：花(整数固定值) / 沙(百分比) / 杯(百分比+小数) / 副1 / 副2 */
+  var slots = [
+    { name: "花", opts: o.fInt.map(function(v){ return { v: v, flat: v, pct: null }; }) },
+    { name: "沙", opts: o.pcts.map(function(p){ return { v: Math.round(base*p*10000)/10000, flat: null, pct: p }; }) },
+    { name: "杯", opts: o.pcts.map(function(p){ return { v: Math.round(base*p*10000)/10000, flat: null, pct: p }; })
+        .concat(o.fDec.map(function(v){ return { v: v, flat: v, pct: null }; })) },
+    { name: "副词条①", opts: null },
+    { name: "副词条②", opts: null }
+  ];
+  slots[3].opts = slots[2].opts;
+  slots[4].opts = slots[2].opts;
+  for(var si = 0; si < slots.length; si++){
+    var arr = [{ v: 0, flat: null, pct: null }].concat(slots[si].opts);
+    arr.sort(function(a,b){ return a.v - b.v; });
+    slots[si].opts = arr;
+  }
+  /* 后缀最大和（剪枝用；每槽可选 0，所以后缀最小和恒为 0） */
+  var n = slots.length;
+  var suffixMax = []; suffixMax[n] = 0;
+  for(var i2 = n-1; i2 >= 0; i2--){
+    var mx = 0;
+    var oo = slots[i2].opts;
+    var take = Math.min(n - i2, oo.length);
+    for(var j2 = 0; j2 < take; j2++) mx += oo[oo.length-1-j2].v;
+    suffixMax[i2] = suffixMax[i2+1] + mx;
+  }
+  var seen = {}, results = [], maxResults = 8000, nodes = 0, nodeCap = 3000000, truncated = false;
+  function pctLabel(p){ return (Math.round(p*1000 + 1e-6)/10).toFixed(1) + "%"; }
+  function exprOf(chosen){
+    /* 和 exe 一样固定打印 5 槽，空槽显示 0 */
+    var segs = [];
+    for(var k = 0; k < chosen.length; k++){
+      var c = chosen[k];
+      if(c.pct != null) segs.push(pctLabel(c.pct));
+      else if(c.flat != null) segs.push(String(c.flat));
+      else segs.push("0");
+    }
+    return segs.join("+");
+  }
+  function dfs(idx, sum, chosen){
+    if(results.length >= maxResults || truncated) return;
+    if(++nodes > nodeCap){ truncated = true; return; }
+    if(idx >= n){
+      if(sum >= minV && sum <= maxV){
+        var ex = exprOf(chosen);
+        if(!seen[ex]){ seen[ex] = true; results.push({ chosen: chosen.slice(), sum: sum, ex: ex }); }
+      }
+      return;
+    }
+    var oo = slots[idx].opts;
+    /* 本槽可行取值区间：v ∈ [minV - sum - 后缀最大, maxV - sum]，二分找边界 */
+    var hiV = maxV - sum;                    // v 上限（后缀最小 = 0）
+    var loV = minV - sum - suffixMax[idx+1]; // v 下限
+    var js = 0, je = oo.length - 1;
+    while(js < je && oo[js].v < loV) js++;
+    while(je >= js && oo[je].v > hiV) je--;
+    for(var j = js; j <= je; j++){
+      var ns = sum + oo[j].v;
+      if(ns > maxV) break;
+      if(ns + suffixMax[idx+1] < minV) continue;
+      chosen.push(oo[j]);
+      dfs(idx+1, ns, chosen);
+      chosen.pop();
+      if(results.length >= maxResults || truncated) return;
+    }
+  }
+  dfs(0, 0, []);
+  results.sort(function(a,b){ return a.sum - b.sum; });
+  var shown = results.slice(0, 2000);
+  var text = shown.map(function(r){ return r.ex + " = " + r.sum.toFixed(2); }).join("\n");
+  var head = results.length
+    ? '找到 ' + results.length + ' 个组合' + (results.length > 2000 ? '（显示前 2000 条）' : '') + (truncated ? '（组合过多，已提前截断）' : '')
+    : '';
+  var html;
+  if(!results.length){
+    html = '<div style="text-align:center;padding:10px">' + (truncated ? '组合太多被截断，试试缩小「最大允许误差」。' : '该误差范围内没有组合，试试放宽「最大允许误差」。') + '</div>';
+  } else {
+    html = '<div style="text-align:center;color:var(--gold);font-size:12px;margin-bottom:8px">' + head + '</div>';
+    for(var k2 = 0; k2 < shown.length; k2++){
+      html += '<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:6px 8px;margin-bottom:4px;font-family:monospace;color:var(--text);word-break:break-all">' + shown[k2].ex + ' = ' + shown[k2].sum.toFixed(2) + '</div>';
+    }
+    if(truncated) html += '<div style="text-align:center;color:var(--muted);font-size:11px;margin-top:6px">组合过多已截断，缩小误差可获得完整结果</div>';
+  }
+  return { html: html, text: text || "（无结果）", total: results.length };
+}
+
+function lifeSvCopy(){
+  var t = window._lifeSvText || "";
+  if(!t){ showToast("还没有结果可复制"); return; }
+  try{
+    var ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("已复制 " + t.split("\n").length + " 行结果");
+  }catch(e){ showToast("复制失败"); }
+}
+
+/* ---------- 数值库：软件原数据的查看 / 删除 / 恢复 ---------- */
+function lifeSvLibRender(){
+  var box = document.getElementById("lifeSvLib");
+  if(!box) return;
+  var removed = svRemovedLoad();
+  function rows(kind, list, unit, fixed){
+    var h = "";
+    var sorted = list.slice().sort(function(a,b){ return b-a; });
+    for(var i = 0; i < sorted.length; i++){
+      var v = sorted[i];
+      var vid = svOrigVid(kind, v);
+      var off = state.disabled.has(vid);
+      var label = fixed ? String(Math.round(v)) : (kind === "pct" ? (Math.round(v*1000 + 1e-6)/10).toFixed(1) + unit : String(v) + unit);
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:5px 8px;border-radius:6px;margin-bottom:3px;font-size:12px">'
+         + '<span style="font-family:monospace;color:' + (off ? 'var(--muted);text-decoration:line-through' : 'var(--text)') + '">' + label + '</span>'
+         + '<span style="cursor:pointer;font-size:14px;padding:2px 8px;color:' + (off ? 'var(--gold)' : 'var(--danger)') + '" onclick="lifeSvToggleOrig(\'' + kind + '\',' + v + ')">' + (off ? '恢复' : '删') + '</span>'
+         + '</div>';
+    }
+    return h;
+  }
+  var h = '<div style="border:1px solid var(--card-border);border-radius:10px;padding:10px;margin-bottom:8px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+     + '<span style="color:var(--gold);font-size:12px;font-weight:600">软件原数据（删除后不参与求解）</span>'
+     + (removed.length ? '<span style="cursor:pointer;color:var(--gold);font-size:12px" onclick="lifeSvRestoreAll()">↩️ 恢复全部删过的(' + removed.length + ')</span>' : '')
+     + '</div>';
+  h += '<div style="color:var(--gold);font-size:11px;margin:8px 0 4px;font-weight:600">固定值 · 花主词条池（' + SV_FLATS_INT.length + ' 个）</div>';
+  h += rows("int", SV_FLATS_INT, "", true);
+  h += '<div style="color:var(--gold);font-size:11px;margin:8px 0 4px;font-weight:600">固定值 · 副词条池（' + SV_FLATS_DEC.length + ' 个）</div>';
+  h += rows("dec", SV_FLATS_DEC, "", false);
+  h += '<div style="color:var(--gold);font-size:11px;margin:8px 0 4px;font-weight:600">百分比档（' + SV_PCTS.length + ' 档，×基础生命）</div>';
+  h += rows("pct", SV_PCTS, "%", false);
+  h += '</div>';
+  box.innerHTML = h;
+}
+
+/* 删（或恢复）一个原数据条目。kind: "int" | "dec" | "pct" */
+function lifeSvToggleOrig(kind, value){
+  var vid = svOrigVid(kind, value);
+  var removed = svRemovedLoad();
+  if(!state.disabled.has(vid)){
+    state.disabled.add(vid);
+    saveDisabled();
+    removed.push({ kind: kind, value: value, vids: [vid] });
+    svRemovedSave(removed);
+    showToast("已删除，不再参与求解");
+  } else {
+    state.disabled.delete(vid);
+    saveDisabled();
+    removed = removed.filter(function(r){ return !(r.kind === kind && r.value === value); });
+    svRemovedSave(removed);
+    showToast("已恢复");
+  }
+  try{ lifeSvLibRender(); }catch(e){}
+}
+
+function lifeSvRestoreAll(){
+  var removed = svRemovedLoad();
+  if(!removed.length){ showToast("没有删过的记录"); return; }
+  for(var i = 0; i < removed.length; i++){
+    var vids = removed[i].vids || [];
+    for(var j = 0; j < vids.length; j++) state.disabled.delete(vids[j]);
+  }
+  saveDisabled();
+  svRemovedSave([]);
+  try{ lifeSvLibRender(); }catch(e){}
+  showToast("已恢复 " + removed.length + " 条");
 }
 
 // ==================== 求生命和计算器 ====================
@@ -2012,8 +2301,8 @@ function calcLifeSum(){
   // 收集被禁用的百分比比例
   var pctDisabledSet = new Set();
   state.disabled.forEach(function(vid){
-    if(vid.indexOf("内置百分比_")===0){ pctDisabledSet.add(parseFloat(vid.split("_")[2])); }
-    if(vid.indexOf("自定义百分比_")===0){ pctDisabledSet.add(parseFloat(vid.split("_")[2])); }
+    if(vid.indexOf("内置百分比_")===0){ pctDisabledSet.add(parseFloat(vid.split("_")[1])); }
+    if(vid.indexOf("自定义百分比_")===0){ pctDisabledSet.add(parseFloat(vid.split("_")[1])); }
   });
   // 过滤掉被禁用的已选百分比
   selectedPctRates = selectedPctRates.filter(function(r){ return !pctDisabledSet.has(r); });
@@ -5170,7 +5459,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 50;
+var APP_CODE = 56;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -5507,6 +5796,118 @@ function monaRetry(){
   monaStartProbe();
 }
 function monaHardReload(){ monaAutoRetried = true; monaRetry(); }
+/* ===== 后台「🧮 计算器数据管理」下发 =====
+   后台在 data.calc 里配好的数值（类型：生命 / 百分比 / 精通 + 位置：花·毛·沙·杯·头 + 数值），
+   手机联网读到 rev 变了，就合并进 APP「设置 → 数据管理」的自定义数据里，
+   直接参与圣遗物组合计算。后台删掉的条目，手机上也会跟着删掉；
+   用户自己在手机上加的数值不会被清掉。 */
+var CALC_REV_KEY = "yy_calc_rev", CALC_IDS_KEY = "yy_calc_ids";
+var CALC_TYPES = [ { k:"life", n:"生命" }, { k:"percent", n:"百分比" }, { k:"mastery", n:"精通" } ];
+var calcRevApplied = -1, calcIdsApplied = [], calcAdminCount = 0;
+try{
+  calcRevApplied = parseInt(localStorage.getItem(CALC_REV_KEY) || "-1", 10) || -1;
+  calcIdsApplied = JSON.parse(localStorage.getItem(CALC_IDS_KEY) || "[]");
+  if(!Array.isArray(calcIdsApplied)) calcIdsApplied = [];
+}catch(e){ calcIdsApplied = []; }
+/* 后台的条目 → APP 自定义数据条目。位置统一成 APP 里的「花毛沙杯头」 */
+var CALC_PART_MAP = { flower:"花", feather:"毛", sand:"沙", cup:"杯", head:"头",
+                      花:"花", 毛:"毛", 沙:"沙", 杯:"杯", 头:"头" };
+function calcPartOf(p){ return CALC_PART_MAP[String(p == null ? "" : p).trim()] || ""; }
+function calcItemOf(it){
+  if(!it) return null;
+  var t = String(it.type || "").trim();
+  if(t !== "life" && t !== "percent" && t !== "mastery"){
+    /* 兼容早先那版后台（存的是莫娜属性键） */
+    var g = String(it.tag || "");
+    if(g === "lifeStatic" || g === "attackStatic" || g === "defenseStatic") t = "life";
+    else if(g === "elementalMastery") t = "mastery";
+    else if(g) t = "percent";
+    else return null;
+  }
+  var part = calcPartOf(it.part != null ? it.part : it.pos);
+  var v = Number(it.value);
+  if(!part || !isFinite(v)) return null;
+  /* 老后台的百分比存的是小数（0.466），现在统一按 46.6 存 */
+  if(t === "percent" && v > 0 && v < 1) v = Math.round(v * 10000) / 100;
+  var star = parseInt(it.star, 10); if(!star) star = 5;
+  return { id: String(it.id || (t + "_" + part + "_" + v)), type: t, part: part, value: v, star: star };
+}
+function calcAdminN(){
+  var n = 0;
+  try{
+    for(var i = 0; i < CALC_TYPES.length; i++){
+      var arr = loadCustomData(CALC_TYPES[i].k);
+      for(var j = 0; j < arr.length; j++){ if(arr[j] && arr[j].aid) n++; }
+    }
+  }catch(e){}
+  return n;
+}
+function calcSync(d){
+  try{
+    var c = d && d.calc;
+    if(!c) return;
+    var items = Array.isArray(c.items) ? c.items : [];
+    var rev = Number(c.rev) || 0;
+    if(rev > 0 && rev === calcRevApplied) return;      // 这一版已经同步过了
+    var newIds = [], add = { life: [], percent: [], mastery: [] };
+    for(var i = 0; i < items.length; i++){
+      var o = calcItemOf(items[i]);
+      if(!o) continue;
+      newIds.push(o.id); add[o.type].push(o);
+    }
+    var added = 0, removed = 0;
+    for(var ti = 0; ti < CALC_TYPES.length; ti++){
+      var tk = CALC_TYPES[ti].k;
+      var local = loadCustomData(tk), keep = [];
+      for(var j = 0; j < local.length; j++){
+        var d0 = local[j];
+        /* 上一下发过、这次后台删了 → 手机上也删 */
+        if(d0 && d0.aid && calcIdsApplied.indexOf(d0.aid) >= 0 && newIds.indexOf(d0.aid) < 0){ removed++; continue; }
+        keep.push(d0);
+      }
+      var lst = add[tk] || [];
+      for(var k = 0; k < lst.length; k++){
+        var o2 = lst[k], dup = false;
+        for(var m = 0; m < keep.length; m++){
+          if(keep[m] && keep[m].aid === o2.id){ dup = true; break; }
+        }
+        if(!dup){ keep.push({ part: o2.part, value: o2.value, star: o2.star, aid: o2.id, from: "admin" }); added++; }
+      }
+      saveCustomData(tk, keep);
+    }
+    try{ localStorage.setItem(CALC_IDS_KEY, JSON.stringify(newIds)); }catch(e){}
+    try{ localStorage.setItem(CALC_REV_KEY, String(rev)); }catch(e){}
+    calcRevApplied = rev; calcIdsApplied = newIds;
+    calcAdminCount = calcAdminN();
+    try{ rebuildDataWithCustom(); }catch(e){}       // 重新参与组合计算
+    try{ refreshFilterIfActive(); }catch(e){}
+    try{ if(document.getElementById("customDataModal") && document.getElementById("customDataModal").classList.contains("show")) renderCustomDataList(); }catch(e){}
+    try{ renderDmAdmin(); }catch(e){}
+    if(added || removed){
+      showToast("后台数据已同步：" + (added ? "新增 " + added + " 条" : "") +
+                (added && removed ? "、" : "") + (removed ? "移除 " + removed + " 条" : "") +
+                " · 已加入「设置 → 数据管理」参与计算", 4200);
+    }
+  }catch(e){}
+}
+/* 设置页「数据管理」下面那行小字：后台下发了多少条 */
+function renderDmAdmin(){
+  var el = document.getElementById("dmAdminInfo");
+  if(!el) return;
+  var n = calcAdminN();
+  calcAdminCount = n;
+  el.textContent = n ? ("☁ 后台下发 " + n + " 条（已并入上面的数据，参与计算）") : "☁ 后台还没有下发数值";
+}
+function calcPullNow(){
+  showToast("正在从后台拉取…");
+  try{
+    calcRevApplied = -1;                              // 强制重新合并一次
+    try{ localStorage.setItem(CALC_REV_KEY, "-1"); }catch(e){}
+    if(window.gistRead) gistRead(function(d){ try{ calcSync(d || (window.data && window.data)); }catch(e){} renderDmAdmin(); });
+    else showToast("还没连上服务器，稍后再试");
+  }catch(e){ showToast("拉取失败，稍后再试"); }
+  renderDmAdmin();
+}
 /* 带上 APP_CODE 当缓存戳：APK 升级后 URL 变了，
    免得 WebView 还拿着上一版缓存下来的 mona/index.html */
 function monaUrl(route){
@@ -7891,6 +8292,7 @@ function gistSync(cb){
     if(me) gistRegistered = true;      // v50：服务器里已经有这台设备 = 后台看得到它
     var changed = false;
     cfgCache = data.cfg;
+    try{ calcSync(data); }catch(e){}          // 后台「🧮 计算器数据」下发
     // 登录过的创始人 / 管理员 → 标记在线（后台管理员频道顶部会显示）
     var acc = mgrGet();
     if(acc && (acc.role === "founder" || acc.role === "admin")){
@@ -8170,6 +8572,7 @@ function livePingTick(){
   gistMutate(function(data){
     try{
       livePingOn = !!(data.cfg && data.cfg.livePing);
+      try{ calcSync(data); }catch(e){}        // 后台「🧮 计算器数据」下发
       var id = (deviceInfoCache || collectDeviceInfo()).id;
       if(!data.dev || typeof data.dev !== "object") data.dev = {};
       var me = data.dev[id];
