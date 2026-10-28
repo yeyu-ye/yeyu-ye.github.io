@@ -1,11 +1,11 @@
 {
-  "code": 55,
-  "ver": "v55",
-  "file": "yeyu-v55.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v55.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v55/yeyu-v55.apk",
+  "code": 56,
+  "ver": "v56",
+  "file": "yeyu-v56.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v56.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v56/yeyu-v56.apk",
   "size": 31476358,
   "force": true,
-  "date": "2026-10-28",
-  "note": "生命求解器改用「生命(1).exe」内置的原数据：从软件本体逆向提取的 39+16 个固定值与 11 档百分比，算法与 exe 完全一致（固定值之和 + 基础生命×百分比之和，五槽：花/沙/杯/副词条×2，每槽可空），输出格式与 exe 相同（固定 5 项、2 位小数）。数值库改为管理这份原数据，可查看/删除/一键恢复。"
+  "date": "2026-10-29",
+  "note": "修复生命求解器数值库小数固定值（23.9/71.7/129.06 等 16 个副词条小数）被取整显示的问题：数值库和求解结果现在都按原值显示小数。"
 }
