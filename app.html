@@ -2088,7 +2088,8 @@ function lifeSvCompute(base, minV, maxV){
   /* 槽位定义（顺序 = exe 输出的 5 项）：花(整数固定值) / 沙(百分比) / 杯(百分比+小数) / 副1 / 副2 */
   var slots = [
     { name: "花", opts: o.fInt.map(function(v){ return { v: v, flat: v, pct: null }; }) },
-    { name: "沙", opts: o.pcts.map(function(p){ return { v: Math.round(base*p*10000)/10000, flat: null, pct: p }; }) },
+    { name: "沙", opts: o.pcts.map(function(p){ return { v: Math.round(base*p*10000)/10000, flat: null, pct: p }; })
+        .concat(o.fDec.map(function(v){ return { v: v, flat: v, pct: null }; })) },
     { name: "杯", opts: o.pcts.map(function(p){ return { v: Math.round(base*p*10000)/10000, flat: null, pct: p }; })
         .concat(o.fDec.map(function(v){ return { v: v, flat: v, pct: null }; })) },
     { name: "副词条①", opts: null },
@@ -2112,14 +2113,14 @@ function lifeSvCompute(base, minV, maxV){
     suffixMax[i2] = suffixMax[i2+1] + mx;
   }
   var seen = {}, results = [], maxResults = 8000, nodes = 0, nodeCap = 3000000, truncated = false;
-  function pctLabel(p){ return (Math.round(p*1000 + 1e-6)/10).toFixed(1) + "%"; }
+  function pctLabel(p){ return (p*100).toFixed(1) + "%"; }  /* 与 exe 的 printf %.1f 一致（3.15%→3.1%） */
   function exprOf(chosen){
-    /* 和 exe 一样固定打印 5 槽，空槽显示 0 */
+    /* 和 exe 一样固定打印 5 槽，空槽显示 0；小数固定值按 exe 风格取整显示（23.9→24） */
     var segs = [];
     for(var k = 0; k < chosen.length; k++){
       var c = chosen[k];
       if(c.pct != null) segs.push(pctLabel(c.pct));
-      else if(c.flat != null) segs.push(String(c.flat));
+      else if(c.flat != null) segs.push(String(Math.round(c.flat)));
       else segs.push("0");
     }
     return segs.join("+");
@@ -2196,7 +2197,7 @@ function lifeSvLibRender(){
       var v = sorted[i];
       var vid = svOrigVid(kind, v);
       var off = state.disabled.has(vid);
-      var label = fixed ? String(Math.round(v)) : (kind === "pct" ? (Math.round(v*1000 + 1e-6)/10).toFixed(1) + unit : String(v) + unit);
+      var label = fixed ? String(Math.round(v)) : (kind === "pct" ? String(parseFloat((v*100).toFixed(4))) + unit : String(v) + unit);
       h += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.03);padding:5px 8px;border-radius:6px;margin-bottom:3px;font-size:12px">'
          + '<span style="font-family:monospace;color:' + (off ? 'var(--muted);text-decoration:line-through' : 'var(--text)') + '">' + label + '</span>'
          + '<span style="cursor:pointer;font-size:14px;padding:2px 8px;color:' + (off ? 'var(--gold)' : 'var(--danger)') + '" onclick="lifeSvToggleOrig(\'' + kind + '\',' + v + ')">' + (off ? '恢复' : '删') + '</span>'
@@ -5459,7 +5460,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 56;
+var APP_CODE = 57;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
