@@ -1,11 +1,11 @@
 {
-  "code": 53,
-  "ver": "v53",
-  "file": "yeyu-v53.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v53.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v53/yeyu-v53.apk",
-  "size": 31472262,
+  "code": 54,
+  "ver": "v54",
+  "file": "yeyu-v54.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v54.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v54/yeyu-v54.apk",
+  "size": 31476358,
   "force": true,
-  "date": "2026-10-26",
-  "note": "后台新增「🧮 计算器数据管理」：可以直接在后台添加数值 —— 百分比、生命、元素精通，并且指定对应的位置（花/毛/沙/杯/头），保存后自动同步到所有手机。数值会进入每台手机 APP 的「设置 → 数据管理」里参与组合计算（带 ☁ 标记），后台删掉的数值手机上也会跟着删，自己在手机上加的不会被清。设置页数据管理新增「🔄 立即从后台拉取」。莫娜计算器保持不变。"
+  "date": "2026-10-28",
+  "note": "收纳篮新增「🧬 生命求解器」：填角色基础生命、最大允许误差、圣遗物目标生命，一键列出误差范围内的全部圣遗物组合（电脑上那个生命计算小工具的 APP 版）。自带「数值库」：参与求解的所有数值（花/毛/沙/杯/头 + 百分比档）都能查看、删除、一键恢复，和「设置 → 数据管理」共用同一份数据。顺带修了「禁用百分比档位不生效」的老 bug。"
 }
