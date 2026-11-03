@@ -448,6 +448,77 @@ nav button.active{color:var(--gold);background:transparent}
 .playlist-item .pl-btn.play{background:var(--gold);color:#1a1a2e;border-color:var(--gold)}
 .playlist-item .pl-btn.del{border-color:var(--danger);color:var(--danger)}
 /* mini player 已移除，样式保留兼容 */
+
+/* ===== 攻击计算器（收纳篮 · 数据源：攻击计算器.apk） ===== */
+#atkModal{z-index:9999}
+#atkHead{flex-shrink:0;display:flex;align-items:center;gap:8px;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 9px;
+  background:rgba(13,13,24,.90);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  border-bottom:1px solid rgba(255,255,255,.10)}
+#atkHead .at-title{font-size:16px;font-weight:700;color:var(--gold);letter-spacing:1px;flex-shrink:0}
+#atkTabs{flex:1;display:flex;gap:6px;justify-content:flex-end;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px}
+#atkTabs::-webkit-scrollbar{display:none}
+#atkTabs button{flex:0 0 auto;white-space:nowrap;font-size:12.5px;padding:6px 12px;border-radius:14px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--sub);cursor:pointer}
+#atkTabs button.on{background:rgba(212,175,55,.18);border-color:rgba(212,175,55,.55);color:var(--gold)}
+#atkHead .at-x{font-size:20px;color:var(--sub);padding:2px 6px;cursor:pointer;line-height:1;flex-shrink:0}
+#atkBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:12px 12px calc(env(safe-area-inset-bottom,0px) + 24px)}
+.at-card{background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.at-ct{font-size:13.5px;font-weight:700;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.at-ct::before{content:"";width:3px;height:13px;border-radius:2px;background:var(--gold);flex-shrink:0}
+.at-lb{font-size:12.5px;color:var(--sub);margin-bottom:5px;display:block}
+.at-in,.at-slots .at-sel,.at-sel{width:100%;padding:10px 11px;border-radius:10px;background:rgba(255,255,255,.05);
+  border:1px solid var(--card-border);color:var(--text);font-size:15px;outline:none;
+  -webkit-appearance:none;appearance:none}
+.at-in:focus,.at-sel:focus{border-color:rgba(212,175,55,.7)}
+.at-sel{padding-right:30px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+  background-position:calc(100% - 16px) calc(50% - 2px),calc(100% - 11px) calc(50% - 2px);
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.at-g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.at-slots{width:100%;border-collapse:separate;border-spacing:0 6px;table-layout:fixed}
+.at-slots th{font-size:11px;color:var(--sub);font-weight:500;text-align:left;padding:0 4px 2px}
+.at-slots td{padding:0 3px;vertical-align:middle}
+.at-sn{text-align:center;font-size:13px;font-weight:700;color:var(--gold);background:rgba(212,175,55,.10);
+  border:1px solid rgba(212,175,55,.25);border-radius:9px;padding:10px 0}
+.at-slots .at-sel{padding:9px 22px 9px 8px;font-size:12.5px}
+.at-sum{margin-top:8px;padding:11px;border-radius:11px;background:rgba(212,175,55,.07);border:1px solid rgba(212,175,55,.22);
+  display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:space-between}
+.at-sum span{font-size:12px;color:var(--sub)}
+.at-sum b{font-size:15px;color:var(--gold);font-variant-numeric:tabular-nums}
+.at-judge{margin-top:8px;font-size:12.5px;padding:9px;border-radius:10px;text-align:center}
+.at-judge.ok{background:rgba(76,175,80,.14);border:1px solid rgba(76,175,80,.4);color:#9fe0a8}
+.at-judge.warn{background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.4);color:#f0b982}
+.at-judge.idle{background:rgba(255,255,255,.05);border:1px solid var(--card-border);color:var(--sub)}
+.at-chks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.at-chk{display:flex;align-items:center;gap:5px;padding:6px 9px;border-radius:9px;border:1px solid var(--card-border);
+  background:rgba(255,255,255,.04);font-size:12px;color:var(--sub);cursor:pointer}
+.at-chk.on{color:var(--gold);border-color:rgba(212,175,55,.5);background:rgba(212,175,55,.08)}
+.at-chk input{width:14px;height:14px;accent-color:var(--gold);margin:0}
+.at-combo{border:1px solid var(--card-border);border-radius:10px;padding:9px 10px;margin-bottom:6px;background:rgba(255,255,255,.03)}
+.at-ch{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.at-ci{font-size:11.5px;color:var(--gold);font-weight:700}
+.at-cs{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.at-cp{display:flex;flex-wrap:wrap;gap:4px}
+.at-p{font-size:11px;color:var(--sub);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:6px;padding:2px 6px;font-variant-numeric:tabular-nums}
+.at-p b{color:#d9d4c8}
+.at-dbg{border:1px solid var(--card-border);border-radius:10px;padding:9px;margin-bottom:8px;background:rgba(255,255,255,.03)}
+.at-dbh{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;gap:6px}
+.at-dbh .n{font-size:12.5px;font-weight:700;color:var(--gold)}
+.at-mini{font-size:11.5px;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);
+  border:1px solid var(--card-border);color:var(--text);cursor:pointer}
+.at-vg{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:6px}
+.at-cell{display:flex;flex-direction:column;gap:2px}
+.at-cell .cl{font-size:10px;color:var(--sub);display:flex;justify-content:space-between;align-items:center;gap:2px}
+.at-cell .cl i{font-style:normal;cursor:pointer;font-size:12px;padding:0 3px;opacity:.8;line-height:1}
+.at-cell input{width:100%;padding:6px 4px;border-radius:7px;background:rgba(255,255,255,.05);
+  border:1px solid var(--card-border);color:var(--text);font-size:12px;text-align:center;outline:none}
+.at-cell input:focus{border-color:rgba(212,175,55,.7)}
+.at-cell input.at-off{opacity:.45;text-decoration:line-through}
+.at-hint{font-size:11px;color:var(--sub);line-height:1.65}
 </style>
 </head>
 <body>
@@ -494,6 +565,9 @@ nav button.active{color:var(--gold);background:transparent}
     </button>
     <button class="bin-item" onclick="openLifeSolver()">
       <span class="bin-ico">🧬</span><span class="bin-txt">生命求解器</span>
+    </button>
+    <button class="bin-item" onclick="openAtkCalc()">
+      <span class="bin-ico">⚔️</span><span class="bin-txt">攻击计算器</span>
     </button>
   </div>
 </div>
@@ -707,6 +781,77 @@ nav button.active{color:var(--gold);background:transparent}
           每一槽都可以留空（0）。结果 = 固定值之和 + 基础生命 × 百分比之和，
           列出总和落在 目标±误差 内的全部组合。
           数值库里删掉的数值不再参与求解，随时可以恢复。
+        </div>
+      </div>
+    </div>
+
+    <!-- 攻击计算器（收纳篮 · 数据源：攻击计算器.apk 内置表） -->
+    <div class="modal-overlay fullscreen" id="atkModal" onclick="if(event.target===this)closeAtkCalc()">
+      <div class="modal-box" style="display:flex;flex-direction:column;padding:0">
+        <div id="atkHead">
+          <span class="at-title">⚔️ 攻击计算器</span>
+          <div id="atkTabs">
+            <button id="atkTabCalc" class="on" onclick="atkSwitchTab('calc')">攻击计算</button>
+            <button id="atkTabDb" onclick="atkSwitchTab('db')">数据库</button>
+          </div>
+          <span class="at-x" onclick="closeAtkCalc()">✕</span>
+        </div>
+        <div id="atkBody">
+          <div id="atkPaneCalc">
+            <div class="at-card">
+              <div class="at-ct">基础参数</div>
+              <label class="at-lb">基础攻击力（角色 + 武器）</label>
+              <input class="at-in" id="atkBase" type="number" inputmode="decimal" placeholder="例如 950" oninput="atkSetBase(this.value)">
+              <label class="at-lb" style="margin-top:8px">圣遗物星级（决定主属性与副词条档位）</label>
+              <select class="at-sel" id="atkStarSel" onchange="atkSetStar(this.value)"></select>
+              <div class="at-g2" style="margin-top:8px">
+                <div><label class="at-lb">目标攻击下限</label>
+                  <input class="at-in" id="atkMin" type="number" inputmode="decimal" placeholder="最小值" oninput="atkSetRange('min',this.value)"></div>
+                <div><label class="at-lb">目标攻击上限</label>
+                  <input class="at-in" id="atkMax" type="number" inputmode="decimal" placeholder="最大值" oninput="atkSetRange('max',this.value)"></div>
+              </div>
+            </div>
+            <div class="at-card">
+              <div class="at-ct">圣遗物配置</div>
+              <table class="at-slots">
+                <thead><tr><th style="width:52px"></th><th>主属性</th><th>副词条（小攻击）</th></tr></thead>
+                <tbody id="atkSlotBody"></tbody>
+              </table>
+              <div class="at-sum">
+                <span>圣遗物攻击加成 <b id="atkSumVal">0</b></span>
+                <span>最终攻击力 <b id="atkFinalVal">0</b></span>
+              </div>
+              <div class="at-judge idle" id="atkJudge">填写目标区间后自动判定</div>
+            </div>
+            <div class="at-card">
+              <div class="at-ct">枚举组合</div>
+              <div class="at-hint" style="margin-bottom:8px">勾选需要枚举的项，其余部位按上面已选的数值固定，找出让最终攻击落入目标区间的组合。</div>
+              <div class="at-chks" id="atkEnumChks"></div>
+              <div class="btn-row" style="margin-bottom:0">
+                <button class="btn btn-primary" style="flex:2" onclick="atkRun()">🔍 开始枚举</button>
+                <button class="btn btn-ghost" style="flex:1;font-size:13px" onclick="atkCopy()">📋 复制</button>
+              </div>
+              <div class="at-hint" id="atkEnumNote" style="margin-top:8px"></div>
+              <div id="atkComboList" style="margin-top:8px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+            </div>
+          </div>
+          <div id="atkPaneDb" style="display:none">
+            <div class="at-card">
+              <div class="at-ct">数据库 · 同步说明</div>
+              <div class="at-hint" id="atkDbWho"></div>
+              <div class="at-hint" style="margin-top:6px">
+                主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击）。
+                <br><b style="color:var(--gold)">⛔ 禁用的数值不参与计算</b>（显示删除线，点 ↩ 随时恢复）；✕ 是直接删掉。
+              </div>
+              <div class="btn-row" style="margin:10px 0 0">
+                <button class="btn btn-ghost" style="font-size:13px" onclick="atkReset()">↩ 恢复原始数据</button>
+                <button class="btn btn-ghost" style="font-size:13px" onclick="atkPushNow()">☁ 立即同步</button>
+              </div>
+            </div>
+            <div class="at-card"><div class="at-ct">主属性（毛 · 小攻击）</div><div id="atkDbMain"></div></div>
+            <div class="at-card"><div class="at-ct">副词条（小攻击）</div><div id="atkDbSub"></div></div>
+            <div class="at-card"><div class="at-ct">攻击力%（沙 / 杯 / 头 主属性）</div><div id="atkDbPct"></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2295,6 +2440,723 @@ function lifeSvRestoreAll(){
   svRemovedSave([]);
   try{ lifeSvLibRender(); }catch(e){}
   showToast("已恢复 " + removed.length + " 条");
+}
+
+// ==================== 攻击计算器（收纳篮 · 数据源：攻击计算器.apk） ====================
+/* 数据原样搬运自「攻击计算器(1).apk」assets/www/index.html 的 DEFAULT_DB。
+   公式与它一致：最终攻击 = 基础攻击 + Σ 每槽（主属性 + 副词条小攻击）
+     花     → 主属性是生命值，不计；只有副词条（小攻击）
+     毛     → 主属性 = 小攻击（按星级 Lv0..LvN 档位），再叠副词条
+     沙/杯/头 → 主属性 = 基础攻击 × 攻击力%（21 档），再叠副词条
+   后台 data.atk 整份下发：{rev,ts,main:[{s,v:[]}],sub:[{s,v:[]}],pct:[],off:[{k,s,v}]}
+   off = 禁用清单：条目仍然显示，但不参与任何计算（可随时恢复）。 */
+/* ATK_DEF_START */
+var ATK_DEF = {
+  main: {
+    5: [47, 60.2, 73.4, 86.6, 99.8, 113, 126.2, 139.4, 152.6, 165.8, 179, 192.2, 205.4, 218.6, 231.8, 245, 258.2, 271.4, 284.6, 297.8, 311],
+    4: [42, 53.875, 65.75, 77.625, 89.5, 101.375, 113.25, 125.125, 137, 148.875, 160.75, 172.625, 184.5, 196.375, 208.25, 220.125, 232],
+    3: [28, 35.9167, 43.8333, 51.75, 59.6667, 67.5833, 75.5, 83.4167, 91.3333, 99.25, 107.1667, 115.0833, 123],
+    2: [15, 20.5, 26, 31.5, 37],
+    1: [6, 8.25, 10.5, 12.75, 15]
+  },
+  sub: {
+    5: [13.62, 15.56, 17.51, 19.45, 27.24, 29.18, 31.13, 33.07, 35.01, 36.96, 38.9, 40.86, 42.8, 44.75, 46.69, 48.63, 50.58, 52.52, 54.46, 56.41, 56.42, 58.37, 58.35, 60.31, 62.25, 64.2, 66.14, 70.03, 71.99, 73.91, 73.93],
+    4: [10.89, 12.45, 14, 15.56],
+    3: [8.17, 9.34, 10.51, 11.68],
+    2: [3.27, 3.73, 4.19, 4.65]
+  },
+  pct: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+};
+/* ATK_DEF_END */
+var ATK_DB_KEY = "yy_atk_db", ATK_OFF_KEY = "yy_atk_off", ATK_SIG_KEY = "yy_atk_sig", ATK_DIRTY_KEY = "yy_atk_dirty";
+var ATK_SLOTS = [
+  { key: "flower",  label: "花", type: "none" },
+  { key: "feather", label: "毛", type: "main" },
+  { key: "sand",    label: "沙", type: "pct"  },
+  { key: "cup",     label: "杯", type: "pct"  },
+  { key: "head",    label: "头", type: "pct"  }
+];
+var atkState = {
+  tab: "calc", star: 5, base: "", min: "", max: "",
+  slots: { flower:{main:-1,sub:-1}, feather:{main:-1,sub:-1}, sand:{main:-1,sub:-1}, cup:{main:-1,sub:-1}, head:{main:-1,sub:-1} },
+  enumer: { feather: true, flowerSub: true, featherSub: true, pctSub: true, sand: false, cup: false, head: false }
+};
+var ATK_DB = null, ATK_OFF = [], atkSigApplied = "", atkDirty = false, atkPushing = false, atkPushAt = 0, atkBound = false;
+
+function atkNum(v){ var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+function atkRound(v){ return Math.round(Number(v) * 1000000) / 1000000; }
+function atkFmt(n){ if(n === null || n === undefined || isNaN(n)) return "0"; var r = atkRound(n); if(Math.abs(r) < 1e-9) return "0"; return String(r); }
+function atkFmt2(n){ return (Math.round(n * 100) / 100).toFixed(2); }
+function atkDeep(o){ try{ return JSON.parse(JSON.stringify(o)); }catch(e){ return null; } }
+function atkVals(a){
+  var out = [], i, v;
+  if(!a) return out;
+  for(i = 0; i < a.length; i++){ v = Number(a[i]); if(isFinite(v) && v > 0) out.push(atkRound(v)); }
+  return out;
+}
+function atkStarsOf(m){
+  var out = [], k, s;
+  if(!m) return out;
+  for(k in m){
+    if(!Object.prototype.hasOwnProperty.call(m, k)) continue;
+    s = parseInt(k, 10);
+    if(s > 0 && m[k] && m[k].length) out.push(s);
+  }
+  out.sort(function(a, b){ return b - a; });
+  return out;
+}
+/* 服务器/本地存储 → 内部结构 {main:{星:[值]}, sub:{星:[值]}, pct:[]}
+   两种写法都认：数组 [{s:5,v:[...]}] 或对象 {"5":[...]} */
+function atkNormalize(src){
+  var out = { main: {}, sub: {}, pct: [] };
+  function grab(m, dst){
+    if(!m) return;
+    var i, e, s;
+    if(Object.prototype.toString.call(m) === "[object Array]"){
+      for(i = 0; i < m.length; i++){
+        e = m[i] || {};
+        s = parseInt(e.s != null ? e.s : e.star, 10);
+        if(s > 0){ var vs = atkVals(e.v || e.values || []); if(vs.length) dst[s] = vs; }
+      }
+    } else {
+      for(var k in m){
+        if(!Object.prototype.hasOwnProperty.call(m, k)) continue;
+        s = parseInt(k, 10);
+        if(s > 0){ var vs2 = atkVals(m[k]); if(vs2.length) dst[s] = vs2; }
+      }
+    }
+  }
+  grab(src && src.main, out.main);
+  grab(src && src.sub, out.sub);
+  out.pct = atkVals(src && src.pct);
+  if(!atkStarsOf(out.main).length) out.main = atkDeep(ATK_DEF.main);
+  if(!atkStarsOf(out.sub).length) out.sub = atkDeep(ATK_DEF.sub);
+  if(!out.pct.length) out.pct = ATK_DEF.pct.slice();
+  return out;
+}
+function atkOffList(a){
+  var out = [], i, o, k, s, v;
+  if(!a) return out;
+  for(i = 0; i < a.length; i++){
+    o = a[i] || {}; k = String(o.k || "");
+    if(k !== "main" && k !== "sub" && k !== "pct") continue;
+    s = parseInt(o.s, 10); if(!(s > 0)) s = 0;
+    v = Number(o.v); if(!isFinite(v)) continue;
+    out.push({ k: k, s: s, v: atkRound(v) });
+  }
+  return out;
+}
+function atkSig(db, off){
+  try{ return JSON.stringify([db.main, db.sub, db.pct, off || []]); }catch(e){ return ""; }
+}
+function atkSaveLocal(){
+  try{
+    localStorage.setItem(ATK_DB_KEY, JSON.stringify(ATK_DB));
+    localStorage.setItem(ATK_OFF_KEY, JSON.stringify(ATK_OFF));
+    localStorage.setItem(ATK_SIG_KEY, atkSigApplied || "");
+    if(atkDirty) localStorage.setItem(ATK_DIRTY_KEY, "1"); else localStorage.removeItem(ATK_DIRTY_KEY);
+  }catch(e){}
+}
+function atkMarkDirty(v){
+  atkDirty = !!v;
+  try{ if(v) localStorage.setItem(ATK_DIRTY_KEY, "1"); else localStorage.removeItem(ATK_DIRTY_KEY); }catch(e){}
+}
+/* 启动：先把本机存的那份读出来（断网也有数据），服务器下发后再覆盖 */
+(function atkBoot(){
+  var raw = null, off = null;
+  try{ raw = JSON.parse(localStorage.getItem(ATK_DB_KEY) || "null"); }catch(e){}
+  try{ off = JSON.parse(localStorage.getItem(ATK_OFF_KEY) || "[]"); }catch(e){}
+  ATK_DB = atkNormalize(raw);
+  ATK_OFF = atkOffList(off);
+  try{
+    atkSigApplied = localStorage.getItem(ATK_SIG_KEY) || "";
+    atkDirty = localStorage.getItem(ATK_DIRTY_KEY) === "1";
+  }catch(e){}
+})();
+
+function atkIsOff(k, s, v){
+  for(var i = 0; i < ATK_OFF.length; i++){
+    var o = ATK_OFF[i];
+    if(o && o.k === k && Number(o.s || 0) === Number(s || 0) && Math.abs(Number(o.v) - Number(v)) < 1e-9) return true;
+  }
+  return false;
+}
+function atkDropOff(k, s, v){
+  var s0 = (k === "pct") ? 0 : Number(s || 0), out = [];
+  for(var i = 0; i < ATK_OFF.length; i++){
+    var o = ATK_OFF[i];
+    if(o && o.k === k && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) continue;
+    out.push(o);
+  }
+  ATK_OFF = out;
+}
+function atkMoveOff(k, s, from, to){
+  var s0 = (k === "pct") ? 0 : Number(s || 0);
+  for(var i = 0; i < ATK_OFF.length; i++){
+    var o = ATK_OFF[i];
+    if(o && o.k === k && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = atkRound(to);
+  }
+}
+function atkPickMain(star){
+  var m = ATK_DB.main, st = atkStarsOf(m), i;
+  if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
+  for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
+  return { s: Number(star), v: [] };
+}
+function atkPickSub(star){
+  var m = ATK_DB.sub, st = atkStarsOf(m), i;
+  if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
+  for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
+  return { s: Number(star), v: [] };
+}
+
+/* ---------- 打开 / 关闭 / 切页 ---------- */
+function openAtkCalc(){
+  closeBin();
+  var m = document.getElementById("atkModal");
+  if(!m) return;
+  m.classList.add("show");
+  try{ atkBindOnce(); }catch(e){}
+  try{ atkRenderAll(); }catch(e){}
+  try{ atkSwitchTab("calc"); }catch(e){}
+}
+function closeAtkCalc(){
+  var m = document.getElementById("atkModal");
+  if(m) m.classList.remove("show");
+}
+function atkSwitchTab(t){
+  atkState.tab = t;
+  var c = document.getElementById("atkPaneCalc"), d = document.getElementById("atkPaneDb");
+  if(c) c.style.display = (t === "calc") ? "" : "none";
+  if(d) d.style.display = (t === "db") ? "" : "none";
+  var b1 = document.getElementById("atkTabCalc"), b2 = document.getElementById("atkTabDb");
+  if(b1) b1.className = (t === "calc") ? "on" : "";
+  if(b2) b2.className = (t === "db") ? "on" : "";
+  if(t === "db"){ try{ atkRenderDb(); atkRenderWho(); }catch(e){} }
+}
+
+/* ---------- 计算页渲染 ---------- */
+function atkRenderStar(){
+  var sel = document.getElementById("atkStarSel");
+  if(!sel) return;
+  var st = atkStarsOf(ATK_DB.main), h = "", i;
+  for(i = 0; i < st.length; i++) h += "<option value=\"" + st[i] + "\"" + (st[i] === Number(atkState.star) ? " selected" : "") + ">" + st[i] + " 星</option>";
+  if(!h) h = "<option value=\"5\">5 星</option>";
+  sel.innerHTML = h;
+}
+function atkMainOptions(slot){
+  var out = [], i, s = Number(atkState.star), arr, base;
+  if(slot.type === "none") return [{ idx: -1, label: "不计" }];
+  if(slot.type === "main"){
+    var pm = atkPickMain(s);
+    arr = pm.v;
+    out.push({ idx: -1, label: "不计" });
+    for(i = 0; i < arr.length; i++){
+      if(atkIsOff("main", pm.s, arr[i])) continue;
+      out.push({ idx: i, label: "Lv" + i + " · " + atkFmt(arr[i]) });
+    }
+    return out;
+  }
+  arr = ATK_DB.pct; base = atkNum(atkState.base);
+  out.push({ idx: -1, label: "不计" });
+  for(i = 0; i < arr.length; i++){
+    if(atkIsOff("pct", 0, arr[i])) continue;
+    out.push({ idx: i, label: atkFmt(arr[i]) + "% · " + (base > 0 ? atkFmt2(base * arr[i] / 100) : "—") });
+  }
+  return out;
+}
+function atkSubOptions(){
+  var out = [{ idx: -1, label: "不计" }];
+  var ps = atkPickSub(Number(atkState.star)), i;
+  for(i = 0; i < ps.v.length; i++){
+    if(atkIsOff("sub", ps.s, ps.v[i])) continue;
+    out.push({ idx: i, label: "第" + (i + 1) + "档 · " + atkFmt(ps.v[i]) });
+  }
+  return out;
+}
+function atkMainVal(slotKey, idx){
+  if(idx < 0) return 0;
+  var slot = null, i;
+  for(i = 0; i < ATK_SLOTS.length; i++) if(ATK_SLOTS[i].key === slotKey) slot = ATK_SLOTS[i];
+  if(!slot) return 0;
+  if(slot.type === "main"){ var a = atkPickMain(Number(atkState.star)).v; return idx < a.length ? atkNum(a[idx]) : 0; }
+  if(slot.type === "pct"){ var p = ATK_DB.pct; if(idx >= p.length) return 0; return atkNum(atkState.base) * atkNum(p[idx]) / 100; }
+  return 0;
+}
+function atkSubVal(idx){
+  if(idx < 0) return 0;
+  var a = atkPickSub(Number(atkState.star)).v;
+  return idx < a.length ? atkNum(a[idx]) : 0;
+}
+/* 当前选中的那一档是否已被禁用 / 已删除 —— 是的话就不能再算进结果里 */
+function atkSelOff(kind, slot, idx){
+  if(idx < 0) return false;
+  if(kind === "main"){
+    if(slot && slot.type === "main"){
+      var pm = atkPickMain(Number(atkState.star));
+      return idx >= pm.v.length ? true : atkIsOff("main", pm.s, pm.v[idx]);
+    }
+    if(slot && slot.type === "pct"){
+      return idx >= ATK_DB.pct.length ? true : atkIsOff("pct", 0, ATK_DB.pct[idx]);
+    }
+    return false;
+  }
+  var ps = atkPickSub(Number(atkState.star));
+  return idx >= ps.v.length ? true : atkIsOff("sub", ps.s, ps.v[idx]);
+}
+/* 后台禁用/删除某个值后，手机上下拉里那一档已经不存在了 → 自动回「不计」 */
+function atkSanitizeSel(){
+  for(var i = 0; i < ATK_SLOTS.length; i++){
+    var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
+    if(atkSelOff("main", slot, st.main)) st.main = -1;
+    if(atkSelOff("sub", null, st.sub)) st.sub = -1;
+  }
+}
+function atkRenderCalc(){
+  var body = document.getElementById("atkSlotBody");
+  if(!body) return;
+  try{ atkSanitizeSel(); }catch(e){}
+  var h = "", i, j;
+  for(i = 0; i < ATK_SLOTS.length; i++){
+    var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
+    var mains = atkMainOptions(slot), subs = atkSubOptions();
+    h += "<tr><td><div class=\"at-sn\">" + slot.label + "</div></td><td>";
+    if(slot.type === "none"){
+      h += "<select class=\"at-sel\" disabled style=\"opacity:.45\"><option>生命值 · 不计</option></select>";
+    } else {
+      h += "<select class=\"at-sel\" data-slot=\"" + slot.key + "\" data-kind=\"main\">";
+      for(j = 0; j < mains.length; j++) h += "<option value=\"" + mains[j].idx + "\"" + (st.main === mains[j].idx ? " selected" : "") + ">" + mains[j].label + "</option>";
+      h += "</select>";
+    }
+    h += "</td><td><select class=\"at-sel\" data-slot=\"" + slot.key + "\" data-kind=\"sub\">";
+    for(j = 0; j < subs.length; j++) h += "<option value=\"" + subs[j].idx + "\"" + (st.sub === subs[j].idx ? " selected" : "") + ">" + subs[j].label + "</option>";
+    h += "</select></td></tr>";
+  }
+  body.innerHTML = h;
+  atkRenderEnum();
+  atkRenderSum();
+}
+var ATK_ENUM_ITEMS = [
+  { k: "feather",   t: "毛主属性等级" },
+  { k: "flowerSub", t: "花副词条" },
+  { k: "featherSub",t: "毛副词条" },
+  { k: "pctSub",    t: "沙杯头副词条" },
+  { k: "sand",      t: "沙 攻击%" },
+  { k: "cup",       t: "杯 攻击%" },
+  { k: "head",      t: "头 攻击%" }
+];
+function atkRenderEnum(){
+  var box = document.getElementById("atkEnumChks");
+  if(!box) return;
+  var h = "", i, it, on;
+  for(i = 0; i < ATK_ENUM_ITEMS.length; i++){
+    it = ATK_ENUM_ITEMS[i]; on = !!atkState.enumer[it.k];
+    h += "<label class=\"at-chk" + (on ? " on" : "") + "\"><input type=\"checkbox\" data-enum=\"" + it.k + "\"" + (on ? " checked" : "") + ">" + it.t + "</label>";
+  }
+  box.innerHTML = h;
+}
+function atkSumNow(){
+  var sum = 0, i, k, st;
+  for(i = 0; i < ATK_SLOTS.length; i++){
+    k = ATK_SLOTS[i].key; st = atkState.slots[k];
+    sum += atkMainVal(k, st.main) + atkSubVal(st.sub);
+  }
+  return sum;
+}
+function atkRenderSum(){
+  try{ atkSanitizeSel(); }catch(e){}
+  var sum = atkSumNow(), base = atkNum(atkState.base);
+  var a = document.getElementById("atkSumVal"); if(a) a.textContent = atkFmt2(sum);
+  var b = document.getElementById("atkFinalVal"); if(b) b.textContent = atkFmt2(base + sum);
+  var jd = document.getElementById("atkJudge");
+  if(!jd) return;
+  var mn = atkState.min === "" ? NaN : parseFloat(atkState.min);
+  var mx = atkState.max === "" ? NaN : parseFloat(atkState.max);
+  var total = base + sum;
+  if(isNaN(mn) || isNaN(mx)){ jd.className = "at-judge idle"; jd.textContent = "填写目标区间后自动判定"; }
+  else if(total >= mn && total <= mx){
+    jd.className = "at-judge ok";
+    jd.textContent = "✓ 命中区间 " + atkFmt2(mn) + " ~ " + atkFmt2(mx) + "（" + atkFmt2(total) + "）";
+  } else {
+    var d = total < mn ? mn - total : total - mx;
+    jd.className = "at-judge warn";
+    jd.textContent = (total < mn ? "差 " : "超 ") + atkFmt2(d) + " 攻击力（当前 " + atkFmt2(total) + "）";
+  }
+}
+function atkSetBase(v){ atkState.base = v; atkRenderCalc(); }
+function atkSetRange(which, v){ if(which === "min") atkState.min = v; else atkState.max = v; atkRenderSum(); }
+function atkSetStar(v){
+  atkState.star = atkNum(v);
+  for(var i = 0; i < ATK_SLOTS.length; i++){
+    var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
+    var mm = slot.type === "main" ? atkPickMain(atkState.star).v.length : (slot.type === "pct" ? ATK_DB.pct.length : 0);
+    var ss = atkPickSub(atkState.star).v.length;
+    if(st.main >= mm) st.main = -1;
+    if(st.sub >= ss) st.sub = -1;
+  }
+  atkRenderCalc();
+}
+function atkBindOnce(){
+  if(atkBound) return;
+  atkBound = true;
+  var body = document.getElementById("atkSlotBody");
+  if(body) body.addEventListener("change", function(e){
+    var t = e.target;
+    var key = t.getAttribute("data-slot"), kind = t.getAttribute("data-kind");
+    if(!key || !kind) return;
+    atkState.slots[key][kind] = atkNum(t.value);
+    atkRenderSum();
+  });
+  var chks = document.getElementById("atkEnumChks");
+  if(chks) chks.addEventListener("change", function(e){
+    var k = e.target.getAttribute("data-enum");
+    if(!k) return;
+    atkState.enumer[k] = !!e.target.checked;
+    try{ atkRenderEnum(); }catch(err){}
+  });
+}
+
+/* ---------- 枚举求解（算法与攻击计算器原版一致） ---------- */
+var ATK_OPT_LIMIT = 300, ATK_NODE_CAP = 1500000;
+function atkSlotOptions(slot){
+  var st = atkState.slots[slot.key];
+  var enumMain = (slot.key === "feather" && atkState.enumer.feather) || (slot.type === "pct" && atkState.enumer[slot.key]);
+  var mains = [], i, j;
+  if(slot.type === "none"){ mains.push({ val: 0, label: "" }); }
+  else if(enumMain){
+    var all = atkMainOptions(slot);
+    for(i = 0; i < all.length; i++){
+      if(all[i].idx < 0) continue;
+      var mv0 = atkMainVal(slot.key, all[i].idx);
+      mains.push({ val: mv0, label: slot.label + "主" + atkFmt(mv0) });
+    }
+  } else if(st.main >= 0 && !atkSelOff("main", slot, st.main)){
+    var mv = atkMainVal(slot.key, st.main);
+    mains.push({ val: mv, label: slot.label + "主" + atkFmt(mv) });
+  } else mains.push({ val: 0, label: "" });
+
+  var subs = [];
+  var enumSub = slot.key === "flower" ? atkState.enumer.flowerSub
+              : slot.key === "feather" ? atkState.enumer.featherSub
+              : atkState.enumer.pctSub;
+  var ps = atkPickSub(Number(atkState.star));
+  if(enumSub){
+    for(j = 0; j < ps.v.length; j++){
+      if(atkIsOff("sub", ps.s, ps.v[j])) continue;
+      subs.push({ val: atkNum(ps.v[j]), label: slot.label + "副" + atkFmt(ps.v[j]) });
+    }
+    subs.push({ val: 0, label: "" });
+  } else if(st.sub >= 0 && !atkSelOff("sub", null, st.sub)){
+    var v = atkSubVal(st.sub);
+    subs.push({ val: v, label: slot.label + "副" + atkFmt(v) });
+  } else subs.push({ val: 0, label: "" });
+
+  var seen = {}, opts = [];
+  for(i = 0; i < mains.length; i++){
+    for(j = 0; j < subs.length; j++){
+      var val = mains[i].val + subs[j].val;
+      var key = Math.round(val * 10000);
+      if(seen[key]) continue;
+      seen[key] = 1;
+      var label = mains[i].label && subs[j].label ? (mains[i].label + " + " + subs[j].label) : (mains[i].label || subs[j].label || "—");
+      opts.push({ val: val, label: label });
+    }
+  }
+  opts.sort(function(x, y){ return x.val - y.val; });
+  return opts;
+}
+function atkRun(){
+  var base = atkNum(atkState.base);
+  var mn = atkState.min === "" ? NaN : parseFloat(atkState.min);
+  var mx = atkState.max === "" ? NaN : parseFloat(atkState.max);
+  var note = document.getElementById("atkEnumNote"), listEl = document.getElementById("atkComboList");
+  if(!note || !listEl) return;
+  listEl.innerHTML = "";
+  if(isNaN(mn) || isNaN(mx)){ note.textContent = "请先填写目标攻击下限与上限。"; return; }
+  if(mn > mx){ note.textContent = "下限不能大于上限。"; return; }
+  if(base <= 0){ note.textContent = "请先填写基础攻击力。"; return; }
+  var lo = mn - base, hi = mx - base;
+  if(hi < 0){ note.textContent = "目标攻击低于基础攻击力，不需要圣遗物加成。"; return; }
+  try{ atkSanitizeSel(); }catch(e){}
+  var packs = [], i;
+  for(i = 0; i < ATK_SLOTS.length; i++){
+    var opts = atkSlotOptions(ATK_SLOTS[i]);
+    if(opts.length) packs.push({ slot: ATK_SLOTS[i], opts: opts });
+  }
+  packs.sort(function(a, b){ return a.opts.length - b.opts.length; });
+  var n = packs.length;
+  if(!n){ note.textContent = "没有可用数值（可能被全部禁用了）。"; return; }
+  var sufMin = [], sufMax = [];
+  sufMin[n] = 0; sufMax[n] = 0;
+  for(i = n - 1; i >= 0; i--){
+    sufMin[i] = sufMin[i + 1] + packs[i].opts[0].val;
+    sufMax[i] = sufMax[i + 1] + packs[i].opts[packs[i].opts.length - 1].val;
+  }
+  var total = 1;
+  for(i = 0; i < n; i++) total *= packs[i].opts.length;
+  note.textContent = "正在计算…（候选 " + total.toLocaleString() + " 种）";
+  setTimeout(function(){
+    var t0 = Date.now();
+    var results = [], pick = [], nodes = 0, capped = false;
+    function dfs(idx, sum){
+      if(results.length >= ATK_OPT_LIMIT) return;
+      if(++nodes > ATK_NODE_CAP){ capped = true; return; }
+      if(sum + sufMax[idx] < lo) return;
+      if(sum + sufMin[idx] > hi) return;
+      if(idx === n){ results.push({ sum: sum, total: base + sum, pick: pick.slice(0, n) }); return; }
+      var oo = packs[idx].opts;
+      for(var k = 0; k < oo.length; k++){
+        var v = sum + oo[k].val;
+        if(v > hi) break;
+        pick[idx] = oo[k];
+        dfs(idx + 1, v);
+        if(results.length >= ATK_OPT_LIMIT || capped) return;
+      }
+    }
+    dfs(0, 0);
+    results.sort(function(a, b){ return a.total - b.total; });
+    var ms = Math.max(1, Date.now() - t0);
+    if(!results.length){
+      note.textContent = "没有符合条件的组合（耗时 " + ms + " ms），放宽区间或增加可枚举项试试。";
+      return;
+    }
+    var hitLimit = results.length >= ATK_OPT_LIMIT;
+    note.textContent = "共 " + results.length + " 个组合" + (hitLimit ? "（已达上限，仅显示前 " + ATK_OPT_LIMIT + " 个）" : "")
+      + " · 耗时 " + ms + " ms" + (capped ? " · 组合过多已限流，建议减少枚举项" : "");
+    var lines = [], html = [], r, q, item, parts;
+    for(r = 0; r < results.length; r++){
+      item = results[r]; parts = [];
+      for(q = 0; q < item.pick.length; q++){
+        if(item.pick[q] && item.pick[q].label && item.pick[q].label !== "—") parts.push(item.pick[q].label);
+      }
+      lines.push(parts.join(" + ") + " = " + atkFmt2(item.total));
+      html.push("<div class=\"at-combo\"><div class=\"at-ch\"><span class=\"at-ci\">组合 " + (r + 1) + "</span>"
+        + "<span class=\"at-cs\">" + atkFmt2(item.total) + "</span></div><div class=\"at-cp\">"
+        + parts.map(function(p){ return "<span class=\"at-p\">" + p + "</span>"; }).join("")
+        + "<span class=\"at-p\">加成 <b>" + atkFmt2(item.sum) + "</b></span></div></div>");
+    }
+    listEl.innerHTML = html.join("");
+    window._atkText = lines.join("\n");
+  }, 20);
+}
+function atkCopy(){
+  var t = window._atkText || "";
+  if(!t){ showToast("还没有结果可复制"); return; }
+  try{
+    var ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("已复制 " + t.split("\n").length + " 行结果");
+  }catch(e){ showToast("复制失败"); }
+}
+
+/* ---------- 数据库页（查看 / 改 / 加 / 删 / 禁用） ---------- */
+function atkRenderWho(){
+  var el = document.getElementById("atkDbWho");
+  if(!el) return;
+  var m = null;
+  try{ m = mgrGet(); }catch(e){}
+  var role = "";
+  try{ role = m ? (mgrRoleName(m.role) || "") : ""; }catch(e){}
+  if(!role) role = "未登录";
+  if(calcImAdmin()){
+    el.innerHTML = "当前：<b style=\"color:var(--gold)\">" + role + "</b> · 改动会直接写进后台，所有设备一起同步";
+  } else {
+    el.innerHTML = "当前：<b>" + role + "</b> · 只有创始人和管理员能改数据库，你现在只能查看";
+  }
+}
+function atkRenderDb(){
+  var admin = calcImAdmin();
+  var boxMain = document.getElementById("atkDbMain");
+  var boxSub = document.getElementById("atkDbSub");
+  var boxPct = document.getElementById("atkDbPct");
+  var i, j, s, arr, off, h, st;
+  if(boxMain){
+    var stm = atkStarsOf(ATK_DB.main);
+    h = "";
+    for(i = 0; i < stm.length; i++){
+      s = stm[i]; arr = ATK_DB.main[s] || [];
+      h += "<div class=\"at-dbg\"><div class=\"at-dbh\"><span class=\"n\">" + s + " 星 · 毛主属性（" + arr.length + " 档）</span>";
+      if(admin) h += "<span><button class=\"at-mini\" onclick=\"atkAddVal('main'," + s + ")\">＋档位</button></span>";
+      h += "</div><div class=\"at-vg\">";
+      for(j = 0; j < arr.length; j++){
+        off = atkIsOff("main", s, arr[j]);
+        h += "<div class=\"at-cell\"><div class=\"cl\"><span>Lv" + j + "</span>";
+        if(admin) h += "<span><i onclick=\"atkToggleOff('main'," + s + "," + j + ")\">" + (off ? "↩" : "⛔") + "</i><i onclick=\"atkDelVal('main'," + s + "," + j + ")\">✕</i></span>";
+        h += "</div><input type=\"number\" step=\"0.01\" value=\"" + arr[j] + "\"" + (admin ? " onchange=\"atkEditVal('main'," + s + "," + j + ",this.value)\"" : " readonly") + (off ? " class=\"at-off\"" : "") + "></div>";
+      }
+      h += "</div></div>";
+    }
+    boxMain.innerHTML = h || "<div class=\"at-hint\">还没有数据</div>";
+  }
+  if(boxSub){
+    var sts = atkStarsOf(ATK_DB.sub);
+    h = "";
+    for(i = 0; i < sts.length; i++){
+      s = sts[i]; arr = ATK_DB.sub[s] || [];
+      h += "<div class=\"at-dbg\"><div class=\"at-dbh\"><span class=\"n\">" + s + " 星 · 副词条（" + arr.length + " 档）</span>";
+      if(admin) h += "<span><button class=\"at-mini\" onclick=\"atkAddVal('sub'," + s + ")\">＋档位</button></span>";
+      h += "</div><div class=\"at-vg\">";
+      for(j = 0; j < arr.length; j++){
+        off = atkIsOff("sub", s, arr[j]);
+        h += "<div class=\"at-cell\"><div class=\"cl\"><span>第" + (j + 1) + "档</span>";
+        if(admin) h += "<span><i onclick=\"atkToggleOff('sub'," + s + "," + j + ")\">" + (off ? "↩" : "⛔") + "</i><i onclick=\"atkDelVal('sub'," + s + "," + j + ")\">✕</i></span>";
+        h += "</div><input type=\"number\" step=\"0.01\" value=\"" + arr[j] + "\"" + (admin ? " onchange=\"atkEditVal('sub'," + s + "," + j + ",this.value)\"" : " readonly") + (off ? " class=\"at-off\"" : "") + "></div>";
+      }
+      h += "</div></div>";
+    }
+    boxSub.innerHTML = h || "<div class=\"at-hint\">还没有数据</div>";
+  }
+  if(boxPct){
+    arr = ATK_DB.pct; h = "<div class=\"at-dbg\"><div class=\"at-dbh\"><span class=\"n\">攻击力%（" + arr.length + " 档）</span>";
+    if(admin) h += "<span><button class=\"at-mini\" onclick=\"atkAddVal('pct',0)\">＋档位</button></span>";
+    h += "</div><div class=\"at-vg\">";
+    for(j = 0; j < arr.length; j++){
+      off = atkIsOff("pct", 0, arr[j]);
+      h += "<div class=\"at-cell\"><div class=\"cl\"><span>档" + (j + 1) + "</span>";
+      if(admin) h += "<span><i onclick=\"atkToggleOff('pct',0," + j + ")\">" + (off ? "↩" : "⛔") + "</i><i onclick=\"atkDelVal('pct',0," + j + ")\">✕</i></span>";
+      h += "</div><input type=\"number\" step=\"0.1\" value=\"" + arr[j] + "\"" + (admin ? " onchange=\"atkEditVal('pct',0," + j + ",this.value)\"" : " readonly") + (off ? " class=\"at-off\"" : "") + "></div>";
+    }
+    h += "</div></div><div class=\"at-hint\" style=\"margin-top:6px\">共 " + arr.length + " 档 · 百分比按 46.6 存（=46.6%）</div>";
+    boxPct.innerHTML = h;
+  }
+}
+function atkRenderAll(){
+  try{ atkRenderStar(); }catch(e){}
+  try{ atkRenderCalc(); }catch(e){}
+  try{ atkRenderDb(); }catch(e){}
+  try{ atkRenderWho(); }catch(e){}
+}
+function atkArrOf(kind, star){
+  if(kind === "pct") return ATK_DB.pct;
+  var m = ATK_DB[kind] || (ATK_DB[kind] = {});
+  if(!m[star]) m[star] = [];
+  return m[star];
+}
+/* 一次改动落地：存本机 + 刷新界面；创始人/管理员直接推后台，普通成员只本机 */
+function atkAfterEdit(msg){
+  atkSaveLocal();
+  try{ atkRenderAll(); }catch(e){}
+  if(calcImAdmin()){
+    atkMarkDirty(true);
+    atkPush(function(ok){ if(!ok) showToast("已在本机生效 · 没连上服务器，联网后自动补传", 3600); });
+  } else {
+    showToast((msg ? msg + " · " : "") + "只在本机生效（创始人/管理员才会同步后台）", 3600);
+  }
+}
+function atkAddVal(kind, star){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
+  var arr = atkArrOf(kind, star);
+  var last = arr.length ? arr[arr.length - 1] : 0;
+  arr.push(last > 0 ? last : 1);
+  atkAfterEdit("已加一档，改成你要的数值");
+}
+function atkDelVal(kind, star, idx){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
+  var arr = atkArrOf(kind, star);
+  if(idx < 0 || idx >= arr.length) return;
+  var v = arr[idx];
+  arr.splice(idx, 1);
+  atkDropOff(kind, star, v);
+  atkAfterEdit("已删除 " + atkFmt(v));
+}
+function atkEditVal(kind, star, idx, val){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
+  var nv = Number(val);
+  if(!isFinite(nv) || nv <= 0){ showToast("数值不对，已还原"); atkRenderDb(); return; }
+  nv = atkRound(nv);
+  var arr = atkArrOf(kind, star);
+  if(idx < 0 || idx >= arr.length) return;
+  var old = arr[idx];
+  arr[idx] = nv;
+  atkMoveOff(kind, star, old, nv);
+  atkAfterEdit("已改为 " + atkFmt(nv));
+}
+function atkToggleOff(kind, star, idx){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
+  var arr = atkArrOf(kind, star);
+  if(idx < 0 || idx >= arr.length) return;
+  var v = arr[idx];
+  if(atkIsOff(kind, star, v)){
+    atkDropOff(kind, star, v);
+    atkAfterEdit("已恢复 " + atkFmt(v) + "，重新参与计算");
+  } else {
+    ATK_OFF.push({ k: kind, s: (kind === "pct") ? 0 : Number(star), v: atkRound(v) });
+    atkAfterEdit("已禁用 " + atkFmt(v) + "，不参与计算");
+  }
+}
+function atkReset(){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
+  if(!confirm("恢复成攻击计算器 APK 的原始数据？现在的改动会被覆盖。")) return;
+  ATK_DB = atkDeep(ATK_DEF);
+  ATK_OFF = [];
+  atkAfterEdit("已恢复 APK 原始数据");
+}
+
+/* ---------- 与后台 data.atk 同步 ---------- */
+function atkPayload(){
+  var order = atkStarsOf(ATK_DB.main), orderSub = atkStarsOf(ATK_DB.sub);
+  var main = [], sub = [], i, s;
+  for(i = 0; i < order.length; i++){ s = order[i]; main.push({ s: s, v: ATK_DB.main[s].slice() }); }
+  for(i = 0; i < orderSub.length; i++){ s = orderSub[i]; sub.push({ s: s, v: ATK_DB.sub[s].slice() }); }
+  return { main: main, sub: sub, pct: ATK_DB.pct.slice(), off: ATK_OFF.slice() };
+}
+function atkSync(d){
+  try{
+    var a = d && d.atk;
+    if(!a) return;
+    /* 本机还有没传上去的改动 → 先别让服务器那份盖回来（否则管理员的编辑会丢） */
+    if(atkDirty && calcImAdmin()){ try{ atkAutoPush(); }catch(e0){} return; }
+    var nd = atkNormalize(a), no = atkOffList(a.off);
+    var sig = atkSig(nd, no);
+    if(sig === atkSigApplied) return;
+    ATK_DB = nd; ATK_OFF = no; atkSigApplied = sig;
+    atkSaveLocal();
+    try{
+      var md = document.getElementById("atkModal");
+      if(md && md.classList.contains("show")) atkRenderAll();
+    }catch(e1){}
+  }catch(e){}
+}
+function atkPush(cb){
+  if(!calcImAdmin()){ if(cb) cb(false, "notadmin"); return; }
+  if(!gistEnabled()){ atkMarkDirty(true); atkSaveLocal(); if(cb) cb(false, "offline"); return; }
+  var p = atkPayload();
+  gistMutate(function(d){
+    var a = d.atk;
+    if(!a || typeof a !== "object") a = d.atk = { rev: 0, ts: 0 };
+    a.main = p.main; a.sub = p.sub; a.pct = p.pct; a.off = p.off;
+    a.rev = (Number(a.rev) || 0) + 1;
+    a.ts = Date.now();
+    try{ a.by = (mgrGet() || {}).u || ""; }catch(e){}
+    return true;
+  }, function(ok){
+    if(ok){
+      atkSigApplied = atkSig(ATK_DB, ATK_OFF);
+      atkMarkDirty(false); atkSaveLocal();
+      showToast("☁ 攻击数据库已同步到后台（所有设备）");
+    } else {
+      atkMarkDirty(true); atkSaveLocal();
+      showToast("已在本机生效 · 没连上服务器，联网后会自动补传", 3800);
+    }
+    if(cb) cb(!!ok);
+  });
+}
+function atkAutoPush(){
+  if(!atkDirty || atkPushing) return;
+  if(Date.now() - atkPushAt < 20000) return;
+  if(!calcImAdmin() || !gistEnabled()) return;
+  atkPushAt = Date.now(); atkPushing = true;
+  atkPush(function(){ atkPushing = false; });
+}
+function atkPushNow(){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能同步后台"); return; }
+  if(!gistEnabled()){ showToast("没连上服务器，稍后再试"); return; }
+  atkMarkDirty(true); atkSaveLocal();
+  showToast("正在同步…");
+  atkPush(function(ok){ if(ok){ try{ atkRenderDb(); }catch(e){} } });
 }
 
 // ==================== 求生命和计算器 ====================
@@ -5747,7 +6609,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 60;
+var APP_CODE = 61;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -6136,6 +6998,7 @@ function calcSync(d, force){
     var c = d && d.calc;
     /* 求解器数值池和 calc 是两份独立数据（各有 rev），任何时候都要各自判断 */
     try{ svSync(d); }catch(e){}
+    try{ atkSync(d); }catch(e){}        // 收纳篮「⚔️ 攻击计算器」数据库（data.atk）
     if(!c) return;
     var items = Array.isArray(c.items) ? c.items : [];
     var rev = Number(c.rev) || 0;
