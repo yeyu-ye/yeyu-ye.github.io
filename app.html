@@ -1415,6 +1415,50 @@ function rebuildDataWithCustom(){
     if(allPctRates.indexOf(d.value) < 0) allPctRates.push(d.value);
   }
   allPctRates.sort(function(a,b){return a-b;});
+  // 后台「数据库管理」对内置值的覆盖（改值 / 删除）：yy_calc_ov
+  var ovs = loadCalcOv();
+  for(var k=0; k<ovs.length; k++){
+    var ov = ovs[k];
+    if(!ov || !ov.t) continue;
+    if(ov.t === "life" && ov.p && artifactData[ov.p]){
+      var arr2 = artifactData[ov.p], out2 = [], replaced = false;
+      for(var a=0; a<arr2.length; a++){
+        var st2 = arr2[a][0], v2 = arr2[a][1];
+        if(st2 === (ov.s||0) && Math.abs(v2 - Number(ov.f)) < 0.011){
+          if(replaced) continue;                 // 同值重复条目只留一条
+          replaced = true;
+          if(ov.to != null && isFinite(Number(ov.to))) out2.push([st2, Number(ov.to)]);
+        } else out2.push(arr2[a]);
+      }
+      artifactData[ov.p] = out2;
+    } else if(ov.t === "mastery" && ov.p && masteryData[ov.p]){
+      var arr3 = masteryData[ov.p], out3 = [];
+      for(var b=0; b<arr3.length; b++){
+        if(Math.abs(arr3[b] - Number(ov.f)) < 0.011){
+          if(ov.to != null && isFinite(Number(ov.to))) out3.push(Number(ov.to));
+        } else out3.push(arr3[b]);
+      }
+      masteryData[ov.p] = out3;
+    } else if(ov.t === "percent"){
+      var out4 = [];
+      for(var c2=0; c2<allPctRates.length; c2++){
+        if(Math.abs(allPctRates[c2] - Number(ov.f)) < 0.011){
+          if(ov.to != null && isFinite(Number(ov.to))) out4.push(Number(ov.to));
+        } else out4.push(allPctRates[c2]);
+      }
+      allPctRates = out4;
+      allPctRates.sort(function(x,y){return x-y;});
+    }
+  }
+}
+
+/* 后台下发的内置值覆盖清单（后台 dbCard 生成） */
+var CALC_OV_KEY = "yy_calc_ov";
+function loadCalcOv(){
+  try{
+    var a = JSON.parse(localStorage.getItem(CALC_OV_KEY) || "[]");
+    return Array.isArray(a) ? a : [];
+  }catch(e){ return []; }
 }
 
 // ==================== 状态 ====================
@@ -5460,7 +5504,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 57;
+var APP_CODE = 58;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -5879,11 +5923,18 @@ function calcSync(d){
     try{ localStorage.setItem(CALC_IDS_KEY, JSON.stringify(newIds)); }catch(e){}
     try{ localStorage.setItem(CALC_REV_KEY, String(rev)); }catch(e){}
     calcRevApplied = rev; calcIdsApplied = newIds;
+    /* 后台「数据库管理」改内置值的覆盖清单 → 存起来，rebuildDataWithCustom 套用 */
+    try{
+      var ovArr = Array.isArray(c.ov) ? c.ov : [];
+      localStorage.setItem(CALC_OV_KEY, JSON.stringify(ovArr));
+    }catch(e){}
     calcAdminCount = calcAdminN();
     try{ rebuildDataWithCustom(); }catch(e){}       // 重新参与组合计算
     try{ refreshFilterIfActive(); }catch(e){}
     try{ if(document.getElementById("customDataModal") && document.getElementById("customDataModal").classList.contains("show")) renderCustomDataList(); }catch(e){}
     try{ renderDmAdmin(); }catch(e){}
+    try{ svSync(d); }catch(e){}                     // 求解器数值池一并同步
+    try{ calcUploadLocal(); }catch(e){}             // 本机自己加的数值上传后台
     if(added || removed){
       showToast("后台数据已同步：" + (added ? "新增 " + added + " 条" : "") +
                 (added && removed ? "、" : "") + (removed ? "移除 " + removed + " 条" : "") +
@@ -5904,10 +5955,95 @@ function calcPullNow(){
   try{
     calcRevApplied = -1;                              // 强制重新合并一次
     try{ localStorage.setItem(CALC_REV_KEY, "-1"); }catch(e){}
-    if(window.gistRead) gistRead(function(d){ try{ calcSync(d || (window.data && window.data)); }catch(e){} renderDmAdmin(); });
+    svRevApplied = -1;
+    try{ localStorage.setItem(SV_REV_KEY, "-1"); }catch(e){}
+    if(window.gistRead) gistRead(function(d){ try{ calcSync(d || (window.data && window.data)); }catch(e){} try{ svSync(d); }catch(e){} renderDmAdmin(); });
     else showToast("还没连上服务器，稍后再试");
   }catch(e){ showToast("拉取失败，稍后再试"); }
   renderDmAdmin();
+}
+/* ===== 后台「🗃 数据库管理」下发求解器数值池（data.sv） =====
+   { rev, ts, ints[], decs[], pcts[] }：三张池整份下发，手机端直接替换。
+   用户本机「📚 数值库」的禁用记录仍然有效（按值过滤，与池来源无关）。
+   后台没配过 data.sv 就继续用 exe 原始池。 */
+var SV_REV_KEY = "yy_sv_rev";
+var svRevApplied = -1;
+try{ svRevApplied = parseInt(localStorage.getItem(SV_REV_KEY) || "-1", 10) || -1; }catch(e){}
+function svNums(a, maxDec){
+  if(!Array.isArray(a)) return null;
+  var out = [];
+  for(var i = 0; i < a.length; i++){
+    var v = Number(a[i]);
+    if(isFinite(v) && v > 0) out.push(maxDec ? Math.round(v * 1000000) / 1000000 : Math.round(v));
+  }
+  out.sort(function(x,y){ return x - y; });
+  return out;
+}
+function svSync(d){
+  try{
+    var s = d && d.sv;
+    if(!s) return;
+    var rev = Number(s.rev) || 0;
+    if(rev > 0 && rev === svRevApplied) return;
+    var ints = svNums(s.ints), decs = svNums(s.decs, 1), pcts = svNums(s.pcts, 1);
+    if(ints && ints.length) SV_FLATS_INT = ints;
+    if(decs && decs.length) SV_FLATS_DEC = decs;
+    if(pcts && pcts.length) SV_PCTS = pcts;
+    svRevApplied = rev;
+    try{ localStorage.setItem(SV_REV_KEY, String(rev)); }catch(e){}
+    try{ if(document.getElementById("lifeSvModal") && document.getElementById("lifeSvModal").classList.contains("show")) lifeSvLibRender(); }catch(e){}
+  }catch(e){}
+}
+/* ===== 本机自己加的数值（没有 aid 的）上传到后台 =====
+   管理员在「🗃 数据库管理」里能看到所有设备上传的条目（👤 标记），
+   也能直接改 / 删，改完 rev 变了所有设备照常同步。
+   已上传过的（按 类型|位置|值|星级 记指纹）不会重复上传。 */
+var CALC_UP_KEY = "yy_calc_up";
+function calcUpSigs(){
+  try{
+    var a = JSON.parse(localStorage.getItem(CALC_UP_KEY) || "[]");
+    return Array.isArray(a) ? a : [];
+  }catch(e){ return []; }
+}
+function calcUploadLocal(){
+  try{
+    if(!gistEnabled()) return;
+    var mine = [];
+    for(var ti = 0; ti < CALC_TYPES.length; ti++){
+      var tk = CALC_TYPES[ti].k;
+      var arr = loadCustomData(tk);
+      for(var j = 0; j < arr.length; j++){
+        var d0 = arr[j];
+        if(!d0 || d0.aid || d0.from === "admin") continue;
+        mine.push({ t: tk, p: d0.part || "花", v: Number(d0.value), s: d0.star || 5 });
+      }
+    }
+    if(!mine.length) return;
+    var up = calcUpSigs(), fresh = [];
+    for(var k = 0; k < mine.length; k++){
+      var sig = mine[k].t + "|" + mine[k].p + "|" + mine[k].v + "|" + mine[k].s;
+      if(up.indexOf(sig) < 0) fresh.push({ sig: sig, o: mine[k] });
+    }
+    if(!fresh.length) return;
+    gistMutate(function(d){
+      var c = d.calc;
+      if(!c || typeof c !== "object") c = d.calc = { rev: 0, ts: 0, items: [] };
+      if(!Array.isArray(c.items)) c.items = [];
+      var myDev = "";
+      try{ myDev = (deviceInfoCache || collectDeviceInfo()).id || ""; }catch(e){}
+      for(var i = 0; i < fresh.length; i++){
+        var o = fresh[i].o;
+        c.items.push({ id: "u" + Date.now().toString(36) + "_" + i, type: o.t, part: o.p,
+                       value: o.v, star: o.s, from: "user", dev: myDev });
+      }
+      c.ts = Date.now();          /* 只加条目不 bump rev：不打扰其它设备，管理员下次改动时自然带上 */
+    }, function(ok){
+      if(!ok) return;             /* 写失败了不记指纹，下次联网再传 */
+      var ups = calcUpSigs();
+      for(var m = 0; m < fresh.length; m++){ if(ups.indexOf(fresh[m].sig) < 0) ups.push(fresh[m].sig); }
+      try{ localStorage.setItem(CALC_UP_KEY, JSON.stringify(ups)); }catch(e){}
+    });
+  }catch(e){}
 }
 /* 带上 APP_CODE 当缓存戳：APK 升级后 URL 变了，
    免得 WebView 还拿着上一版缓存下来的 mona/index.html */
