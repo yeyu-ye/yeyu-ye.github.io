@@ -1,11 +1,11 @@
 {
-  "code": 64,
-  "ver": "v64",
-  "file": "yeyu-v64.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v64.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v64/yeyu-v64.apk",
+  "code": 65,
+  "ver": "v65",
+  "file": "yeyu-v65.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v65.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v65/yeyu-v65.apk",
   "size": 41095957,
   "force": true,
   "date": "2026-11-03",
-  "note": "① 基础攻击力输多少位小数都完整参与计算，结果也不再只显示两位（如 744.557 × 7% = 52.11899）；② 数据库现在可以填 0，0 代表「不用这个部位」，计算页下拉会显示「不用此部位」、加成为 0，后台和手机都能加 / 改 / 删这个 0；③ 攻击力%（沙 / 杯 / 头主属性）只属于 5 星，1-4 星不再显示这一组，数据库里也标明「仅 5★」。"
+  "note": "① 攻击力%（沙 / 杯 / 头主属性）改成按星级分库：1★、2★、3★、4★、5★ 各有自己的一组档位，每个星级都能在数据库里加 / 改 / 删 / 禁用，计算页每个星级也都能选；② 后台「⚔️ 攻击库」的攻击力% 也按星级分组显示，新增时选几星就进几星那一组（不再一律归到 5★）；③ 老数据（只有 5★ 一组）会自动补齐其余星级，不用重新录。"
 }
