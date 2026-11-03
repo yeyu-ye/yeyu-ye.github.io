@@ -595,8 +595,10 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     </div>
 
     <div id="dbPane-percent" style="display:none">
-      <div class="seclab">➕ 新增百分比档（全部位置生效）</div>
+      <div class="seclab">➕ 新增百分比档（全部位置生效，按星级归组）</div>
       <div class="sec" style="align-items:end">
+        <div><label>星级</label>
+          <select id="dbPctStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select></div>
         <div><label>数值（0.466 / 46.6 都行）</label><input type="number" id="dbPctVal" step="0.001" placeholder="46.6" style="width:150px"></div>
         <div><label>&nbsp;</label><button class="p" onclick="dbPctAdd()">➕ 添加</button></div>
       </div>
@@ -1348,7 +1350,8 @@ try{ calcInitSelects(); }catch(e){}
    三个库（生命/百分比/精通）的数据结构 = 手机端 index.html 同款：
      生命   artifactData[部位] = [ [星级, 值], ... ]
      精通   masteryData[部位]  = [ 值, ... ]
-     百分比 allPctRates        = [ 值, ... ]（按 46.6 = 46.6% 存）
+     百分比 allPctRates        = 各星级启用档位的并集（DB_BUILTIN.pct 按 1-5★ 分组，46.6 = 46.6%）
+     ov / off 里 percent 类条目的 s = 星级；s 为 0 / 缺省 = 老格式通配（全部星级生效）
    内置表原文内嵌在下面 DB_BUILTIN（改 APP 内置表时这里要同步）。
    修改/删除内置条目 → 存 data.calc.ov（覆盖清单），手机端 rebuild 时套用：
      ov 条目 { t:"life"|"mastery"|"percent", p:"花", s:星级, f:原值, to:新值|null }
@@ -1369,7 +1372,13 @@ var DB_BUILTIN = {
     "杯": [0,4.66,5.83,6.53,7.93,9.79,11.19,12.59,13.99,19.58,20.98,22.38,23.78,25.18,26.58,27.98,13.06,14.92,16.79,18.65,26.12,27.98,29.84,29.85,31.71,33.57,33.58,35.44,37.3,39.18,41.04,42.9,42.91,44.76,44.77,46.63,46.64,48.49,48.5,50.36,50.37,52.22,52.23,54.09,55.95,16.32,18.65,20.98,23.31,32.64,34.97,37.3,39.63,41.96,44.29,46.62,48.96,51.29,53.62,55.95,58.28,60.61,62.94,65.27,67.6,69.93,12.6,16.8,17.3,21,21.5,22.1,25.2,26.3,26.9,28,31.1,31.6,32.3,32.9,35.8,35.9,38.8,39.4,43.8,44.8,46.6,50.7,51.8,53.7,56.7,59.7,60.8,62.6,67.6,68.0,68.5,74.5,75.1,75.5,80.4,82.2,83.5,86.4,89.4,91.4,92.3,96.5,99.3,103.6,107.2,110.8,115.2,117.9,123.1,125,131,132.2,138.9,139.3,146.9,154.8,162.7,170.6,178.6,186.5],
     "头": [0,4.66,5.83,6.53,7.93,9.79,11.19,12.59,13.99,19.58,20.98,22.38,23.78,25.18,26.58,27.98,13.06,14.92,16.79,18.65,26.12,27.98,29.84,29.85,31.71,33.57,33.58,35.44,37.3,39.18,41.04,42.9,42.91,44.76,44.77,46.63,46.64,48.49,48.5,50.36,50.37,52.22,52.23,54.09,55.95,16.32,18.65,20.98,23.31,32.64,34.97,37.3,39.63,41.96,44.29,46.62,48.96,51.29,53.62,55.95,58.28,60.61,62.94,65.27,67.6,69.93,12.6,16.8,17.3,21,21.5,22.1,25.2,26.3,26.9,28,31.1,31.6,32.3,32.9,35.8,35.9,38.8,39.4,43.8,44.8,46.6,50.7,51.8,53.7,56.7,59.7,60.8,62.6,67.6,68.0,68.5,74.5,75.1,75.5,80.4,82.2,83.5,86.4,89.4,91.4,92.3,96.5,99.3,103.6,107.2,110.8,115.2,117.9,123.1,125,131,132.2,138.9,139.3,146.9,154.8,162.7,170.6,178.6,186.5]
   },
-  pct: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6],
+  pct: {
+    5: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6],
+    4: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6],
+    3: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6],
+    2: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6],
+    1: [7,9,11,12.9,14.9,16.9,18.9,20.9,22.8,24.8,26.8,28.8,30.8,32.8,34.7,36.7,38.7,40.7,42.7,44.6,46.6]
+  },
   svInt: [129, 178, 258, 275, 324, 331, 430, 478, 551, 552, 645, 674, 717, 796, 828, 918, 920, 1011, 1040, 1123, 1162, 1194, 1283, 1326, 1377, 1405, 1527, 1530, 1559, 1649, 1733, 1742, 1771, 1892, 1925, 1936, 2108, 2139, 4780],
   svDec: [23.9, 29.88, 50.19, 60.95, 71.7, 100.38, 114.72, 129.06, 143.4, 167.3, 191.2, 209.13, 215.1, 239, 266.88, 298.75],
   svPct: [0.0163, 0.0198, 0.0233, 0.0245, 0.028, 0.031, 0.0315, 0.0326, 0.035, 0.037, 0.466]
@@ -1432,12 +1441,73 @@ function dbMasView(p){
   }
   return out;
 }
-function dbPctView(){
-  var base = DB_BUILTIN.pct || [], out = [], seen = {};
-  for(var i = 0; i < base.length; i++){
-    var v = base[i], o = dbOvFind("percent", "", 0, v);
+/* ---------- 百分比库：按星级分组（和攻击库 pct 一致） ----------
+   DB_BUILTIN.pct = {5:[...],4:[...],3:[...],2:[...],1:[...]}
+   ov / off 的 s = 星级；s 为 0 / 缺省 = 老格式，视作通配（对全部星级生效） */
+var PCT_STARS = [5, 4, 3, 2, 1];
+function dbPctBuiltin(star){
+  var p = DB_BUILTIN.pct || {};
+  return Array.isArray(p) ? p : (p[star] || []);
+}
+function dbPctOvFind(star, f){
+  var cc = dbEnsureOv(), hit = null, i, o;
+  for(i = 0; i < cc.ov.length; i++){
+    o = cc.ov[i];
+    if(o && o.t === "percent" && Number(o.f) === Number(f)){
+      if((o.s || 0) === Number(star)) return o;
+      if((o.s || 0) === 0 && !hit) hit = o;
+    }
+  }
+  return hit;
+}
+function dbPctOvDrop(star, f){
+  var cc = dbEnsureOv(), arr = [], i, o;
+  for(i = 0; i < cc.ov.length; i++){
+    o = cc.ov[i];
+    if(o && o.t === "percent" && Number(o.f) === Number(f) && ((o.s || 0) === Number(star) || (o.s || 0) === 0)) continue;
+    arr.push(o);
+  }
+  cc.ov = arr;
+}
+function dbPctIsOff(star, v){
+  var off = dbCalcOffArr(), i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === "percent" && Math.abs(Number(o.v) - Number(v)) < 0.011 && ((o.s || 0) === Number(star) || (o.s || 0) === 0)) return true;
+  }
+  return false;
+}
+function dbPctOffMove(star, from, to){
+  var off = dbCalcOffArr(), i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === "percent" && Math.abs(Number(o.v) - Number(from)) < 0.011 && ((o.s || 0) === Number(star) || (o.s || 0) === 0)) o.v = to;
+  }
+}
+function dbPctOffDrop(star, v){
+  var off = dbCalcOffArr(), out = [], i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === "percent" && Math.abs(Number(o.v) - Number(v)) < 0.011 && ((o.s || 0) === Number(star) || (o.s || 0) === 0)) continue;
+    out.push(o);
+  }
+  dbEnsureOv().off = out;
+}
+function dbPctViewStar(star){
+  var base = dbPctBuiltin(star), out = [], seen = {}, i, v, o;
+  for(i = 0; i < base.length; i++){
+    v = base[i]; o = dbPctOvFind(star, v);
     if(o){ if(o.to == null){ out.push({ v: v, ov: o, del: true }); continue; } if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
     else { if(seen[v]) continue; seen[v] = 1; out.push({ v: v, ov: null }); }
+  }
+  var cc = dbEnsureOv();
+  for(i = 0; i < cc.items.length; i++){
+    var it = cc.items[i];
+    if(it && (it.type || "percent") === "percent" && Number(it.star || 5) === Number(star)){
+      var v2 = Number(it.value); o = dbPctOvFind(star, v2);
+      if(o){ if(o.to == null){ out.push({ v: v2, ov: o, del: true }); continue; } if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
+      else { if(seen[v2]) continue; seen[v2] = 1; out.push({ v: v2, ov: null }); }
+    }
   }
   return out;
 }
@@ -1544,7 +1614,6 @@ function dbCalcOffAll(kindLabel, t, p, s, vals){
 }
 function dbLifeOffAll(p, star, vals){ dbCalcOffAll(p + " " + star + "★", "life", p, star, vals); }
 function dbMasOffAll(p, vals){ dbCalcOffAll(p + " 精通", "mastery", p, 0, vals); }
-function dbPctOffAll(vals){ dbCalcOffAll("百分比库", "percent", "", 0, vals); }
 /* 求解器数值池的禁用记录 */
 function dbSvOffArr(){
   var s = dbEnsureSv();
@@ -1618,13 +1687,28 @@ function dbMasOff(p, v){
     dbBump();
   }, "精通库已更新（禁用值不参与计算）· 正在同步到所有设备");
 }
-function dbPctOff(v){
+function dbPctOff(v, star){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  star = Number(star) || 0;
   mutate(function(){
-    if(dbCalcIsOff("percent", "", 0, v)) dbCalcOffDrop("percent", "", 0, v);
-    else dbCalcOffArr().push({ t: "percent", p: "", s: 0, v: v });
+    if(dbPctIsOff(star, v)) dbPctOffDrop(star, v);
+    else dbCalcOffArr().push({ t: "percent", p: "", s: star, v: Math.round(v * 100) / 100 });
     dbBump();
-  }, "百分比库已更新（禁用档不参与计算）· 正在同步到所有设备");
+  }, "百分比库已更新（禁用值不参与计算）· 正在同步到所有设备");
+}
+/* 百分比一键全禁 / 全恢复（某星级一组） */
+function dbPctOffAllStar(star, vals){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  if(!vals || !vals.length){ showErr("这一组还没有数值"); return; }
+  var i, n = 0;
+  for(i = 0; i < vals.length; i++){ if(dbPctIsOff(star, vals[i])) n++; }
+  var allOff = (n === vals.length);
+  if(!allOff && !confirm("把「" + star + "★ 百分比」的 " + vals.length + " 条全部禁用？它们会不参与计算，数据还在，点「↩ 全恢复」就能还回来。")) return;
+  mutate(function(){
+    if(allOff){ for(i = 0; i < vals.length; i++) dbPctOffDrop(star, vals[i]); }
+    else { for(i = 0; i < vals.length; i++){ if(!dbPctIsOff(star, vals[i])) dbCalcOffArr().push({ t: "percent", p: "", s: star, v: vals[i] }); } }
+    dbBump();
+  }, (allOff ? "已恢复「" + star + "★ 百分比」全部数值" : "已一键禁用「" + star + "★ 百分比」全部 " + vals.length + " 条") + " · 正在同步到所有设备");
 }
 function dbSvOff(kind, v){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
@@ -1723,25 +1807,29 @@ function dbRenderMas(){
 }
 function dbRenderPct(){
   var box = $("dbPctList"); if(!box) return;
-  var rows = dbPctView();
-  rows.sort(function(a,b){ return a.v - b.v; });
-  var live = [], k = 0, i;
-  for(i = 0; i < rows.length; i++){ if(rows[i].del) continue; live.push(rows[i].v); if(dbCalcIsOff("percent", "", 0, rows[i].v)) k++; }
-  var allOff = live.length > 0 && k === live.length;
-  var h = dbGHead("🎯", "百分比", live.length, k, allOff, "dbPctOffAll([" + live.join(",") + "])");
-  h += '<div style="display:flex;flex-wrap:wrap">';
-  for(i = 0; i < rows.length; i++){
-    var o = rows[i];
-    var from = o.ov ? o.ov.f : o.v;
-    h += dbGChip({
-      v: o.v, of: !o.del && dbCalcIsOff("percent", "", 0, o.v), del: o.del, suffix: "%",
-      editCall: "dbPctEdit(" + from + ",this.value)",
-      offCall: "dbPctOff(" + o.v + ")",
-      delCall: "dbPctDel(" + from + ")",
-      restoreCall: "dbOvRestore('percent','',0," + from + ")"
-    });
+  var h = "", total = 0, si, i;
+  for(si = 0; si < PCT_STARS.length; si++){
+    var star = PCT_STARS[si], rows = dbPctViewStar(star);
+    rows.sort(function(a,b){ return a.v - b.v; });
+    var live = [], k = 0;
+    for(i = 0; i < rows.length; i++){ if(rows[i].del) continue; live.push(rows[i].v); if(dbPctIsOff(star, rows[i].v)) k++; }
+    total += live.length;
+    var allOff = live.length > 0 && k === live.length;
+    h += dbGHead("🎯", star + "★ 百分比", live.length, k, allOff, "dbPctOffAllStar(" + star + ",[" + live.join(",") + "])");
+    h += '<div style="display:flex;flex-wrap:wrap">';
+    for(i = 0; i < rows.length; i++){
+      var o = rows[i], from = o.ov ? o.ov.f : o.v;
+      h += dbGChip({
+        v: o.v, of: !o.del && dbPctIsOff(star, o.v), del: o.del, suffix: "%",
+        editCall: "dbPctEdit(" + from + ",this.value," + star + ")",
+        offCall: "dbPctOff(" + o.v + "," + star + ")",
+        delCall: "dbPctDel(" + from + "," + star + ")",
+        restoreCall: "dbPctRestore(" + star + "," + from + ")"
+      });
+    }
+    h += '</div>';
   }
-  h += '</div><div class="muted" style="margin-top:6px">共 ' + rows.length + ' 档 · 禁用 ' + k + ' 档 · 每组右侧「⛔ 全禁 / ↩ 全恢复」= 一次全处理。</div>';
+  h += '<div class="muted" style="margin-top:6px">共 ' + total + ' 档 · 每个星级一组：加档 / 改值 / 禁用只影响所选星级；手机端取各星级启用档位的并集参与计算（老格式改动对全部星级生效）。</div>';
   box.innerHTML = h;
 }
 function dbRenderSv(){
@@ -1835,46 +1923,58 @@ function dbPctAdd(){
   if(!canEdit()){ showErr('你的权限是「成员」，只能查看。'); return; }
   var v = dbPctNorm($("dbPctVal").value);
   if(!isFinite(v) || v <= 0 || v > 1000){ showErr("请填有效百分比，46.6 或 0.466 都行"); return; }
+  var star = Number($("dbPctStar").value) || 5;
   mutate(function(){
     var cc = dbEnsureOv();
-    cc.items.push({ id: calcNewId(), type: "percent", part: "沙", value: v, star: 5, all: 1 });
+    cc.items.push({ id: calcNewId(), type: "percent", part: "沙", value: v, star: star, all: 1 });
     dbBump();
-  }, "百分比档已加入 · 同步到所有设备（全部位置生效）");
+  }, "百分比档已加入 " + star + "★ 组 · 同步到所有设备（全部位置生效）");
   $("dbPctVal").value = "";
 }
-function dbPctEdit(from, val){
+function dbPctEdit(from, val, star){
   if(!canEdit()){ showErr('你的权限是「成员」，只能查看。'); dbRenderPct(); return; }
   var to = dbPctNorm(val);
   if(!isFinite(to)){ showErr("数值不对，已还原。"); dbRenderPct(); return; }
+  star = Number(star) || 0;
   mutate(function(){
-    var cc = dbEnsureOv(), o = dbOvFind("percent", "", 0, from);
+    var cc = dbEnsureOv(), o = dbPctOvFind(star, from);
     if(o) o.to = to;
-    else cc.ov.push({ t: "percent", p: "", s: 0, f: from, to: to });
-    /* items 里的同值百分比也一起改 */
+    else cc.ov.push({ t: "percent", p: "", s: star, f: from, to: to });
+    /* 同星级的同值额外条目一起改（通配改全改） */
     for(var i = 0; i < cc.items.length; i++){
       var it = cc.items[i];
-      if(it && it.type === "percent" && Number(it.value) === Number(from)) it.value = to;
+      if(it && (it.type || "percent") === "percent" && Number(it.value) === Number(from) && (star === 0 || Number(it.star || 5) === star)) it.value = to;
     }
-    dbCalcOffMove("percent", "", 0, from, to);  /* 禁用记录跟着新值走 */
+    dbPctOffMove(star, from, to);  /* 禁用记录跟着新值走 */
     dbBump();
   }, "百分比档已改 · 正在同步到所有设备");
 }
-function dbPctDel(v){
+function dbPctDel(v, star){
   if(!canEdit()){ showErr('你的权限是「成员」，不能删。'); return; }
+  star = Number(star) || 0;
   mutate(function(){
-    var cc = dbEnsureOv(), o = dbOvFind("percent", "", 0, v);
+    var cc = dbEnsureOv(), o = dbPctOvFind(star, v);
     if(o) o.to = null;
-    else cc.ov.push({ t: "percent", p: "", s: 0, f: v, to: null });
+    else cc.ov.push({ t: "percent", p: "", s: star, f: v, to: null });
     var arr = [];
     for(var i = 0; i < cc.items.length; i++){
       var it = cc.items[i];
-      if(it && it.type === "percent" && Number(it.value) === Number(v)) continue;
+      if(it && (it.type || "percent") === "percent" && Number(it.value) === Number(v) && (star === 0 || Number(it.star || 5) === star)) continue;
       arr.push(it);
     }
     cc.items = arr;
-    dbCalcOffDrop("percent", "", 0, v);         /* 删掉的同时清掉禁用记录 */
+    dbPctOffDrop(star, v);         /* 删掉的同时清掉禁用记录 */
     dbBump();
   }, "百分比档已删除 · 正在同步到所有设备");
+}
+/* 百分比专用的还原：该星级的 ov + 老格式通配 ov 一起还原 */
+function dbPctRestore(star, from){
+  if(!canEdit()){ showErr('你的权限是「成员」，不能改。'); return; }
+  star = Number(star) || 0;
+  mutate(function(){
+    dbPctOvDrop(star, from);
+    dbBump();
+  }, "已还原为内置值 · 正在同步到所有设备");
 }
 /* ---------- 精通库 ---------- */
 function dbMasAdd(){
