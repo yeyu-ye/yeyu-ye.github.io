@@ -2429,7 +2429,7 @@ function atkDeep(o){ try{ return JSON.parse(JSON.stringify(o)); }catch(e){ retur
 function atkVals(a){
   var out = [], i, v;
   if(!a) return out;
-  for(i = 0; i < a.length; i++){ v = Number(a[i]); if(isFinite(v) && v > 0) out.push(atkRound(v)); }
+  for(i = 0; i < a.length; i++){ if(a[i] === "" || a[i] === null || a[i] === undefined) continue; v = Number(a[i]); if(isFinite(v) && v >= 0) out.push(atkRound(v)); }
   return out;
 }
 function atkStarsOf(m){
@@ -2605,15 +2605,18 @@ function atkMainOptions(slot){
     out.push({ idx: -1, label: "不计" });
     for(i = 0; i < arr.length; i++){
       if(atkIsOff("main", pm.s, arr[i])) continue;
-      out.push({ idx: i, label: "Lv" + i + " · " + atkFmt(arr[i]) });
+      out.push({ idx: i, label: atkNum(arr[i]) === 0 ? "不用此部位" : ("Lv" + i + " · " + atkFmt(arr[i])) });
     }
     return out;
   }
+  /* 攻击力%（沙 / 杯 / 头主属性）只属于 5 星，1-4 星不显示这一组 */
+  if(Number(atkState.star) !== 5){ out.push({ idx: -1, label: "不计" }); return out; }
   arr = ATK_DB.pct; base = atkNum(atkState.base);
   out.push({ idx: -1, label: "不计" });
   for(i = 0; i < arr.length; i++){
     if(atkIsOff("pct", 0, arr[i])) continue;
-    out.push({ idx: i, label: atkFmt(arr[i]) + "% · " + (base > 0 ? atkFmt2(base * arr[i] / 100) : "—") });
+    var pv1 = atkNum(arr[i]);
+    out.push({ idx: i, label: pv1 === 0 ? "不用此部位" : (atkFmt(arr[i]) + "% · " + (base > 0 ? atkFmt(base * pv1 / 100) : "—")) });
   }
   return out;
 }
@@ -2635,14 +2638,14 @@ function atkSubOptionsFor(slot, mainIdx){
     var ps = atkPickSub(Number(atkState.star));
     for(i = 0; i < ps.v.length; i++){
       if(atkIsOff("sub", ps.s, ps.v[i])) continue;
-      out.push({ key: "f" + i, label: "小攻击 " + atkFmt(ps.v[i]) });
+      out.push({ key: "f" + i, label: atkNum(ps.v[i]) === 0 ? "不用此部位" : ("小攻击 " + atkFmt(ps.v[i])) });
     }
   }
   if(t.pct){
     var pp = atkPickSubPct(Number(atkState.star));
     for(i = 0; i < pp.v.length; i++){
       if(atkIsOff("subpct", pp.s, pp.v[i])) continue;
-      out.push({ key: "p" + i, label: "攻击% " + atkFmt(pp.v[i]) + "%" + (base > 0 ? "·" + atkFmt2(base * pp.v[i] / 100) : "") });
+      out.push({ key: "p" + i, label: atkNum(pp.v[i]) === 0 ? "不用此部位" : ("攻击% " + atkFmt(pp.v[i]) + "%" + (base > 0 ? "·" + atkFmt(base * pp.v[i] / 100) : "")) });
     }
   }
   return out;
@@ -2682,6 +2685,7 @@ function atkSelOff(kind, slot, idx){
       return idx >= pm.v.length ? true : atkIsOff("main", pm.s, pm.v[idx]);
     }
     if(slot && slot.type === "pct"){
+      if(Number(atkState.star) !== 5) return true;   /* 攻击力% 主属性只有 5 星有 */
       return idx >= ATK_DB.pct.length ? true : atkIsOff("pct", 0, ATK_DB.pct[idx]);
     }
     return false;
@@ -2768,8 +2772,8 @@ function atkSumNow(){
 function atkRenderSum(){
   try{ atkSanitizeSel(); }catch(e){}
   var sum = atkSumNow(), base = atkNum(atkState.base);
-  var a = document.getElementById("atkSumVal"); if(a) a.textContent = atkFmt2(sum);
-  var b = document.getElementById("atkFinalVal"); if(b) b.textContent = atkFmt2(base + sum);
+  var a = document.getElementById("atkSumVal"); if(a) a.textContent = atkFmt(sum);
+  var b = document.getElementById("atkFinalVal"); if(b) b.textContent = atkFmt(base + sum);
   var jd = document.getElementById("atkJudge");
   if(!jd) return;
   var mn = atkState.min === "" ? NaN : parseFloat(atkState.min);
@@ -2778,11 +2782,11 @@ function atkRenderSum(){
   if(isNaN(mn) || isNaN(mx)){ jd.className = "at-judge idle"; jd.textContent = "填写目标区间后自动判定"; }
   else if(total >= mn && total <= mx){
     jd.className = "at-judge ok";
-    jd.textContent = "✓ 命中区间 " + atkFmt2(mn) + " ~ " + atkFmt2(mx) + "（" + atkFmt2(total) + "）";
+    jd.textContent = "✓ 命中区间 " + atkFmt(mn) + " ~ " + atkFmt(mx) + "（" + atkFmt(total) + "）";
   } else {
     var d = total < mn ? mn - total : total - mx;
     jd.className = "at-judge warn";
-    jd.textContent = (total < mn ? "差 " : "超 ") + atkFmt2(d) + " 攻击力（当前 " + atkFmt2(total) + "）";
+    jd.textContent = (total < mn ? "差 " : "超 ") + atkFmt(d) + " 攻击力（当前 " + atkFmt(total) + "）";
   }
 }
 function atkSetBase(v){ atkState.base = v; atkRenderCalc(); }
@@ -2791,7 +2795,8 @@ function atkSetStar(v){
   atkState.star = atkNum(v);
   for(var i = 0; i < ATK_SLOTS.length; i++){
     var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
-    var mm = slot.type === "main" ? atkPickMain(atkState.star).v.length : (slot.type === "pct" ? ATK_DB.pct.length : 0);
+    var mm = slot.type === "main" ? atkPickMain(atkState.star).v.length
+           : (slot.type === "pct" ? (Number(atkState.star) === 5 ? ATK_DB.pct.length : 0) : 0);
     if(st.main >= mm) st.main = -1;
     if(atkSubOff(slot, st.main, st.sub)) st.sub = "";
   }
@@ -2826,17 +2831,24 @@ function atkBindOnce(){
 var ATK_OPT_LIMIT = 300, ATK_NODE_CAP = 1500000;
 /* 结果里的主属性标签：攻击% 主属性写成「沙主52.08（7%）」，让数值和来源百分比都看得见 */
 function atkMainLabel(slot, idx, val){
+  if(idx >= 0){
+    var raw = null, i;
+    if(slot.type === "pct") raw = ATK_DB.pct[idx];
+    else if(slot.type === "main"){ var pm = atkPickMain(Number(atkState.star)).v; raw = idx < pm.length ? pm[idx] : null; }
+    if(raw !== null && raw !== undefined && atkNum(raw) === 0) return "不用此部位";
+  }
   if(slot.type === "pct" && idx >= 0 && ATK_DB.pct[idx] !== undefined){
     var pv = atkFmt(ATK_DB.pct[idx]) + "%";
-    if(atkNum(atkState.base) > 0) return slot.label + "主" + atkFmt2(val) + "（" + pv + "）";
+    if(atkNum(atkState.base) > 0) return slot.label + "主" + atkFmt(val) + "（" + pv + "）";
     return slot.label + "主" + pv;
   }
   return slot.label + "主" + atkFmt(val);
 }
 /* 副词条百分比的标签：同样写成「花副52.08（7%）」 */
 function atkSubPctLabel(slot, pctVal){
+  if(atkNum(pctVal) === 0) return "不用此部位";
   var pv = atkFmt(pctVal) + "%", base = atkNum(atkState.base);
-  if(base > 0) return slot.label + "副" + atkFmt2(base * atkNum(pctVal) / 100) + "（" + pv + "）";
+  if(base > 0) return slot.label + "副" + atkFmt(base * atkNum(pctVal) / 100) + "（" + pv + "）";
   return slot.label + "副" + pv;
 }
 /* 已选副词条的标签（key 形如 f3 / p2） */
@@ -2845,6 +2857,10 @@ function atkSubLabel2(slot, key){
   if(t === "p" && i >= 0){
     var b = atkPickSubPct(Number(atkState.star)).v;
     if(i < b.length) return atkSubPctLabel(slot, b[i]);
+  }
+  if(t === "f" && i >= 0){
+    var a = atkPickSub(Number(atkState.star)).v;
+    if(i < a.length && atkNum(a[i]) === 0) return "不用此部位";
   }
   var lb = atkSubLabel(key);
   return lb ? (slot.label + "副" + lb) : "";
@@ -2880,7 +2896,7 @@ function atkSlotOptions(slot){
       if(tt.flat){
         for(j = 0; j < ps.v.length; j++){
           if(atkIsOff("sub", ps.s, ps.v[j])) continue;
-          subs.push({ val: atkNum(ps.v[j]), label: slot.label + "副" + atkFmt(ps.v[j]) });
+          subs.push({ val: atkNum(ps.v[j]), label: atkNum(ps.v[j]) === 0 ? "不用此部位" : (slot.label + "副" + atkFmt(ps.v[j])) });
         }
       }
       if(tt.pct){
@@ -2970,11 +2986,11 @@ function atkRun(){
       for(q = 0; q < item.pick.length; q++){
         if(item.pick[q] && item.pick[q].label && item.pick[q].label !== "—") parts.push(item.pick[q].label);
       }
-      lines.push(parts.join(" + ") + " = " + atkFmt2(item.total));
+      lines.push(parts.join(" + ") + " = " + atkFmt(item.total));
       html.push("<div class=\"at-combo\"><div class=\"at-ch\"><span class=\"at-ci\">组合 " + (r + 1) + "</span>"
-        + "<span class=\"at-cs\">" + atkFmt2(item.total) + "</span></div><div class=\"at-cp\">"
+        + "<span class=\"at-cs\">" + atkFmt(item.total) + "</span></div><div class=\"at-cp\">"
         + parts.map(function(p){ return "<span class=\"at-p\">" + p + "</span>"; }).join("")
-        + "<span class=\"at-p\">加成 <b>" + atkFmt2(item.sum) + "</b></span></div></div>");
+        + "<span class=\"at-p\">加成 <b>" + atkFmt(item.sum) + "</b></span></div></div>");
     }
     listEl.innerHTML = html.join("");
     window._atkText = lines.join("\n");
@@ -3028,7 +3044,7 @@ function atkRenderDb(){
     var box = document.getElementById(boxId);
     if(!box) return;
     var st = atkStarsOf(ATK_DB[kind]), h = "", i;
-    for(i = 0; i < st.length; i++) h += groupBox(kind, st[i], st[i] + " 星", ATK_DB[kind][st[i]] || [], "0.01", tag);
+    for(i = 0; i < st.length; i++) h += groupBox(kind, st[i], st[i] + " 星", ATK_DB[kind][st[i]] || [], "any", tag);
     box.innerHTML = h || "<div class=\"at-hint\">还没有数据</div>";
   }
   starBox("atkDbMain", "main", "Lv");
@@ -3037,8 +3053,8 @@ function atkRenderDb(){
   var boxPct = document.getElementById("atkDbPct");
   if(boxPct){
     var arr = ATK_DB.pct;
-    boxPct.innerHTML = groupBox("pct", 0, "攻击力%", arr, "0.1", "n")
-      + "<div class=\"at-hint\" style=\"margin-top:6px\">共 " + arr.length + " 档 · 按 46.6 存（=46.6%）</div>";
+    boxPct.innerHTML = groupBox("pct", 0, "攻击力%（仅 5★）", arr, "any", "n")
+      + "<div class=\"at-hint\" style=\"margin-top:6px\">共 " + arr.length + " 档 · 按 46.6 存（=46.6%）· 沙 / 杯 / 头主属性只有 5 星会用，1-4 星不显示</div>";
   }
 }
 function atkRenderAll(){
@@ -3083,7 +3099,7 @@ function atkDelVal(kind, star, idx){
 function atkEditVal(kind, star, idx, val){
   if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改数据库"); return; }
   var nv = Number(val);
-  if(!isFinite(nv) || nv <= 0){ showToast("数值不对，已还原"); atkRenderDb(); return; }
+  if(!isFinite(nv) || nv < 0){ showToast("数值不对，已还原"); atkRenderDb(); return; }
   nv = atkRound(nv);
   var arr = atkArrOf(kind, star);
   if(idx < 0 || idx >= arr.length) return;
@@ -6628,7 +6644,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 63;
+var APP_CODE = 64;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -10558,14 +10574,14 @@ function closeDeviceModal(){
             <div class="at-card">
               <div class="at-ct">基础参数</div>
               <label class="at-lb">基础攻击力（角色 + 武器）</label>
-              <input class="at-in" id="atkBase" type="number" inputmode="decimal" placeholder="例如 950" oninput="atkSetBase(this.value)">
+              <input class="at-in" id="atkBase" type="number" step="any" inputmode="decimal" placeholder="例如 950" oninput="atkSetBase(this.value)">
               <label class="at-lb" style="margin-top:8px">圣遗物星级（决定主属性与副词条档位）</label>
               <select class="at-sel" id="atkStarSel" onchange="atkSetStar(this.value)"></select>
               <div class="at-g2" style="margin-top:8px">
                 <div><label class="at-lb">目标攻击下限</label>
-                  <input class="at-in" id="atkMin" type="number" inputmode="decimal" placeholder="最小值" oninput="atkSetRange('min',this.value)"></div>
+                  <input class="at-in" id="atkMin" type="number" step="any" inputmode="decimal" placeholder="最小值" oninput="atkSetRange('min',this.value)"></div>
                 <div><label class="at-lb">目标攻击上限</label>
-                  <input class="at-in" id="atkMax" type="number" inputmode="decimal" placeholder="最大值" oninput="atkSetRange('max',this.value)"></div>
+                  <input class="at-in" id="atkMax" type="number" step="any" inputmode="decimal" placeholder="最大值" oninput="atkSetRange('max',this.value)"></div>
               </div>
             </div>
             <div class="at-card">
@@ -10602,6 +10618,8 @@ function closeDeviceModal(){
                 <br>规则：毛的主属性就是小攻击 → 只有攻击%副词条；沙 / 杯 / 头 选了攻击% → 只有小攻击副词条；
                 花两种都有（沙杯头主属性选「不计」时两种也都能出）。
                 <br><b style="color:var(--gold)">⛔ 禁用的数值不参与计算</b>（显示删除线，点 ↩ 随时恢复）；✕ 是直接删掉。
+                <br><b style="color:var(--gold)">填 0 = 不用这个部位</b>（计算页下拉会显示「不用此部位」，加成为 0）；
+                「攻击力%（仅 5★）」这一组只有 5 星沙 / 杯 / 头主属性能选，1-4 星不显示。
               </div>
               <div class="btn-row" style="margin:10px 0 0">
                 <button class="btn btn-ghost" style="font-size:13px" onclick="atkReset()">↩ 恢复原始数据</button>
@@ -10611,7 +10629,7 @@ function closeDeviceModal(){
             <div class="at-card"><div class="at-ct">主属性（毛 · 小攻击）</div><div id="atkDbMain"></div></div>
             <div class="at-card"><div class="at-ct">副词条 · 小攻击</div><div id="atkDbSub"></div></div>
             <div class="at-card"><div class="at-ct">副词条 · 攻击力%（百分比）</div><div id="atkDbSubPct"></div></div>
-            <div class="at-card"><div class="at-ct">攻击力%（沙 / 杯 / 头 主属性）</div><div id="atkDbPct"></div></div>
+            <div class="at-card"><div class="at-ct">攻击力%（沙 / 杯 / 头 主属性 · 仅 5★）</div><div id="atkDbPct"></div></div>
           </div>
         </div>
       </div>
