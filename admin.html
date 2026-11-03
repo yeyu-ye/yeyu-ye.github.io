@@ -151,6 +151,17 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
 .btn-link:hover{background:#2ea043}
 .step{display:inline-block;width:20px;height:20px;line-height:20px;text-align:center;background:#1f6feb;color:#fff;border-radius:50%;font-size:12px;margin-right:4px}
 #tokTip.bad{color:#f85149}#tokTip.good{color:#3fb950}
+.dbtab{background:#161b22;border:1px solid #21262d;color:#8b949e;border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}
+.dbtab.on{background:#1f6feb;border-color:#1f6feb;color:#fff;font-weight:600}
+.db-sechead{display:flex;justify-content:space-between;align-items:center;background:rgba(88,166,255,.08);border-radius:6px;padding:5px 10px;margin:8px 0 4px;font-weight:600;color:#58a6ff;font-size:12px}
+.db-row{display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px solid #1a2027}
+.db-row:hover{background:rgba(255,255,255,.03)}
+.db-row input[type=number]{width:100px;background:#0d1117;border:1px solid #21262d;color:#e6edf3;border-radius:6px;padding:3px 6px;font-size:13px}
+.db-chip{display:inline-flex;align-items:center;gap:5px;background:#161b22;border:1px solid #21262d;border-radius:8px;padding:4px 8px;font-size:12px;margin:3px}
+.db-chip.mod{border-color:#58a6ff}
+.db-chip input[type=number]{width:70px;background:transparent;border:none;color:#e6edf3;font-size:12px}
+.db-x{background:none;border:none;color:#f85149;cursor:pointer;font-size:13px;padding:0 2px}
+.db-r{background:none;border:none;color:#d29922;cursor:pointer;font-size:11px;padding:0 2px}
 </style>
 </head>
 <body>
@@ -552,77 +563,73 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
   </div>
 
   <div class="card" id="dbCard" style="display:none">
-    <h2>🗃 数据库管理（生命 / 百分比 / 精通 / 求解器）</h2>
+    <h2>🗃 数据库管理</h2>
     <div class="muted" style="margin-bottom:10px">
-      这里是 APP 计算器里<b style="color:#e6edf3">全部数据库</b>的总管理：
-      能查看内置参考表的每一条数值，也能直接<b style="color:#e6edf3">改值 / 删除 / 新增</b>；
-      收纳篮「🧬 生命求解器」的三张数值池也在这里编辑。<br>
-      保存后所有手机联网自动同步；新加的数值会<b style="color:#e6edf3">自动适配比例</b>
-      （百分比填 0.466 或 46.6 都认，生命 / 精通自动归到对应位置和星级）。
+      APP 计算器全部数值的总管理：内置参考表可<b style="color:#e6edf3">改值 / 删除 / 还原</b>，
+      新增走下面表单；「🧬 求解器数值池」也在最后一个页签。<b style="color:#e6edf3">点保存后界面立即更新</b>，所有手机联网自动同步。
+      百分比填 0.466 或 46.6 都认（自动适配比例）。
     </div>
-    <div class="bar" style="margin-bottom:10px">
-      <button class="sm" id="dbt-life" onclick="dbTab('life')">🌸 生命库</button>
-      <button class="sm" id="dbt-percent" onclick="dbTab('percent')">🎯 百分比库</button>
-      <button class="sm" id="dbt-mastery" onclick="dbTab('mastery')">✨ 精通库</button>
-      <button class="sm" id="dbt-sv" onclick="dbTab('sv')">🧬 求解器数值池</button>
+    <div class="bar" style="margin-bottom:12px">
+      <button class="dbtab" id="dbt-life" onclick="dbTab('life')">🌸 生命库</button>
+      <button class="dbtab" id="dbt-percent" onclick="dbTab('percent')">🎯 百分比库</button>
+      <button class="dbtab" id="dbt-mastery" onclick="dbTab('mastery')">✨ 精通库</button>
+      <button class="dbtab" id="dbt-sv" onclick="dbTab('sv')">🧬 求解器数值池</button>
       <span style="flex:1"></span>
       <span class="muted" id="dbState"></span>
     </div>
 
     <div id="dbPane-life">
-      <div class="seclab">添加 / 覆盖生命值</div>
-      <div class="sec">
+      <div class="seclab">➕ 新增生命值（自动按 位置 + 星级 归档）</div>
+      <div class="sec" style="align-items:end">
         <div><label>位置</label>
           <select id="dbLifePart"><option value="花">🌸 花</option><option value="毛">🪶 毛</option><option value="沙">⏳ 沙</option><option value="杯">🍷 杯</option><option value="头">👑 头</option></select></div>
         <div><label>星级</label>
           <select id="dbLifeStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select></div>
-        <div><label>数值（自动适配，如 4780）</label><input type="number" id="dbLifeVal" step="0.01" placeholder="4780"></div>
+        <div><label>数值</label><input type="number" id="dbLifeVal" step="0.01" placeholder="4780" style="width:120px"></div>
+        <div><label>&nbsp;</label><button class="p" onclick="dbLifeAdd()">➕ 添加</button></div>
       </div>
-      <div class="bar" style="margin-bottom:10px"><button class="p" onclick="dbLifeAdd()">➕ 添加到生命库</button></div>
-      <div id="dbLifeList" style="max-height:420px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
+      <div id="dbLifeList" style="max-height:480px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:6px 10px;font-size:13px;margin-top:10px"></div>
     </div>
 
     <div id="dbPane-percent" style="display:none">
-      <div class="seclab">添加 / 覆盖百分比档</div>
-      <div class="sec">
-        <div><label>数值（0.466 或 46.6 都行，自动换算成 %）</label><input type="number" id="dbPctVal" step="0.001" placeholder="46.6"></div>
+      <div class="seclab">➕ 新增百分比档（全部位置生效）</div>
+      <div class="sec" style="align-items:end">
+        <div><label>数值（0.466 / 46.6 都行）</label><input type="number" id="dbPctVal" step="0.001" placeholder="46.6" style="width:150px"></div>
+        <div><label>&nbsp;</label><button class="p" onclick="dbPctAdd()">➕ 添加</button></div>
       </div>
-      <div class="bar" style="margin-bottom:10px"><button class="p" onclick="dbPctAdd()">➕ 添加到百分比库</button></div>
-      <div id="dbPctList" style="max-height:420px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
+      <div id="dbPctList" style="max-height:480px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px;margin-top:10px"></div>
     </div>
 
     <div id="dbPane-mastery" style="display:none">
-      <div class="seclab">添加 / 覆盖精通值</div>
-      <div class="sec">
+      <div class="seclab">➕ 新增精通值</div>
+      <div class="sec" style="align-items:end">
         <div><label>位置</label>
           <select id="dbMasPart"><option value="花">🌸 花</option><option value="毛">🪶 毛</option><option value="沙">⏳ 沙</option><option value="杯">🍷 杯</option><option value="头">👑 头</option></select></div>
-        <div><label>数值（如 187）</label><input type="number" id="dbMasVal" step="0.01" placeholder="187"></div>
+        <div><label>数值</label><input type="number" id="dbMasVal" step="0.01" placeholder="187" style="width:120px"></div>
+        <div><label>&nbsp;</label><button class="p" onclick="dbMasAdd()">➕ 添加</button></div>
       </div>
-      <div class="bar" style="margin-bottom:10px"><button class="p" onclick="dbMasAdd()">➕ 添加到精通库</button></div>
-      <div id="dbMasList" style="max-height:420px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
+      <div id="dbMasList" style="max-height:480px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:6px 10px;font-size:13px;margin-top:10px"></div>
     </div>
 
     <div id="dbPane-sv" style="display:none">
       <div class="muted" style="margin-bottom:8px">
-        收纳篮「🧬 生命求解器」用的三张数值池（生命(1).exe 原数据）。
-        在这里增删后，所有手机的求解器和「📚 数值库」同步变化。
+        收纳篮「🧬 生命求解器」的三张数值池（生命(1).exe 原数据）。增删后所有手机的求解器和「📚 数值库」同步变化。
       </div>
-      <div class="sec">
-        <div><label>整数固定值（花槽，如 4780）</label><input type="number" id="dbSvInt" step="1" placeholder="4780"></div>
-        <div><label>小数固定值（如 71.7）</label><input type="number" id="dbSvDec" step="0.01" placeholder="71.7"></div>
-        <div><label>百分比档（46.6 表示 46.6%）</label><input type="number" id="dbSvPct" step="0.0001" placeholder="46.6"></div>
+      <div class="sec" style="align-items:end">
+        <div><label>整数固定值（花槽）</label><input type="number" id="dbSvInt" step="1" placeholder="4780" style="width:110px"></div>
+        <div><label>小数固定值</label><input type="number" id="dbSvDec" step="0.01" placeholder="71.7" style="width:110px"></div>
+        <div><label>百分比档（46.6=46.6%）</label><input type="number" id="dbSvPct" step="0.0001" placeholder="46.6" style="width:110px"></div>
+        <div><label>&nbsp;</label>
+          <button class="sm" onclick="dbSvAdd('int')">➕ 整数</button>
+          <button class="sm" onclick="dbSvAdd('dec')">➕ 小数</button>
+          <button class="sm" onclick="dbSvAdd('pct')">➕ 百分比</button>
+        </div>
       </div>
-      <div class="bar" style="margin-bottom:10px">
-        <button class="sm" onclick="dbSvAdd('int')">➕ 加整数</button>
-        <button class="sm" onclick="dbSvAdd('dec')">➕ 加小数</button>
-        <button class="sm" onclick="dbSvAdd('pct')">➕ 加百分比</button>
-        <button class="sm" onclick="dbSvReset()">↩ 恢复 exe 原始池</button>
-      </div>
-      <div id="dbSvList" style="max-height:420px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px"></div>
+      <div class="bar"><button class="sm" onclick="dbSvReset()">↩ 恢复 exe 原始池</button></div>
+      <div id="dbSvList" style="max-height:480px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px;margin-top:10px"></div>
     </div>
   </div>
-
-  <div class="card" id="wpCard">
+<div class="card" id="wpCard">
     <h2>🎨 背景壁纸</h2>
     <div class="muted" style="margin-bottom:10px">
       内置引擎会按屏幕比例自动铺满，2K / 4K 都能满帧（跟随刷新率，最高 120fps）；也可以加自己的图片或视频。
@@ -1364,7 +1371,7 @@ function dbTab(t){
   for(var i = 0; i < tabs.length; i++){
     var p = $("dbPane-" + tabs[i]), b = $("dbt-" + tabs[i]);
     if(p) p.style.display = (tabs[i] === t) ? "" : "none";
-    if(b) b.style.cssText = (tabs[i] === t) ? "border-color:#58a6ff;color:#58a6ff" : "";
+    if(b) b.className = "dbtab" + (tabs[i] === t ? " on" : "");
   }
   try{ dbRender(); }catch(e){}
 }
@@ -1376,12 +1383,12 @@ function dbOvFind(t, p, s, f){
   }
   return null;
 }
-/* 内置条目当前生效值：被 ov 覆盖过 → to；ov.to = null → 已删除 */
+/* 内置条目当前生效值：被 ov 覆盖过 → to；ov.to = null → 已删除（保留显示，可还原） */
 function dbLifeView(p){
   var base = DB_BUILTIN.life[p] || [], out = [];
   for(var i = 0; i < base.length; i++){
     var st = base[i][0], v = base[i][1], o = dbOvFind("life", p, st, v);
-    if(o){ if(o.to == null) continue; out.push({ st: st, v: o.to, ov: o }); }
+    if(o){ out.push(o.to == null ? { st: st, v: v, ov: o, del: true } : { st: st, v: o.to, ov: o }); }
     else out.push({ st: st, v: v, ov: null });
   }
   return out;
@@ -1390,7 +1397,7 @@ function dbMasView(p){
   var base = DB_BUILTIN.mastery[p] || [], out = [], seen = {};
   for(var i = 0; i < base.length; i++){
     var v = base[i], o = dbOvFind("mastery", p, 0, v);
-    if(o){ if(o.to == null) continue; if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
+    if(o){ if(o.to == null){ out.push({ v: v, ov: o, del: true }); continue; } if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
     else { if(seen[v]) continue; seen[v] = 1; out.push({ v: v, ov: null }); }
   }
   return out;
@@ -1399,12 +1406,26 @@ function dbPctView(){
   var base = DB_BUILTIN.pct || [], out = [], seen = {};
   for(var i = 0; i < base.length; i++){
     var v = base[i], o = dbOvFind("percent", "", 0, v);
-    if(o){ if(o.to == null) continue; if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
+    if(o){ if(o.to == null){ out.push({ v: v, ov: o, del: true }); continue; } if(seen[o.to]) continue; seen[o.to] = 1; out.push({ v: o.to, ov: o }); }
     else { if(seen[v]) continue; seen[v] = 1; out.push({ v: v, ov: null }); }
   }
   return out;
 }
 function dbOvCount(){ try{ return dbEnsureOv().ov.length; }catch(e){ return 0; } }
+/* 还原一条覆盖（改过的回到原值 / 删掉的恢复回来） */
+function dbOvRestore(t, p, s, f){
+  if(!canEdit()){ showErr('你的权限是「成员」，不能改。'); return; }
+  mutate(function(){
+    var cc = dbEnsureOv(), arr = [];
+    for(var i = 0; i < cc.ov.length; i++){
+      var o = cc.ov[i];
+      if(o && o.t === t && (o.p || "") === (p || "") && (o.s || 0) === (s || 0) && Number(o.f) === Number(f)) continue;
+      arr.push(o);
+    }
+    cc.ov = arr;
+    dbBump();
+  }, "已还原为内置值 · 正在同步到所有设备");
+}
 
 function dbRender(){
   if($("dbCard").style.display === "none") return;
@@ -1412,78 +1433,102 @@ function dbRender(){
   var c = dbEnsureOv(), s = dbEnsureSv();
   var userN = 0;
   for(var i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].from === "user") userN++; }
-  if(st) st.textContent = "覆盖 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
-      + (userN ? " · 手机上传 " + userN + " 条" : "");
+  if(st) st.textContent = "改动 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
+      + (userN ? " · 👤手机上传 " + userN + " 条" : "");
   if(dbCurTab === "life") dbRenderLife();
   else if(dbCurTab === "mastery") dbRenderMas();
   else if(dbCurTab === "percent") dbRenderPct();
   else dbRenderSv();
 }
+/* 一行：星级徽标 + 数值输入 + 状态 + 操作（删 / 还原） */
+function dbRow(o, editCall, delCall, restoreCall){
+  var starHtml = o.st != null ? '<span style="color:#8b949e;font-size:12px;width:28px">' + o.st + '★</span>' : '';
+  var stat;
+  if(o.del) stat = '<span style="color:#f85149;font-size:12px">已删除</span>';
+  else if(o.ov) stat = '<span style="color:#58a6ff;font-size:12px">改自 ' + o.ov.f + '</span>';
+  else stat = '<span class="muted" style="font-size:12px">内置</span>';
+  var act;
+  if(o.del) act = '<button class="db-r" onclick="' + restoreCall + '">↩ 还原</button>';
+  else act = '<button class="db-x" title="从库里删除" onclick="' + delCall + '">✕</button>'
+           + (o.ov ? '<button class="db-r" title="恢复内置原值" onclick="' + restoreCall + '">↩</button>' : '');
+  return '<div class="db-row"' + (o.del ? ' style="opacity:.55;text-decoration:line-through"' : '') + '>'
+    + starHtml
+    + '<input type="number" step="0.01" value="' + o.v + '" onchange="' + editCall + '">'
+    + '<span style="flex:1"></span>' + stat + '<span style="width:10px"></span>' + act + '</div>';
+}
+function dbPartSection(icon, p, n, inner){
+  return '<div class="db-sechead"><span>' + icon + ' ' + p + '</span><span>' + n + ' 条</span></div>' + inner;
+}
 function dbRenderLife(){
   var box = $("dbLifeList"); if(!box) return;
-  var h = '<table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left">位置</th><th style="text-align:left">星级</th><th style="text-align:left">数值</th><th style="text-align:left">状态</th><th></th></tr>';
-  var n = 0;
+  var h = "", n = 0;
   for(var pi = 0; pi < DB_PARTS.length; pi++){
     var p = DB_PARTS[pi], rows = dbLifeView(p);
     rows.sort(function(a,b){ return (b.st - a.st) || (a.v - b.v); });
+    var inner = "";
     for(var r = 0; r < rows.length; r++){
       var o = rows[r]; n++;
-      h += '<tr><td>' + (r === 0 || rows[r-1].st !== o.st ? p : '') + '</td><td>' + o.st + '★</td>'
-        + '<td><input type="number" step="0.01" value="' + o.v + '" style="width:100px" onchange="dbLifeEdit(\'' + p + '\',' + o.st + ',' + o.v + ',this.value)"></td>'
-        + '<td>' + (o.ov ? '<span style="color:#58a6ff">已改' + (o.ov.to == null ? '' : '（原 ' + o.ov.f + '）') + '</span>' : '<span class="muted">内置</span>') + '</td>'
-        + '<td style="text-align:right"><button class="sm danger" onclick="dbLifeDel(\'' + p + '\',' + o.st + ',' + o.v + ')">删</button></td></tr>';
+      inner += dbRow(o,
+        "dbLifeEdit('" + p + "'," + o.st + "," + o.v + ",this.value)",
+        "dbLifeDel('" + p + "'," + o.st + "," + (o.ov ? o.ov.f : o.v) + ")",
+        "dbOvRestore('life','" + p + "'," + o.st + "," + (o.ov ? o.ov.f : o.v) + ")");
     }
+    h += dbPartSection("🌸", p, rows.length, inner);
   }
-  h += '</table><div class="muted" style="margin-top:6px">共 ' + n + ' 条 · 改 / 删内置值会生成覆盖记录，手机端套用；「➕ 添加」走上面的表单（新增独立条目）。</div>';
+  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条 · ✕ 删除 / 直接改数值 / ↩ 还原内置原值；新增走上面表单。</div>';
   box.innerHTML = h;
 }
 function dbRenderMas(){
   var box = $("dbMasList"); if(!box) return;
-  var h = '<table style="width:100%;border-collapse:collapse"><tr><th style="text-align:left">位置</th><th style="text-align:left">数值</th><th style="text-align:left">状态</th><th></th></tr>';
+  var h = "", n = 0;
   for(var pi = 0; pi < DB_PARTS.length; pi++){
     var p = DB_PARTS[pi], rows = dbMasView(p);
     rows.sort(function(a,b){ return a.v - b.v; });
+    var inner = "";
     for(var r = 0; r < rows.length; r++){
-      var o = rows[r];
-      h += '<tr><td>' + (r === 0 ? p : '') + '</td>'
-        + '<td><input type="number" step="0.01" value="' + o.v + '" style="width:100px" onchange="dbMasEdit(\'' + p + '\',' + o.v + ',this.value)"></td>'
-        + '<td>' + (o.ov ? '<span style="color:#58a6ff">已改' + (o.ov.to == null ? '' : '（原 ' + o.ov.f + '）') + '</span>' : '<span class="muted">内置</span>') + '</td>'
-        + '<td style="text-align:right"><button class="sm danger" onclick="dbMasDel(\'' + p + '\',' + o.v + ')">删</button></td></tr>';
+      var o = rows[r]; n++;
+      inner += dbRow(o,
+        "dbMasEdit('" + p + "'," + o.v + ",this.value)",
+        "dbMasDel('" + p + "'," + o.v + ")",
+        "dbOvRestore('mastery','" + p + "',0," + (o.ov ? o.ov.f : o.v) + ")");
     }
+    h += dbPartSection("✨", p, rows.length, inner);
   }
-  h += '</table>';
+  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条</div>';
   box.innerHTML = h;
 }
 function dbRenderPct(){
   var box = $("dbPctList"); if(!box) return;
   var rows = dbPctView();
   rows.sort(function(a,b){ return a.v - b.v; });
-  var h = '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  var h = '<div style="display:flex;flex-wrap:wrap">';
   for(var i = 0; i < rows.length; i++){
     var o = rows[i];
-    h += '<span style="display:inline-flex;align-items:center;gap:4px;background:#161b22;border:1px solid ' + (o.ov ? '#58a6ff' : '#21262d') + ';border-radius:8px;padding:4px 8px;font-size:12px">'
-      + '<input type="number" step="0.1" value="' + o.v + '" style="width:70px;background:transparent;border:none;color:#e6edf3;font-size:12px" onchange="dbPctEdit(' + o.v + ',this.value)">%'
-      + '<button class="sm danger" style="padding:1px 6px;font-size:11px" onclick="dbPctDel(' + o.v + ')">×</button></span>';
+    h += '<span class="db-chip' + (o.ov ? ' mod' : '') + '"' + (o.del ? ' style="opacity:.55;text-decoration:line-through"' : '') + '>'
+      + '<input type="number" step="0.1" value="' + o.v + '" onchange="dbPctEdit(' + o.v + ',this.value)">%'
+      + (o.del
+          ? '<button class="db-r" onclick="dbOvRestore(\'percent\',\'\',0,' + o.v + ')">↩</button>'
+          : '<button class="db-x" onclick="dbPctDel(' + o.v + ')">×</button>'
+            + (o.ov ? '<button class="db-r" onclick="dbOvRestore(\'percent\',\'\',0,' + o.ov.f + ')">↩</button>' : ''))
+      + '</span>';
   }
-  h += '</div><div class="muted" style="margin-top:6px">共 ' + rows.length + ' 档 · 蓝框 = 后台改过 / 新增的档。</div>';
+  h += '</div><div class="muted" style="margin-top:6px">共 ' + rows.length + ' 档 · 蓝框 = 改过 / 新增，↩ 还原。</div>';
   box.innerHTML = h;
 }
 function dbRenderSv(){
   var box = $("dbSvList"); if(!box) return;
   var s = dbEnsureSv();
-  var one = function(kind, arr, fmt){
-    var h = '<div style="color:#e6edf3;font-size:12px;margin:8px 0 4px;font-weight:600">' + fmt.title + '（' + arr.length + ' 个）</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+  var one = function(kind, title, arr, fmt){
+    var h = '<div style="color:#58a6ff;font-size:12px;margin:10px 0 2px;font-weight:600">' + title + '（' + arr.length + ' 个）</div><div style="display:flex;flex-wrap:wrap">';
     for(var i = 0; i < arr.length; i++){
-      h += '<span style="display:inline-flex;align-items:center;gap:4px;background:#161b22;border:1px solid #21262d;border-radius:8px;padding:4px 8px;font-size:12px">'
-        + (arr[i] == null ? '' : (fmt.f(arr[i])))
-        + '<button class="sm danger" style="padding:1px 6px;font-size:11px" onclick="dbSvDel(\'' + kind + '\',' + arr[i] + ')">×</button></span>';
+      h += '<span class="db-chip">' + (fmt ? fmt(arr[i]) : arr[i])
+        + '<button class="db-x" onclick="dbSvDel(\'' + kind + '\',' + arr[i] + ')">×</button></span>';
     }
     return h + '</div>';
   };
-  var h = one("int", s.ints.slice().sort(function(a,b){return a-b;}), { title: "整数固定值（花槽）", f: function(v){ return v; } })
-        + one("dec", s.decs.slice().sort(function(a,b){return a-b;}), { title: "小数固定值（沙/杯/副词条槽）", f: function(v){ return v; } })
-        + one("pct", s.pcts.slice().sort(function(a,b){return a-b;}), { title: "百分比档（×基础生命）", f: function(v){ return (Math.round(v * 1000000) / 10000) + "%"; } });
-  box.innerHTML = h;
+  box.innerHTML = one("int", "整数固定值（花槽）", s.ints.slice().sort(function(a,b){return a-b;}), null)
+        + one("dec", "小数固定值（沙/杯/副词条槽）", s.decs.slice().sort(function(a,b){return a-b;}), null)
+        + one("pct", "百分比档（×基础生命）", s.pcts.slice().sort(function(a,b){return a-b;}), function(v){ return (Math.round(v * 1000000) / 10000) + "%"; });
 }
 /* ---------- 生命库 ---------- */
 function dbLifeAdd(){
@@ -2447,6 +2492,7 @@ function _render(){
   try{ renderApl(); }catch(e){}
   try{ renderNotice(); }catch(e){}
   try{ calcRender(); }catch(e){}
+  try{ dbRender(); }catch(e){}
   try{ syncMgrLogin(); }catch(e){}
   // 日志 / 消息卡片：一读到数据就显示（不用单独判断权限）
   try{
