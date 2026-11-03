@@ -635,11 +635,12 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div id="dbPane-atk" style="display:none">
       <div class="muted" style="margin-bottom:8px">
         收纳篮「⚔️ 攻击计算器」的整套数据库（数据源：攻击计算器.apk 内置表）。
-        主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击）。
+        主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击，<b style="color:#e6edf3">只有 5★ 有这一组，1-4★ 不显示</b>）。
         副词条分两种：<b style="color:#e6edf3">小攻击</b>（固定值）和 <b style="color:#e6edf3">攻击%</b>（按基础攻击折算）。<br>
         规则：毛的主属性就是小攻击 → 只有攻击%副词条；沙 / 杯 / 头 选了攻击%主属性 → 只有小攻击副词条；花两种都有。<br>
         改值 / 删除 / <b style="color:#e6edf3">禁用</b>都实时同步到所有手机；
         <b style="color:#e6edf3">禁用的数值不参与任何计算</b>（随时点 ↩ 恢复），× 才是真删。
+        <b style="color:#e6edf3">数值填 0 = 不用这个部位</b>（手机上下拉会显示「不用此部位」，加成为 0）。
       </div>
       <div class="sec" style="align-items:end">
         <div><label>新增到</label>
@@ -651,7 +652,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
           </select></div>
         <div><label>星级</label>
           <select id="dbAtkStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select></div>
-        <div><label>数值</label><input type="number" id="dbAtkVal" step="0.01" placeholder="47 / 13.62 / 46.6" style="width:130px"></div>
+        <div><label>数值</label><input type="number" id="dbAtkVal" step="any" placeholder="47 / 13.62 / 46.6 / 0" style="width:130px"></div>
         <div><label>&nbsp;</label><button class="p" onclick="dbAtkAdd()">➕ 添加</button></div>
       </div>
       <div class="bar"><button class="sm" onclick="dbAtkReset()">↩ 恢复 APK 原始数据</button></div>
@@ -1489,7 +1490,7 @@ function dbRow(o, editCall, delCall, restoreCall){
            + (o.ov ? '<button class="db-r" title="恢复内置原值" onclick="' + restoreCall + '">↩</button>' : '');
   return '<div class="db-row"' + (o.del ? ' style="opacity:.55;text-decoration:line-through"' : '') + '>'
     + starHtml
-    + '<input type="number" step="0.01" value="' + o.v + '" onchange="' + editCall + '">'
+    + '<input type="number" step="any" value="' + o.v + '" onchange="' + editCall + '">'
     + '<span style="flex:1"></span>' + stat + '<span style="width:10px"></span>' + act + '</div>';
 }
 function dbPartSection(icon, p, n, inner){
@@ -1786,8 +1787,9 @@ function dbAtkNums(a){
   var out = [], i, v;
   if(!a) return out;
   for(i = 0; i < a.length; i++){
+    if(a[i] === "" || a[i] === null || a[i] === undefined) continue;   /* 空值不算 0 */
     v = Number(a[i]);
-    if(isFinite(v) && v > 0) out.push(Math.round(v * 1000000) / 1000000);
+    if(isFinite(v) && v >= 0) out.push(Math.round(v * 1000000) / 1000000);
   }
   return out;
 }
@@ -1898,8 +1900,8 @@ function dbRenderAtk(){
   for(i = 0; i < a.sub.length; i++) h += group("sub", a.sub[i].s, "副词条", a.sub[i].v);
   h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>％ 副词条（攻击力%）</span><span>" + a.subPct.length + " 个星级</span></div>";
   for(i = 0; i < a.subPct.length; i++) h += group("subPct", a.subPct[i].s, "副词条%", a.subPct[i].v);
-  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎯 攻击力%（沙 / 杯 / 头）</span><span>" + a.pct.length + " 档</span></div>";
-  h += group("pct", 0, "攻击力%", a.pct);
+  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎯 攻击力%（沙 / 杯 / 头 · 仅 5★）</span><span>" + a.pct.length + " 档</span></div>";
+  h += group("pct", 0, "攻击力%（5★）", a.pct);
   h += "<div class=\"muted\" style=\"margin-top:8px\">共 " + (a.main.length + a.sub.length) + " 组 · 禁用 " + a.off.length
      + " 条 · rev " + (a.rev || 0) + (a.ts ? " · 最近改 " + new Date(a.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "")
      + "　⛔ = 禁用（不参与计算）/ ↩ 恢复 / × 删除</div>";
@@ -1908,7 +1910,7 @@ function dbRenderAtk(){
 function dbAtkEdit(kind, star, idx, val){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); dbRenderAtk(); return; }
   var to = parseFloat(val);
-  if(!isFinite(to) || to <= 0){ showErr("数值不对，已还原。"); dbRenderAtk(); return; }
+  if(!isFinite(to) || to < 0){ showErr("数值不对，已还原。"); dbRenderAtk(); return; }
   to = Math.round(to * 1000000) / 1000000;
   mutate(function(){
     var a = dbEnsureAtk(), arr = dbAtkArrOf(a, kind, star);
@@ -1945,8 +1947,9 @@ function dbAtkOff(kind, star, idx){
 function dbAtkAdd(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
   var kind = $("dbAtkKind").value, star = parseInt($("dbAtkStar").value, 10) || 5;
+  if(kind === "pct") star = 5;   /* 攻击力%（沙 / 杯 / 头主属性）只有 5 星一组 */
   var v = parseFloat($("dbAtkVal").value);
-  if(!isFinite(v) || v <= 0){ showErr("请填有效数值，如 47 / 13.62 / 46.6"); return; }
+  if(!isFinite(v) || v < 0){ showErr("请填有效数值（0 = 不用这个部位）"); return; }
   v = Math.round(v * 1000000) / 1000000;
   mutate(function(){
     var a = dbEnsureAtk();
