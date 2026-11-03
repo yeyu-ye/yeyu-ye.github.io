@@ -1,11 +1,11 @@
 {
-  "code": 66,
-  "ver": "v66",
-  "file": "yeyu-v66.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v66.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v66/yeyu-v66.apk",
+  "code": 67,
+  "ver": "v67",
+  "file": "yeyu-v67.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v67.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v67/yeyu-v67.apk",
   "size": 41100053,
   "force": true,
   "date": "2026-11-04",
-  "note": "① 后台数据库全面升级：生命库 / 百分比库 / 精通库 / 求解器数值池全部改成和攻击库一样的界面，每个分组右侧有「⛔ 全禁 / ↩ 全恢复」，数值格子可以直接改、可以单独禁用（⛔ = 不参与计算，数据保留，随时恢复）；② 精通库只有固定值、没有百分比；③ 手机端同步生效：后台禁用的数值在手机上也不参与计算。"
+  "note": "① 后台百分比库升级：和攻击库的攻击力%一样按 1-5 星级分成五组，每组独立加档 / 改值 / 删除 / 禁用，每组右侧有「⛔ 全禁 / ↩ 全恢复」，新增百分比档时可选星级；② 手机端同步：后台各星级启用的档位取并集参与计算，只禁某一星不影响其它星；③ 修复与稳定性优化。"
 }
