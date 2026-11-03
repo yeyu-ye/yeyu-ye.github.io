@@ -636,7 +636,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <div class="muted" style="margin-bottom:8px">
         收纳篮「⚔️ 攻击计算器」的整套数据库（数据源：攻击计算器.apk 内置表）。
         主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击，<b style="color:#e6edf3">只有 5★ 有这一组，1-4★ 不显示</b>）。
-        副词条分两种：<b style="color:#e6edf3">小攻击</b>（固定值）和 <b style="color:#e6edf3">攻击%</b>（按基础攻击折算）。<br>
+        <b style="color:#e6edf3">新增攻击力%时星级自动锁成 5★</b>（这一组没有 4/3/2/1★）。<br>        副词条分两种：<b style="color:#e6edf3">小攻击</b>（固定值）和 <b style="color:#e6edf3">攻击%</b>（按基础攻击折算）。<br>
         规则：毛的主属性就是小攻击 → 只有攻击%副词条；沙 / 杯 / 头 选了攻击%主属性 → 只有小攻击副词条；花两种都有。<br>
         改值 / 删除 / <b style="color:#e6edf3">禁用</b>都实时同步到所有手机；
         <b style="color:#e6edf3">禁用的数值不参与任何计算</b>（随时点 ↩ 恢复），× 才是真删。
@@ -644,13 +644,13 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       </div>
       <div class="sec" style="align-items:end">
         <div><label>新增到</label>
-          <select id="dbAtkKind">
+          <select id="dbAtkKind" onchange="dbAtkKindChg()">
             <option value="main">🪶 毛主属性</option>
             <option value="sub">🎲 副词条（小攻击）</option>
             <option value="subPct">％ 副词条（攻击%）</option>
             <option value="pct">🎯 攻击力%（主属性）</option>
           </select></div>
-        <div><label>星级</label>
+        <div><label>星级<span id="dbAtkStarHint" style="color:#8b949e;font-size:11px;margin-left:5px"></span></label>
           <select id="dbAtkStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select></div>
         <div><label>数值</label><input type="number" id="dbAtkVal" step="any" placeholder="47 / 13.62 / 46.6 / 0" style="width:130px"></div>
         <div><label>&nbsp;</label><button class="p" onclick="dbAtkAdd()">➕ 添加</button></div>
@@ -1944,6 +1944,19 @@ function dbAtkOff(kind, star, idx){
     dbBumpAtk();
   }, "攻击库已更新（禁用值不参与计算）· 正在同步到所有设备");
 }
+/* 攻击力%（沙 / 杯 / 头主属性）只有 5★ 这一组：选中这一项时星级锁死 5★，
+   避免「选了 4★ 却被归到 5★」看起来像 bug */
+function dbAtkKindChg(){
+  var k = $("dbAtkKind").value, s = $("dbAtkStar"), h = $("dbAtkStarHint");
+  if(!s) return;
+  if(k === "pct"){
+    s.value = "5"; s.disabled = true; s.style.opacity = "0.45";
+    if(h) h.textContent = "（攻击力% 只有 5★，固定归 5★）";
+  } else {
+    s.disabled = false; s.style.opacity = "";
+    if(h) h.textContent = "";
+  }
+}
 function dbAtkAdd(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
   var kind = $("dbAtkKind").value, star = parseInt($("dbAtkStar").value, 10) || 5;
@@ -1977,6 +1990,7 @@ function dbAtkReset(){
   }, "已恢复 APK 原始数据 · 正在同步到所有设备");
 }
 try{ dbTab("life"); }catch(e){}
+try{ dbAtkKindChg(); }catch(e){}
 
 function fillVerNote(){
   try{
