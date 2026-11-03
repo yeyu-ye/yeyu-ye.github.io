@@ -1,11 +1,11 @@
 {
-  "code": 57,
-  "ver": "v57",
-  "file": "yeyu-v57.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v57.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v57/yeyu-v57.apk",
+  "code": 58,
+  "ver": "v58",
+  "file": "yeyu-v58.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v58.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v58/yeyu-v58.apk",
   "size": 31476358,
   "force": true,
-  "date": "2026-10-29",
-  "note": "生命求解器与「生命(1).exe」深度对拍修正：① 沙槽补上小数固定值池（此前只放百分比，比 exe 少一大半组合）；② 求解结果表达式回到 exe 风格（小数固定值取整显示、百分比一位小数）；③ 数值库百分比档显示精确值（1.63%/3.15%）。已用 13109 条 exe 真实输出逐条对拍，全部复现。"
+  "date": "2026-11-03",
+  "note": "后台新增「🗃 数据库管理」：生命/百分比/精通三库全部数值可查看、改值、删除、新增；收纳篮「🧬 生命求解器」的三张数值池也能在后台编辑并同步所有设备；手机上自己加的数值会自动上传后台（带 👤 标记）。新加数值自动适配比例（0.466/46.6 都认）。莫娜计算器不变。"
 }
