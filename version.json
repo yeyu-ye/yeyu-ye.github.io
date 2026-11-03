@@ -1,11 +1,11 @@
 {
-  "code": 60,
-  "ver": "v60",
-  "file": "yeyu-v60.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v60.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v60/yeyu-v60.apk",
-  "size": 41083669,
+  "code": 61,
+  "ver": "v61",
+  "file": "yeyu-v61.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v61.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v61/yeyu-v61.apk",
+  "size": 41095957,
   "force": true,
   "date": "2026-11-03",
-  "note": "① 后台改完 20 秒内同步到手机（以前要等 10 分钟的心跳，切后台就完全不动）；② 创始人/管理员在手机上改参考表会直接写进后台并同步所有设备，普通成员只在本机生效；③ 参考表大改：生命表改为实时数据渲染（后台改完手机上立刻是新值），可加 / 改 / 删，百分比档也能点着改。"
+  "note": "① 收纳篮新增「⚔️ 攻击计算器」：导入攻击计算器原版数据（毛主属性 Lv 档 / 副词条小攻击 / 攻击力% 21 档），能按基础攻击 + 目标区间枚举组合；② 后台「🗃 数据库管理 → ⚔️ 攻击库」可改值 / 增加 / 删除 / 禁用，禁用的数值不参与计算（随时 ↩ 恢复），改完所有设备自动同步；③ 手机上创始人 / 管理员直接改数据库会写进后台并同步全部设备，普通成员只在本机生效。"
 }
