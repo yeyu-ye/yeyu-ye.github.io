@@ -1,11 +1,11 @@
 {
-  "code": 59,
-  "ver": "v59",
-  "file": "yeyu-v59.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v59.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v59/yeyu-v59.apk",
-  "size": 41079573,
+  "code": 60,
+  "ver": "v60",
+  "file": "yeyu-v60.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v60.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v60/yeyu-v60.apk",
+  "size": 41083669,
   "force": true,
   "date": "2026-11-03",
-  "note": "① 莫娜计算器更新到最新版 7.2.02（离线壳同步升级，顶部页签按新版调整，自动更新提示已屏蔽）；② 筛选页「📋参考表」里可以直接添加数值了（生命/百分比/精通，自动适配比例，加完筛选立即生效、联网同步后台）；③ 后台数据库管理界面重排：按部位分区、改动/删除可一键还原；添加数值后列表立即刷新，不用再手动刷新后台。"
+  "note": "① 后台改完 20 秒内同步到手机（以前要等 10 分钟的心跳，切后台就完全不动）；② 创始人/管理员在手机上改参考表会直接写进后台并同步所有设备，普通成员只在本机生效；③ 参考表大改：生命表改为实时数据渲染（后台改完手机上立刻是新值），可加 / 改 / 删，百分比档也能点着改。"
 }
