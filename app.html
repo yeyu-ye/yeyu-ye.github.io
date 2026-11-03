@@ -1524,10 +1524,49 @@ function rebuildDataWithCustom(){
       allPctRates.sort(function(x,y){return x-y;});
     }
   }
+  /* 后台下发的「禁用」清单（数据保留、不参与计算）：从三张表里临时剔除，参考表/计算都不再出现 */
+  var offs = loadCalcOff();
+  for(var w=0; w<offs.length; w++){
+    var of2 = offs[w];
+    if(!of2 || !of2.t) continue;
+    var fv = Number(of2.v);
+    if(!isFinite(fv)) continue;
+    if(of2.t === "life" && of2.p && artifactData[of2.p]){
+      var out5 = [];
+      for(var x=0; x<artifactData[of2.p].length; x++){
+        var e5 = artifactData[of2.p][x];
+        if(e5[0] === (of2.s||0) && Math.abs(e5[1] - fv) < 0.011) continue;
+        out5.push(e5);
+      }
+      artifactData[of2.p] = out5;
+    } else if(of2.t === "mastery" && of2.p && masteryData[of2.p]){
+      var out6 = [];
+      for(var y=0; y<masteryData[of2.p].length; y++){
+        if(Math.abs(masteryData[of2.p][y] - fv) < 0.011) continue;
+        out6.push(masteryData[of2.p][y]);
+      }
+      masteryData[of2.p] = out6;
+    } else if(of2.t === "percent"){
+      var out7 = [];
+      for(var z=0; z<allPctRates.length; z++){
+        if(Math.abs(allPctRates[z] - fv) < 0.011) continue;
+        out7.push(allPctRates[z]);
+      }
+      allPctRates = out7;
+      allPctRates.sort(function(a,b){return a-b;});
+    }
+  }
 }
 
 /* 后台下发的内置值覆盖清单（后台 dbCard 生成） */
 var CALC_OV_KEY = "yy_calc_ov";
+var CALC_OFF_KEY = "yy_calc_off";   /* 后台下发的禁用清单：[{t:"life"|"mastery"|"percent", p, s, v}]，禁用的值不参与计算（数据保留） */
+function loadCalcOff(){
+  try{
+    var a = JSON.parse(localStorage.getItem(CALC_OFF_KEY) || "[]");
+    return Array.isArray(a) ? a : [];
+  }catch(e){ return []; }
+}
 function loadCalcOv(){
   try{
     var a = JSON.parse(localStorage.getItem(CALC_OV_KEY) || "[]");
@@ -6687,7 +6726,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 65;
+var APP_CODE = 66;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -7120,6 +7159,11 @@ function calcSync(d, force){
       var ovArr = Array.isArray(c.ov) ? c.ov : [];
       localStorage.setItem(CALC_OV_KEY, JSON.stringify(ovArr));
     }catch(e){}
+    /* 后台下发的禁用清单 → 存起来，rebuildDataWithCustom 套用 */
+    try{
+      var offArr = Array.isArray(c.off) ? c.off : [];
+      localStorage.setItem(CALC_OFF_KEY, JSON.stringify(offArr));
+    }catch(e){}
     calcSyncedAt = Date.now();
     try{ localStorage.setItem(CALC_SYNCAT_KEY, String(calcSyncedAt)); }catch(e){}
     calcAdminCount = calcAdminN();
@@ -7180,10 +7224,25 @@ function svSync(d){
     if(!s) return;
     var rev = Number(s.rev) || 0;
     if(rev > 0 && rev === svRevApplied) return;
-    var ints = svNums(s.ints), decs = svNums(s.decs, 1), pcts = svNums(s.pcts, 1);
-    if(ints && ints.length) SV_FLATS_INT = ints;
-    if(decs && decs.length) SV_FLATS_DEC = decs;
-    if(pcts && pcts.length) SV_PCTS = pcts;
+    /* 后台下发的池禁用清单：[{t:"int"|"dec"|"pct", v}]，禁用的值不参与求解（数据保留） */
+    var soff = Array.isArray(s.off) ? s.off : [];
+    function svFilter(arr, kind){
+      if(!arr) return arr;
+      var out = [];
+      for(var i = 0; i < arr.length; i++){
+        var skip = false;
+        for(var j = 0; j < soff.length; j++){
+          var o = soff[j];
+          if(o && o.t === kind && Math.abs(Number(o.v) - arr[i]) < 1e-9){ skip = true; break; }
+        }
+        if(!skip) out.push(arr[i]);
+      }
+      return out;
+    }
+    var ints = svFilter(svNums(s.ints), "int"), decs = svFilter(svNums(s.decs, 1), "dec"), pcts = svFilter(svNums(s.pcts, 1), "pct");
+    if(ints) SV_FLATS_INT = ints;               /* 空数组也替换：整池禁用要让求解器看到空池 */
+    if(decs) SV_FLATS_DEC = decs;
+    if(pcts) SV_PCTS = pcts;
     svRevApplied = rev;
     try{ localStorage.setItem(SV_REV_KEY, String(rev)); }catch(e){}
     try{ if(document.getElementById("lifeSvModal") && document.getElementById("lifeSvModal").classList.contains("show")) lifeSvLibRender(); }catch(e){}
