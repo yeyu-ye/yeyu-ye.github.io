@@ -568,6 +568,8 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       APP 计算器全部数值的总管理：内置参考表可<b style="color:#e6edf3">改值 / 删除 / 还原</b>，
       新增走下面表单；「🧬 求解器数值池」也在最后一个页签。<b style="color:#e6edf3">点保存后界面立即更新</b>，所有手机联网自动同步。
       百分比填 0.466 或 46.6 都认（自动适配比例）。
+      <br>手机端（创始人 / 管理员账号）自己加或改的数值会直接写到这里，带 <span style="color:#3fb950">👤手机上传</span> 标记；
+      这些额外条目在「🧮 计算器数据」卡片里可以继续改 / 删，改完一样全设备同步。
     </div>
     <div class="bar" style="margin-bottom:12px">
       <button class="dbtab" id="dbt-life" onclick="dbTab('life')">🌸 生命库</button>
@@ -1431,10 +1433,13 @@ function dbRender(){
   if($("dbCard").style.display === "none") return;
   var st = $("dbState");
   var c = dbEnsureOv(), s = dbEnsureSv();
-  var userN = 0;
+  var userN = 0, extraN = c.items.length;
   for(var i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].from === "user") userN++; }
-  if(st) st.textContent = "改动 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
-      + (userN ? " · 👤手机上传 " + userN + " 条" : "");
+  if(st){
+    st.innerHTML = "额外条目 " + extraN + " 条" + (userN ? ' · <span style="color:#3fb950">👤手机上传 ' + userN + '</span>' : "")
+      + " · 改动 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
+      + (c.ts ? ' · 最近改 ' + new Date(c.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "");
+  }
   if(dbCurTab === "life") dbRenderLife();
   else if(dbCurTab === "mastery") dbRenderMas();
   else if(dbCurTab === "percent") dbRenderPct();
@@ -2412,6 +2417,8 @@ function doSave(){
     setState("✅ 已保存 · " + new Date().toLocaleTimeString("zh-CN"));
     if(msg) showOk(msg);
     if(writeAgain){ writeAgain = false; queueSave(); }
+    /* v60：保存后回读一次，确认手机端刚上传的条目 / 别人刚改的东西没被这份快照盖掉 */
+    setTimeout(function(){ try{ if(!dirty && !writeBusy) load(); }catch(e){} }, 500);
   }, 0, function(){
     writeBusy = false; writeAgain = false; dirty = true;
     clearDel();                       // 失败也要解除刷新屏蔽，否则界面永远停在旧数据
