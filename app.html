@@ -2824,6 +2824,31 @@ function atkBindOnce(){
 
 /* ---------- 枚举求解（算法与攻击计算器原版一致） ---------- */
 var ATK_OPT_LIMIT = 300, ATK_NODE_CAP = 1500000;
+/* 结果里的主属性标签：攻击% 主属性写成「沙主52.08（7%）」，让数值和来源百分比都看得见 */
+function atkMainLabel(slot, idx, val){
+  if(slot.type === "pct" && idx >= 0 && ATK_DB.pct[idx] !== undefined){
+    var pv = atkFmt(ATK_DB.pct[idx]) + "%";
+    if(atkNum(atkState.base) > 0) return slot.label + "主" + atkFmt2(val) + "（" + pv + "）";
+    return slot.label + "主" + pv;
+  }
+  return slot.label + "主" + atkFmt(val);
+}
+/* 副词条百分比的标签：同样写成「花副52.08（7%）」 */
+function atkSubPctLabel(slot, pctVal){
+  var pv = atkFmt(pctVal) + "%", base = atkNum(atkState.base);
+  if(base > 0) return slot.label + "副" + atkFmt2(base * atkNum(pctVal) / 100) + "（" + pv + "）";
+  return slot.label + "副" + pv;
+}
+/* 已选副词条的标签（key 形如 f3 / p2） */
+function atkSubLabel2(slot, key){
+  var t = String(key || "").charAt(0), i = parseInt(String(key || "").slice(1), 10);
+  if(t === "p" && i >= 0){
+    var b = atkPickSubPct(Number(atkState.star)).v;
+    if(i < b.length) return atkSubPctLabel(slot, b[i]);
+  }
+  var lb = atkSubLabel(key);
+  return lb ? (slot.label + "副" + lb) : "";
+}
 function atkSlotOptions(slot){
   var st = atkState.slots[slot.key];
   var enumMain = (slot.key === "feather" && atkState.enumer.feather) || (slot.type === "pct" && atkState.enumer[slot.key]);
@@ -2834,11 +2859,11 @@ function atkSlotOptions(slot){
     for(i = 0; i < all.length; i++){
       if(all[i].idx < 0) continue;
       var mv0 = atkMainVal(slot.key, all[i].idx);
-      mains.push({ val: mv0, label: slot.label + "主" + atkFmt(mv0), idx: all[i].idx });
+      mains.push({ val: mv0, label: atkMainLabel(slot, all[i].idx, mv0), idx: all[i].idx });
     }
   } else if(st.main >= 0 && !atkSelOff("main", slot, st.main)){
     var mv = atkMainVal(slot.key, st.main);
-    mains.push({ val: mv, label: slot.label + "主" + atkFmt(mv), idx: st.main });
+    mains.push({ val: mv, label: atkMainLabel(slot, st.main, mv), idx: st.main });
   } else mains.push({ val: 0, label: "", idx: -1 });
 
   var enumSub = slot.key === "flower" ? atkState.enumer.flowerSub
@@ -2861,12 +2886,12 @@ function atkSlotOptions(slot){
       if(tt.pct){
         for(j = 0; j < pp.v.length; j++){
           if(atkIsOff("subpct", pp.s, pp.v[j])) continue;
-          subs.push({ val: base * atkNum(pp.v[j]) / 100, label: slot.label + "副" + atkFmt(pp.v[j]) + "%" });
+          subs.push({ val: base * atkNum(pp.v[j]) / 100, label: atkSubPctLabel(slot, pp.v[j]) });
         }
       }
       subs.push({ val: 0, label: "" });
     } else if(st.sub && !atkSubOff(slot, mains[i].idx, st.sub)){
-      subs.push({ val: atkSubVal(st.sub), label: slot.label + "副" + atkSubLabel(st.sub) });
+      subs.push({ val: atkSubVal(st.sub), label: atkSubLabel2(slot, st.sub) });
     } else subs.push({ val: 0, label: "" });
 
     for(j = 0; j < subs.length; j++){
@@ -6603,7 +6628,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 62;
+var APP_CODE = 63;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -10546,7 +10571,7 @@ function closeDeviceModal(){
             <div class="at-card">
               <div class="at-ct">圣遗物配置</div>
               <table class="at-slots">
-                <thead><tr><th style="width:52px"></th><th>主属性</th><th>副词条（小攻击）</th></tr></thead>
+                <thead><tr><th style="width:52px"></th><th>主属性</th><th>副词条</th></tr></thead>
                 <tbody id="atkSlotBody"></tbody>
               </table>
               <div class="at-sum">
@@ -10556,11 +10581,11 @@ function closeDeviceModal(){
               <div class="at-judge idle" id="atkJudge">填写目标区间后自动判定</div>
             </div>
             <div class="at-card">
-              <div class="at-ct">枚举组合</div>
-              <div class="at-hint" style="margin-bottom:8px">勾选需要枚举的项，其余部位按上面已选的数值固定，找出让最终攻击落入目标区间的组合。</div>
+              <div class="at-ct">计算结果</div>
+              <div class="at-hint" style="margin-bottom:8px">勾选需要枚举的项，其余部位按上面已选的数值固定，找出让最终攻击落入目标区间的组合。百分比属性按「基础攻击 × 百分比」折算。</div>
               <div class="at-chks" id="atkEnumChks"></div>
               <div class="btn-row" style="margin-bottom:0">
-                <button class="btn btn-primary" style="flex:2" onclick="atkRun()">🔍 开始枚举</button>
+                <button class="btn btn-primary" style="flex:2" onclick="atkRun()">开始计算</button>
                 <button class="btn btn-ghost" style="flex:1;font-size:13px" onclick="atkCopy()">📋 复制</button>
               </div>
               <div class="at-hint" id="atkEnumNote" style="margin-top:8px"></div>
