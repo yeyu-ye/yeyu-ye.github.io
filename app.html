@@ -648,7 +648,7 @@ nav button.active{color:var(--gold);background:transparent}
         <div class="section-title">百分比</div>
         <div class="input-group" style="margin-bottom:12px">
           <div class="label">角色基础生命</div>
-          <input type="number" id="lifeBase" placeholder="请输入角色基础生命值" step="1">
+          <input type="number" id="lifeBase" placeholder="请输入角色基础生命值" step="any">
         </div>
         <div style="display:flex;gap:10px;margin-bottom:12px">
           <button id="lifePctBtn" class="btn" onclick="openPctSelectModal()" style="flex:1;border:1px solid var(--card-border);background:var(--card);color:var(--sub);font-size:12px;border-radius:10px;padding:10px 12px;cursor:pointer">沙/头/杯百分比 <span id="lifePctCount" style="color:var(--gold);font-weight:600">未选</span></button>
@@ -753,7 +753,7 @@ nav button.active{color:var(--gold);background:transparent}
         </div>
         <div class="input-group" style="margin-bottom:10px">
           <div class="label">角色基础生命</div>
-          <input type="number" id="lifeSvBase" step="1" placeholder="如 10000">
+          <input type="number" id="lifeSvBase" step="any" placeholder="如 10000">
         </div>
         <div class="row" style="gap:10px;margin-bottom:10px">
           <div style="flex:1">
@@ -2484,7 +2484,7 @@ var ATK_SLOTS = [
   { key: "head",    label: "头", type: "pct"  }
 ];
 var atkState = {
-  tab: "calc", star: 5, base: "", min: "", max: "",
+  tab: "calc", star: 0, base: "", min: "", max: "",
   slots: { flower:{main:-1,sub:""}, feather:{main:-1,sub:""}, sand:{main:-1,sub:""}, cup:{main:-1,sub:""}, head:{main:-1,sub:""} },
   enumer: { feather: true, flowerSub: true, featherSub: true, pctSub: true, sand: false, cup: false, head: false }
 };
@@ -2510,6 +2510,23 @@ function atkStarsOf(m){
     if(s > 0 && m[k] && m[k].length) out.push(s);
   }
   out.sort(function(a, b){ return b - a; });
+  return out;
+}
+/* 1-5 星全部模式：把各星级的档位池合并去重（升序），全部参与计算 */
+function atkUnionOf(m){
+  var out = [], seen = {}, st = atkStarsOf(m), i, j;
+  for(i = 0; i < st.length; i++){
+    var arr = m[st[i]] || [];
+    for(j = 0; j < arr.length; j++){
+      if(arr[j] === "" || arr[j] === null || arr[j] === undefined) continue;
+      var n = atkRound(Number(arr[j]));
+      if(!isFinite(n) || n < 0) continue;
+      var key = Math.round(n * 1000000);
+      if(seen[key]) continue;
+      seen[key] = 1; out.push(n);
+    }
+  }
+  out.sort(function(a, b){ return a - b; });
   return out;
 }
 /* 服务器/本地存储 → 内部结构 {main:{星:[值]}, sub:{星:[值]}, pct:[]}
@@ -2615,6 +2632,27 @@ function atkMarkDirty(v){
 function atkK(k){ return (k === "subPct") ? "subpct" : k; }
 function atkIsOff(k, s, v){
   k = atkK(k);
+  if(Number(s || 0) === 0){
+    /* 全星级模式：这个值在所有含它的星级里都被禁了，才算禁（任一星级没禁就参与计算） */
+    var tbl = (k === "main") ? ATK_DB.main : (k === "sub") ? ATK_DB.sub : (k === "subpct") ? (ATK_DB.subPct || {}) : (ATK_DB.pct || {});
+    var has = false, st2, j;
+    for(st2 in tbl){
+      if(!Object.prototype.hasOwnProperty.call(tbl, st2)) continue;
+      var arr2 = tbl[st2];
+      if(!arr2 || !arr2.length) continue;
+      for(j = 0; j < arr2.length; j++){
+        if(Math.abs(Number(arr2[j]) - Number(v)) < 1e-9){
+          has = true;
+          if(!atkIsOff1(k, st2, v)) return false;
+        }
+      }
+    }
+    return has;
+  }
+  return atkIsOff1(k, s, v);
+}
+function atkIsOff1(k, s, v){
+  k = atkK(k);
   for(var i = 0; i < ATK_OFF.length; i++){
     var o = ATK_OFF[i];
     if(o && atkK(o.k) === k && Number(o.s || 0) === Number(s || 0) && Math.abs(Number(o.v) - Number(v)) < 1e-9) return true;
@@ -2641,12 +2679,14 @@ function atkMoveOff(k, s, from, to){
 }
 function atkPickMain(star){
   var m = ATK_DB.main, st = atkStarsOf(m), i;
+  if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
   for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
 }
 function atkPickSub(star){
   var m = ATK_DB.sub, st = atkStarsOf(m), i;
+  if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
   for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
@@ -2654,15 +2694,17 @@ function atkPickSub(star){
 /* 副词条百分比（攻击力%）的档位池 */
 function atkPickSubPct(star){
   var m = ATK_DB.subPct || {}, st = atkStarsOf(m), i;
+  if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
   for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
 }
 /* 主属性攻击力%（沙 / 杯 / 头）的档位池：按星级各一组，没有就只显示「不计」 */
 function atkPickPct(star){
-  var m = ATK_DB.pct || {}, s = Number(star) || 5;
+  var m = ATK_DB.pct || {}, s = Number(star);
+  if(s === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[s] && m[s].length) return { s: s, v: m[s] };
-  return { s: s, v: [] };
+  return { s: s || 5, v: [] };
 }
 
 /* ---------- 打开 / 关闭 / 切页 ---------- */
@@ -2694,9 +2736,9 @@ function atkSwitchTab(t){
 function atkRenderStar(){
   var sel = document.getElementById("atkStarSel");
   if(!sel) return;
-  var st = atkStarsOf(ATK_DB.main), h = "", i;
+  var st = atkStarsOf(ATK_DB.main), h = "<option value=\"0\"" + (Number(atkState.star) === 0 ? " selected" : "") + ">1-5 星全部</option>", i;
   for(i = 0; i < st.length; i++) h += "<option value=\"" + st[i] + "\"" + (st[i] === Number(atkState.star) ? " selected" : "") + ">" + st[i] + " 星</option>";
-  if(!h) h = "<option value=\"5\">5 星</option>";
+  if(!st.length) h += "<option value=\"5\">5 星</option>";
   sel.innerHTML = h;
 }
 function atkMainOptions(slot){
@@ -2708,7 +2750,7 @@ function atkMainOptions(slot){
     out.push({ idx: -1, label: "不计" });
     for(i = 0; i < arr.length; i++){
       if(atkIsOff("main", pm.s, arr[i])) continue;
-      out.push({ idx: i, label: atkNum(arr[i]) === 0 ? "不用此部位" : ("Lv" + i + " · " + atkFmt(arr[i])) });
+      out.push({ idx: i, label: atkNum(arr[i]) === 0 ? "不用此部位" : ((pm.s > 0 ? "Lv" + i + " · " : "") + atkFmt(arr[i])) });
     }
     return out;
   }
@@ -6748,7 +6790,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 67;
+var APP_CODE = 68;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -10699,7 +10741,7 @@ function closeDeviceModal(){
               <div class="at-ct">基础参数</div>
               <label class="at-lb">基础攻击力（角色 + 武器）</label>
               <input class="at-in" id="atkBase" type="number" step="any" inputmode="decimal" placeholder="例如 950" oninput="atkSetBase(this.value)">
-              <label class="at-lb" style="margin-top:8px">圣遗物星级（决定主属性与副词条档位）</label>
+              <label class="at-lb" style="margin-top:8px">圣遗物星级（1-5 星全部 = 各星级档位合并参与计算）</label>
               <select class="at-sel" id="atkStarSel" onchange="atkSetStar(this.value)"></select>
               <div class="at-g2" style="margin-top:8px">
                 <div><label class="at-lb">目标攻击下限</label>
