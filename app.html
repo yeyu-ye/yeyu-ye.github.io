@@ -4837,13 +4837,32 @@ if("serviceWorker" in navigator){
 function showRefModal(){
   document.getElementById("refModal").classList.add("show");
   try{ refOnTypeChange(); }catch(e){}
-  try{ refCustomRender(); }catch(e){}
+  try{ renderRefAll(); }catch(e){}
 }
 function closeRefModal(){
   document.getElementById("refModal").classList.remove("show");
 }
 /* ===== 参考表里直接加数值（和「设置 → 数据管理」同一份自定义库，参与筛选） ===== */
 var REF_TYPE_NAMES = { life: "生命", percent: "百分比", mastery: "精通" };
+
+/* 身份提示：创始人 / 管理员改的直接进后台并同步所有设备；普通成员只在本机生效 */
+function refWhoRender(){
+  var el = document.getElementById("refWho");
+  if(!el) return;
+  if(calcImAdmin()){
+    var m = mgrGet() || {};
+    el.style.background = "rgba(212,175,55,.10)";
+    el.style.borderColor = "rgba(212,175,55,.55)";
+    el.innerHTML = '👑 已登录 <b>' + (m.nick || m.u || "管理员") + '</b>（' + calcRoleTag() +
+      '）· 这里加 / 改 / 删的数值会<b>直接写进后台，所有设备一起同步</b>' +
+      (calcSyncedAt ? '｜上次同步 ' + new Date(calcSyncedAt).toLocaleTimeString("zh-CN", { hour12: false }) : '');
+  } else {
+    el.style.background = "rgba(88,166,255,.08)";
+    el.style.borderColor = "rgba(88,166,255,.35)";
+    el.innerHTML = '👤 当前不是管理员：改动<b>只在本机生效</b>，不会同步到其它设备。' +
+      '要让所有设备一起变，请用创始人 / 管理员账号登录。';
+  }
+}
 function refOnTypeChange(){
   var t = document.getElementById("refAddType").value;
   document.getElementById("refAddPart").style.display = (t === "percent") ? "none" : "";
@@ -4852,8 +4871,9 @@ function refOnTypeChange(){
     t === "life" ? "如 4780" : t === "mastery" ? "如 187" : "如 46.6（或 0.466）";
   var info = document.getElementById("refAddInfo");
   if(info) info.textContent = t === "percent"
-    ? "百分比加进全部位置；后台上新档 / 联网时会自动合并，不会重复。"
-    : "生命按 位置+星级 归档；加完筛选页立即生效，联网后自动同步到后台。";
+    ? "百分比加进全部位置；后台新增的档位 / 手机加的都会显示在下面，不会重复。"
+    : "生命按 位置+星级 归档；加完筛选页立即生效" + (calcImAdmin() ? "，并同步所有设备。" : "（仅本机）。");
+  try{ refWhoRender(); }catch(e){}
 }
 function refAddValue(){
   var t = document.getElementById("refAddType").value;
@@ -4867,53 +4887,202 @@ function refAddValue(){
   var star = t === "life" ? (parseInt(document.getElementById("refAddStar").value, 10) || 5) : 5;
   var data = loadCustomData(t);
   for(var i = 0; i < data.length; i++){
-    if(data[i].part === part && (data[i].star || 5) === star && Math.abs(data[i].value - val) < 0.0001){
+    if((data[i].part || "") === (part || "") && (data[i].star || 5) === star && Math.abs(data[i].value - val) < 0.0001){
       showToast("该数值已存在"); return;
     }
   }
   data.push({ part: part, value: val, star: star });
   saveCustomData(t, data);
+  var idx = data.length - 1;
+  var label = (t === "percent" ? val + "%" : (t === "life" ? star + "星 " : "") + val + "（" + part + "）");
   rebuildDataWithCustom();
   refreshFilterIfActive();
+  try{ renderRefAll(); }catch(e){}
   try{ renderDmAdmin(); }catch(e){}
-  try{ calcUploadLocal(); }catch(e){}          /* 联网后自动上传后台（👤） */
   document.getElementById("refAddVal").value = "";
-  showToast("已添加到参考表：" + (t === "percent" ? val + "%" : (t === "life" ? star + "星 " : "") + val + "（" + part + "）· 筛选立即生效"));
-  refCustomRender();
+  if(calcImAdmin()){
+    calcRemotePush("add", { type: t, part: part, value: val, star: star }, function(ok, err, id){
+      if(ok){
+        var arr = loadCustomData(t);
+        if(arr[idx] && !arr[idx].aid){ arr[idx].aid = id; arr[idx].from = "admin"; saveCustomData(t, arr); }
+        showToast("✅ 已添加并同步到所有设备：" + label, 3600);
+        try{ renderRefAll(); }catch(e){}
+      } else {
+        calcPushFailToast();
+        try{ renderRefAll(); }catch(e){}
+      }
+    });
+  } else {
+    showToast("已在本机生效（不是管理员，不同步其它设备）：" + label, 4000);
+  }
 }
+/* 列出所有「非内置」的额外数值：自己加的 + 后台下发的（☁） */
 function refCustomRender(){
   var box = document.getElementById("refCustomList");
   if(!box) return;
   var h = "", total = 0;
   for(var ti = 0; ti < CALC_TYPES.length; ti++){
-    var tk = CALC_TYPES[ti].k, arr = loadCustomData(tk);
-    var mine = [];
-    for(var i = 0; i < arr.length; i++){
-      if(arr[i] && !arr[i].aid) mine.push(i);
-    }
-    if(!mine.length) continue;
-    total += mine.length;
-    h += '<div style="font-size:11px;color:var(--gold);margin:8px 0 3px">' + REF_TYPE_NAMES[tk] + '（自己加的 ' + mine.length + ' 条）</div>';
-    for(var j = 0; j < mine.length; j++){
-      var d = arr[mine[j]];
+    var tk = CALC_TYPES[ti].k, arr = loadCustomData(tk), rows = [];
+    for(var i = 0; i < arr.length; i++){ if(arr[i]) rows.push(i); }
+    if(!rows.length) continue;
+    total += rows.length;
+    h += '<div style="font-size:11px;color:var(--gold);margin:8px 0 3px">' + REF_TYPE_NAMES[tk] + '（额外 ' + rows.length + ' 条）</div>';
+    for(var j = 0; j < rows.length; j++){
+      var ix = rows[j], d = arr[ix];
       var label = tk === "percent" ? d.value + "%" : ((tk === "life" ? (d.star || 5) + "星 " : "") + d.value + " · " + (d.part || "花"));
-      h += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:7px;padding:3px 8px;font-size:12px;margin:2px;color:var(--text)">' + label +
-           '<span style="color:var(--danger);cursor:pointer;padding:0 2px" onclick="refDelCustom(\'' + tk + '\',' + mine[j] + ')">✕</span></span>';
+      var src = d.aid ? '<span style="color:#58a6ff;font-size:11px">☁后台</span>' : '<span style="color:var(--sub);font-size:11px">本机</span>';
+      h += '<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:7px;padding:3px 8px;font-size:12px;margin:2px;color:var(--text)">'
+         + src + label
+         + '<span style="color:var(--gold);cursor:pointer;padding:0 2px" onclick="refEditCustom(\'' + tk + '\',' + ix + ')">✎</span>'
+         + '<span style="color:var(--danger);cursor:pointer;padding:0 2px" onclick="refDelCustom(\'' + tk + '\',' + ix + ')">✕</span></span>';
     }
   }
-  box.innerHTML = h;
+  box.innerHTML = h || '<div class="muted" style="font-size:11px;margin-top:6px">还没有额外数值。上面加一条，或等后台下发。</div>';
+}
+/* 改一条额外数值 */
+function refEditCustom(type, idx){
+  var arr = loadCustomData(type), d = arr[idx];
+  if(!d) return;
+  var tip = "改这条数值（" + REF_TYPE_NAMES[type] + "）：\n" + (type === "percent" ? "填 46.6 或 0.466 都行" : (type === "life" ? (d.star || 5) + "星 · " + (d.part || "花") : (d.part || "花"))) +
+            (calcImAdmin() ? "\n\n改完会同步到所有设备。" : "\n\n你不是管理员：只在本机生效。");
+  var s = prompt(tip, String(d.value));
+  if(s === null) return;
+  var nv = parseFloat(s);
+  if(isNaN(nv) || nv <= 0){ showToast("数值不对"); return; }
+  if(type === "percent" && nv > 0 && nv < 1) nv = Math.round(nv * 10000) / 100;
+  nv = Math.round(nv * 10000) / 10000;
+  if(nv === d.value) return;
+  arr[idx].value = nv;
+  saveCustomData(type, arr);
+  rebuildDataWithCustom(); refreshFilterIfActive();
+  try{ renderRefAll(); }catch(e){}
+  if(calcImAdmin()){
+    var act = d.aid ? "edit" : "add";
+    var payload = d.aid ? { aid: d.aid, type: type, part: d.part, value: nv, star: d.star }
+                        : { type: type, part: d.part, value: nv, star: d.star };
+    calcRemotePush(act, payload, function(ok, err, id){
+      if(ok){
+        if(!d.aid && id){ var a2 = loadCustomData(type); if(a2[idx] && !a2[idx].aid){ a2[idx].aid = id; a2[idx].from = "admin"; saveCustomData(type, a2); } }
+        showToast("✅ 已改并同步到所有设备：" + nv, 3200);
+        try{ renderRefAll(); }catch(e){}
+      } else calcPushFailToast();
+    });
+  } else {
+    showToast("已在本机改好（不是管理员，不同步）：" + nv, 3600);
+  }
 }
 function refDelCustom(type, idx){
   var data = loadCustomData(type);
   if(!data[idx]) return;
-  if(data[idx].aid){ showToast("这条是后台下发的（☁），请让管理员在后台删"); return; }
+  var d = data[idx];
+  if(d.aid && !calcImAdmin()){ showToast("这条是后台下发的（☁），需要管理员在手机或后台删除"); return; }
+  if(!confirm("删除这条额外数值？\n" + (type === "percent" ? d.value + "%" : d.value + "（" + (d.part || "花") + " " + (d.star || 5) + "★）"))) return;
+  var aid = d.aid || "";
   data.splice(idx, 1);
   saveCustomData(type, data);
-  rebuildDataWithCustom();
-  refreshFilterIfActive();
-  refCustomRender();
-  showToast("已删除");
+  rebuildDataWithCustom(); refreshFilterIfActive();
+  try{ renderRefAll(); }catch(e){}
+  if(calcImAdmin() && aid){
+    calcRemotePush("del", { aid: aid }, function(ok){
+      if(ok) showToast("✅ 已删除并同步到所有设备", 3000);
+      else calcPushFailToast();
+    });
+  } else {
+    showToast("已删除（仅本机）");
+  }
 }
+
+/* ===== 生命参考表：按「现在真正参与计算的数据」渲染 =====
+   来源 = 内置表 + 手机自定义 + 后台下发 + 后台改过的内置值（全部在 artifactData 里），
+   所以后台改完生命库，这里立刻就是新值。创始人 / 管理员点格子可直接改（写后台覆盖）。 */
+function refLifeRender(){
+  var box = document.getElementById("refLifeBox");
+  if(!box) return;
+  var groups = [
+    { key: "花", title: "花", parts: ["花"] },
+    { key: "毛沙杯头", title: "毛/沙/杯/头", parts: ["毛", "沙", "杯", "头"] }
+  ];
+  var h = "";
+  for(var g = 0; g < groups.length; g++){
+    var gp = groups[g], map = {};
+    for(var pi = 0; pi < gp.parts.length; pi++){
+      var arr = artifactData[gp.parts[pi]] || [];
+      for(var i = 0; i < arr.length; i++){
+        var st = parseInt(arr[i][0], 10) || 5, v = Number(arr[i][1]);
+        if(!isFinite(v) || v <= 0) continue;
+        if(!map[st]) map[st] = [];
+        var dup = false;
+        for(var q = 0; q < map[st].length; q++){ if(Math.abs(map[st][q] - v) < 0.0001){ dup = true; break; } }
+        if(!dup) map[st].push(v);
+      }
+    }
+    for(var star = 5; star >= 1; star--){
+      var vals = (map[star] || []).slice().sort(function(a, b){ return a - b; });
+      if(!vals.length) continue;
+      h += '<div class="ref-section"><div class="ref-title">' + gp.title + ' ' + star + '星 生命（' + vals.length + '档）</div><div class="ref-grid">';
+      for(var j = 0; j < vals.length; j++){
+        h += '<div class="ref-cell" style="cursor:pointer" onclick="refEditBuiltin(\'' + gp.key + '\',' + star + ',' + vals[j] + ')">' + vals[j] + '</div>';
+      }
+      h += '</div></div>';
+    }
+  }
+  box.innerHTML = h || '<div class="muted">暂无生命数据</div>';
+}
+/* 改生命表里的一个格子：花只改 1 个部位，毛/沙/杯/头 一组一次改 4 条 */
+function refEditBuiltin(group, star, value){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改参考表数值"); return; }
+  var gname = (group === "花") ? "花" : "毛/沙/杯/头";
+  var s = prompt("改这个生命值：" + gname + " " + star + "★ · " + value + "\n（保存后同步所有设备）", String(value));
+  if(s === null) return;
+  var nv = parseFloat(s);
+  if(isNaN(nv) || nv <= 0){ showToast("数值不对"); return; }
+  nv = Math.round(nv * 100) / 100;
+  if(nv === value) return;
+  var parts = (group === "花") ? ["花"] : ["毛", "沙", "杯", "头"];
+  var ovs = [];
+  for(var i = 0; i < parts.length; i++) ovs.push({ t: "life", p: parts[i], s: star, f: value, to: nv });
+  calcRemotePush("ovm", { ovs: ovs }, function(ok){
+    if(ok) showToast("✅ 已改并同步所有设备：" + value + " → " + nv, 3600);
+    else calcPushFailToast();
+    try{ renderRefAll(); }catch(e){}
+  });
+}
+/* ===== 沙/杯/头页签顶部：当前参与计算的百分比档（随后台同步） ===== */
+function refPctLiveRender(){
+  var box = document.getElementById("refPctLive");
+  if(!box) return;
+  var vals = (allPctRates || []).slice().sort(function(a, b){ return a - b; });
+  var h = '<div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:6px">🎯 当前参与计算的百分比档（' + vals.length + ' 个 · 随后台 / 手机改动同步）</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:5px">';
+  for(var i = 0; i < vals.length; i++){
+    h += '<span class="ref-cell" style="cursor:pointer;padding:4px 8px" onclick="refEditPct(' + vals[i] + ')">' + vals[i] + '</span>';
+  }
+  h += '</div><div class="muted" style="font-size:11px;margin-top:6px">管理员点数字可直接改这一档（下面的主词条档位表是固定参考，不受影响）。</div>';
+  box.innerHTML = h;
+}
+function refEditPct(value){
+  if(!calcImAdmin()){ showToast("只有创始人 / 管理员能改百分比档"); return; }
+  var s = prompt("改这一档百分比：" + value + "%\n（保存后同步所有设备；填 0.466 或 46.6 都行）", String(value));
+  if(s === null) return;
+  var nv = parseFloat(s);
+  if(isNaN(nv) || nv <= 0){ showToast("数值不对"); return; }
+  if(nv > 0 && nv < 1) nv = Math.round(nv * 10000) / 100;
+  nv = Math.round(nv * 100) / 100;
+  if(nv === value) return;
+  calcRemotePush("ov", { t: "percent", p: "", s: 0, f: value, to: nv }, function(ok){
+    if(ok) showToast("✅ 百分比档已改并同步：" + value + "% → " + nv + "%", 3600);
+    else calcPushFailToast();
+    try{ renderRefAll(); }catch(e){}
+  });
+}
+/* 参考表统一重画 */
+function renderRefAll(){
+  try{ refWhoRender(); }catch(e){}
+  try{ refCustomRender(); }catch(e){}
+  try{ refLifeRender(); }catch(e){}
+  try{ refPctLiveRender(); }catch(e){}
+}
+
 function switchRefTab(tab){
   var btns = document.querySelectorAll(".ref-tab-btn");
   var panels = document.querySelectorAll(".ref-tab-panel");
@@ -5578,7 +5747,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 59;
+var APP_CODE = 60;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -5917,11 +6086,15 @@ function monaHardReload(){ monaAutoRetried = true; monaRetry(); }
    手机联网读到 rev 变了，就合并进 APP「设置 → 数据管理」的自定义数据里，
    直接参与圣遗物组合计算。后台删掉的条目，手机上也会跟着删掉；
    用户自己在手机上加的数值不会被清掉。 */
-var CALC_REV_KEY = "yy_calc_rev", CALC_IDS_KEY = "yy_calc_ids";
+var CALC_REV_KEY = "yy_calc_rev", CALC_IDS_KEY = "yy_calc_ids", CALC_TS_KEY = "yy_calc_ts";
+var CALC_SYNCAT_KEY = "yy_calc_synced_at";
 var CALC_TYPES = [ { k:"life", n:"生命" }, { k:"percent", n:"百分比" }, { k:"mastery", n:"精通" } ];
 var calcRevApplied = -1, calcIdsApplied = [], calcAdminCount = 0;
+var calcTsApplied = -1, calcSyncedAt = 0;
 try{
   calcRevApplied = parseInt(localStorage.getItem(CALC_REV_KEY) || "-1", 10) || -1;
+  calcTsApplied = parseInt(localStorage.getItem(CALC_TS_KEY) || "-1", 10) || -1;
+  calcSyncedAt = parseInt(localStorage.getItem(CALC_SYNCAT_KEY) || "0", 10) || 0;
   calcIdsApplied = JSON.parse(localStorage.getItem(CALC_IDS_KEY) || "[]");
   if(!Array.isArray(calcIdsApplied)) calcIdsApplied = [];
 }catch(e){ calcIdsApplied = []; }
@@ -5958,19 +6131,25 @@ function calcAdminN(){
   }catch(e){}
   return n;
 }
-function calcSync(d){
+function calcSync(d, force){
   try{
     var c = d && d.calc;
+    /* 求解器数值池和 calc 是两份独立数据（各有 rev），任何时候都要各自判断 */
+    try{ svSync(d); }catch(e){}
     if(!c) return;
     var items = Array.isArray(c.items) ? c.items : [];
     var rev = Number(c.rev) || 0;
-    if(rev > 0 && rev === calcRevApplied) return;      // 这一版已经同步过了
+    var cts = Number(c.ts) || 0;
+    /* rev 和 ts 都没变才算「这一版已经同步过」。
+       以前只比 rev：后台只改了覆盖清单 / 手机刚上传过，都可能 rev 相同而内容不同 → 永远不同步。 */
+    if(!force && rev > 0 && rev === calcRevApplied && cts === calcTsApplied) return;
     var newIds = [], add = { life: [], percent: [], mastery: [] };
     for(var i = 0; i < items.length; i++){
       var o = calcItemOf(items[i]);
       if(!o) continue;
       newIds.push(o.id); add[o.type].push(o);
     }
+    var prevIds = calcIdsApplied;
     var added = 0, removed = 0;
     for(var ti = 0; ti < CALC_TYPES.length; ti++){
       var tk = CALC_TYPES[ti].k;
@@ -5978,7 +6157,7 @@ function calcSync(d){
       for(var j = 0; j < local.length; j++){
         var d0 = local[j];
         /* 上一下发过、这次后台删了 → 手机上也删 */
-        if(d0 && d0.aid && calcIdsApplied.indexOf(d0.aid) >= 0 && newIds.indexOf(d0.aid) < 0){ removed++; continue; }
+        if(d0 && d0.aid && prevIds.indexOf(d0.aid) >= 0 && newIds.indexOf(d0.aid) < 0){ removed++; continue; }
         keep.push(d0);
       }
       var lst = add[tk] || [];
@@ -5993,21 +6172,24 @@ function calcSync(d){
     }
     try{ localStorage.setItem(CALC_IDS_KEY, JSON.stringify(newIds)); }catch(e){}
     try{ localStorage.setItem(CALC_REV_KEY, String(rev)); }catch(e){}
-    calcRevApplied = rev; calcIdsApplied = newIds;
+    try{ localStorage.setItem(CALC_TS_KEY, String(cts)); }catch(e){}
+    calcRevApplied = rev; calcIdsApplied = newIds; calcTsApplied = cts;
     /* 后台「数据库管理」改内置值的覆盖清单 → 存起来，rebuildDataWithCustom 套用 */
     try{
       var ovArr = Array.isArray(c.ov) ? c.ov : [];
       localStorage.setItem(CALC_OV_KEY, JSON.stringify(ovArr));
     }catch(e){}
+    calcSyncedAt = Date.now();
+    try{ localStorage.setItem(CALC_SYNCAT_KEY, String(calcSyncedAt)); }catch(e){}
     calcAdminCount = calcAdminN();
     try{ rebuildDataWithCustom(); }catch(e){}       // 重新参与组合计算
     try{ refreshFilterIfActive(); }catch(e){}
+    try{ renderRefAll(); }catch(e){}                // 参考表跟着后台改
     try{ if(document.getElementById("customDataModal") && document.getElementById("customDataModal").classList.contains("show")) renderCustomDataList(); }catch(e){}
     try{ renderDmAdmin(); }catch(e){}
-    try{ svSync(d); }catch(e){}                     // 求解器数值池一并同步
-    try{ calcUploadLocal(); }catch(e){}             // 本机自己加的数值上传后台
+    try{ if(calcImAdmin()) calcUploadLocal(); }catch(e){}   // 管理员：本机历史条目补传后台
     if(added || removed){
-      showToast("后台数据已同步：" + (added ? "新增 " + added + " 条" : "") +
+      showToast("☁ 后台数据已同步：" + (added ? "新增 " + added + " 条" : "") +
                 (added && removed ? "、" : "") + (removed ? "移除 " + removed + " 条" : "") +
                 " · 已加入「设置 → 数据管理」参与计算", 4200);
     }
@@ -6019,7 +6201,8 @@ function renderDmAdmin(){
   if(!el) return;
   var n = calcAdminN();
   calcAdminCount = n;
-  el.textContent = n ? ("☁ 后台下发 " + n + " 条（已并入上面的数据，参与计算）") : "☁ 后台还没有下发数值";
+  var t = calcSyncedAt ? (" · 上次同步 " + new Date(calcSyncedAt).toLocaleTimeString("zh-CN", { hour12: false })) : " · 还没同步过";
+  el.textContent = (n ? ("☁ 后台下发 " + n + " 条（已并入上面的数据，参与计算）") : "☁ 后台还没有下发数值") + t;
 }
 function calcPullNow(){
   showToast("正在从后台拉取…");
@@ -6078,6 +6261,7 @@ function calcUpSigs(){
 }
 function calcUploadLocal(){
   try{
+    if(!calcImAdmin()) return;          /* 只有创始人 / 管理员改的才进后台（普通成员只在本机生效） */
     if(!gistEnabled()) return;
     var mine = [];
     for(var ti = 0; ti < CALC_TYPES.length; ti++){
@@ -6100,21 +6284,124 @@ function calcUploadLocal(){
       var c = d.calc;
       if(!c || typeof c !== "object") c = d.calc = { rev: 0, ts: 0, items: [] };
       if(!Array.isArray(c.items)) c.items = [];
-      var myDev = "";
-      try{ myDev = (deviceInfoCache || collectDeviceInfo()).id || ""; }catch(e){}
+      var myDev = calcMyDevId();
       for(var i = 0; i < fresh.length; i++){
         var o = fresh[i].o;
         c.items.push({ id: "u" + Date.now().toString(36) + "_" + i, type: o.t, part: o.p,
-                       value: o.v, star: o.s, from: "user", dev: myDev });
+                       value: o.v, star: o.s, from: "user", by: (mgrGet() || {}).u || "", dev: myDev });
       }
-      c.ts = Date.now();          /* 只加条目不 bump rev：不打扰其它设备，管理员下次改动时自然带上 */
+      /* v60：以前不 bump rev → 其它设备永远看不到这条，管理员也以为没上传成功。
+         现在改动一律 bump，全设备一起同步。 */
+      c.rev = (c.rev || 0) + 1; c.ts = Date.now();
     }, function(ok){
       if(!ok) return;             /* 写失败了不记指纹，下次联网再传 */
       var ups = calcUpSigs();
       for(var m = 0; m < fresh.length; m++){ if(ups.indexOf(fresh[m].sig) < 0) ups.push(fresh[m].sig); }
       try{ localStorage.setItem(CALC_UP_KEY, JSON.stringify(ups)); }catch(e){}
+      calcAfterPush();
     });
   }catch(e){}
+}
+/* ===== 创始人 / 管理员：手机上的改动直接写进后台，所有设备一起同步 =====
+   普通成员改了只在本机生效（toast 会明确提示），不会污染后台。 */
+function calcImAdmin(){
+  try{ var m = mgrGet(); return !!(m && (m.role === "founder" || m.role === "admin")); }catch(e){ return false; }
+}
+function calcMyDevId(){
+  try{ return (deviceInfoCache || collectDeviceInfo()).id || ""; }catch(e){ return ""; }
+}
+function calcRoleTag(){
+  try{ var m = mgrGet(); return m ? mgrRoleName(m.role) : ""; }catch(e){ return ""; }
+}
+/* 推送成功后：强制重新合并一次（自己刚写的那版），把 aid 落到本地条目上 */
+function calcAfterPush(){
+  calcRevApplied = -1; calcTsApplied = -1;
+  try{ localStorage.setItem(CALC_REV_KEY, "-1"); localStorage.setItem(CALC_TS_KEY, "-1"); }catch(e){}
+  try{ if(window.gistRead) gistRead(function(d){ try{ if(d) calcSync(d, true); }catch(e){} }); }catch(e){}
+}
+/* act: add / edit / del / ov
+   opt: { aid, type, part, value, star } 或 { t, p, s, f, to } */
+function calcRemotePush(act, opt, done){
+  opt = opt || {};
+  if(!calcImAdmin()){ if(done) done(false, "notadmin"); return false; }
+  if(!gistEnabled()){ if(done) done(false, "offline"); return false; }
+  var m = mgrGet() || {};
+  var madeId = "";
+  gistMutate(function(d){
+    var c = d.calc;
+    if(!c || typeof c !== "object") c = d.calc = { rev: 0, ts: 0, items: [], ov: [] };
+    if(!Array.isArray(c.items)) c.items = [];
+    if(!Array.isArray(c.ov)) c.ov = [];
+    var now = Date.now(), i;
+    if(act === "add"){
+      madeId = opt.aid || ("m" + now.toString(36) + Math.random().toString(36).slice(2, 6));
+      c.items.push({ id: madeId, type: opt.type, part: opt.part, value: opt.value, star: opt.star || 5,
+                     from: "admin", by: (m.u || ""), dev: calcMyDevId(), ts: now });
+    } else if(act === "edit"){
+      var hit = null;
+      for(i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].id === opt.aid){ hit = c.items[i]; break; } }
+      if(hit){ hit.value = opt.value; hit.ts = now; hit.by = (m.u || ""); }
+      else {
+        madeId = opt.aid || ("m" + now.toString(36) + Math.random().toString(36).slice(2, 6));
+        c.items.push({ id: madeId, type: opt.type, part: opt.part, value: opt.value, star: opt.star || 5,
+                       from: "admin", by: (m.u || ""), dev: calcMyDevId(), ts: now });
+      }
+    } else if(act === "del"){
+      var arr = [];
+      for(i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].id !== opt.aid) arr.push(c.items[i]); }
+      c.items = arr;
+    } else if(act === "ov" || act === "ovm"){
+      /* 改内置值：同一条（类型/位置/星级/原值）已有覆盖就改，没有就新增；to = null 表示删掉这条内置值。
+         ovm = 一次改多条（毛/沙/杯/头 这种合并成一组显示的表，点一下要改 4 个部位） */
+      var list = (act === "ovm") ? (opt.ovs || []) : [opt];
+      for(var q = 0; q < list.length; q++){
+        var it2 = list[q] || {};
+        var found = -1;
+        for(i = 0; i < c.ov.length; i++){
+          var o = c.ov[i];
+          if(o && o.t === it2.t && (o.p || "") === (it2.p || "") && (o.s || 0) === (it2.s || 0) && Number(o.f) === Number(it2.f)){ found = i; break; }
+        }
+        if(it2.to === null){ if(found >= 0) c.ov.splice(found, 1); }
+        else if(found >= 0) c.ov[found].to = it2.to;
+        else c.ov.push({ t: it2.t, p: it2.p || "", s: it2.s || 0, f: it2.f, to: it2.to });
+      }
+    } else return false;
+    c.rev = (c.rev || 0) + 1;
+    c.ts = now;
+    return true;
+  }, function(ok){
+    if(ok){
+      /* 先落本地覆盖清单，界面立刻跟手，不跳变 */
+      try{
+        if(act === "ov" || act === "ovm"){
+          var ovs = loadCalcOv();
+          var list2 = (act === "ovm") ? (opt.ovs || []) : [opt];
+          for(var q2 = 0; q2 < list2.length; q2++){
+            var it3 = list2[q2] || {}, f2 = -1;
+            for(var q3 = 0; q3 < ovs.length; q3++){
+              var oo = ovs[q3];
+              if(oo && oo.t === it3.t && (oo.p || "") === (it3.p || "") && (oo.s || 0) === (it3.s || 0) && Number(oo.f) === Number(it3.f)){ f2 = q3; break; }
+            }
+            if(it3.to === null){ if(f2 >= 0) ovs.splice(f2, 1); }
+            else if(f2 >= 0) ovs[f2].to = it3.to;
+            else ovs.push({ t: it3.t, p: it3.p || "", s: it3.s || 0, f: it3.f, to: it3.to });
+          }
+          try{ localStorage.setItem(CALC_OV_KEY, JSON.stringify(ovs)); }catch(e){}
+        }
+      }catch(e){}
+      try{ rebuildDataWithCustom(); }catch(e){}
+      try{ refreshFilterIfActive(); }catch(e){}
+      try{ renderRefAll(); }catch(e){}
+      try{ renderDmAdmin(); }catch(e){}
+      calcAfterPush();
+    }
+    if(done) done(!!ok, ok ? "" : "write", madeId);
+  });
+  return true;
+}
+/* 推送失败时的统一提示（本地已生效，别让用户以为白改） */
+function calcPushFailToast(){
+  showToast("已在本机生效 · 没连上服务器，联网后会自动补传后台", 3800);
 }
 /* 带上 APP_CODE 当缓存戳：APK 升级后 URL 变了，
    免得 WebView 还拿着上一版缓存下来的 mona/index.html */
@@ -8637,6 +8924,9 @@ function gistPoll(cb){
   var id = deviceInfoCache.id;
   gistReadFast(function(data){
     try{ if(typeof scanCalls === "function") scanCalls(data); }catch(e){}   // 顺带看看有没有人打电话来
+    /* v60：轮询顺手把后台数据应用到本机 —— 以前只有 10 分钟一次的心跳才同步，
+       后台改完手机要等很久（甚至页面切后台就永远不生效），这就是「改了不同步」的根因。 */
+    try{ if(data && (Date.now() - gistFreshAt) < 5000) calcSync(data); }catch(e){}
     if(!data || !data.dev){ if(cb) cb(null, false); return; }
     var me = data.dev[id];
     if(!me){ if(cb) cb(null, true); return; }     // 被管理员删除 / 数据被清空
@@ -8696,6 +8986,7 @@ function pollAndEnforce(){
     gistReadFast(function(d){
       POLL_BUSY = false;
       livePingSync(d);
+      try{ if(d && (Date.now() - gistFreshAt) < 5000) calcSync(d); }catch(e){}   // v60：关锁也照样同步后台数据
       try{
         if(typeof scanCalls === "function") scanCalls(d);
         if(d && d.dev){
@@ -9564,6 +9855,7 @@ function closeDeviceModal(){
   <div class="modal-box">
     <button class="modal-close" onclick="closeRefModal()">✕</button>
 
+    <div id="refWho" style="font-size:12px;line-height:1.5;margin-bottom:10px;padding:8px 10px;border-radius:9px;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.35);color:var(--text)"></div>
     <div class="ref-section" style="border:1px solid var(--gold);border-radius:10px;padding:12px;margin-bottom:14px">
       <div class="ref-title" style="color:var(--gold)">➕ 添加数值（自动适配比例，百分比填 0.466 或 46.6 都行）</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
@@ -9591,6 +9883,7 @@ function closeDeviceModal(){
     </div>
 
     <div class="ref-tab-panel active" id="refTabSbc">
+    <div class="ref-section" id="refPctLive" style="border:1px dashed var(--card-border);border-radius:10px;padding:10px"></div>
     <div class="ref-section">
       <div class="ref-title">5星 主词条（21档）</div>
       <div class="ref-grid">
@@ -9663,66 +9956,8 @@ function closeDeviceModal(){
     </div><!-- /refTabSbc -->
 
     <div class="ref-tab-panel" id="refTabLife">
-    <div class="ref-section">
-      <div class="ref-title">花 5星 生命（21档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">717</div><div class="ref-cell">920</div><div class="ref-cell">1123</div><div class="ref-cell">1326</div><div class="ref-cell">1530</div><div class="ref-cell">1733</div><div class="ref-cell">1936</div><div class="ref-cell">2139</div><div class="ref-cell">2342</div><div class="ref-cell">2545</div><div class="ref-cell">2749</div><div class="ref-cell">2952</div><div class="ref-cell">3155</div><div class="ref-cell">3358</div><div class="ref-cell">3561</div><div class="ref-cell">3764</div><div class="ref-cell">3967</div><div class="ref-cell">4171</div><div class="ref-cell">4374</div><div class="ref-cell">4577</div><div class="ref-cell">4780</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">花 4星 生命（17档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">645</div><div class="ref-cell">828</div><div class="ref-cell">1011</div><div class="ref-cell">1194</div><div class="ref-cell">1377</div><div class="ref-cell">1559</div><div class="ref-cell">1742</div><div class="ref-cell">1925</div><div class="ref-cell">2108</div><div class="ref-cell">2291</div><div class="ref-cell">2474</div><div class="ref-cell">2657</div><div class="ref-cell">2839</div><div class="ref-cell">3022</div><div class="ref-cell">3205</div><div class="ref-cell">3388</div><div class="ref-cell">3571</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">花 3星 生命（13档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">430</div><div class="ref-cell">552</div><div class="ref-cell">674</div><div class="ref-cell">796</div><div class="ref-cell">918</div><div class="ref-cell">1040</div><div class="ref-cell">1162</div><div class="ref-cell">1283</div><div class="ref-cell">1405</div><div class="ref-cell">1527</div><div class="ref-cell">1649</div><div class="ref-cell">1771</div><div class="ref-cell">1893</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">花 2星 生命（5档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">258</div><div class="ref-cell">331</div><div class="ref-cell">404</div><div class="ref-cell">478</div><div class="ref-cell">551</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">花 1星 生命（5档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">129</div><div class="ref-cell">178</div><div class="ref-cell">227</div><div class="ref-cell">275</div><div class="ref-cell">324</div>
-      </div>
-    </div>
-    <div class="ref-section" style="margin-top:18px;border-top:1px solid var(--card-border);padding-top:14px">
-      <div class="ref-title">毛/沙/杯/头 5星 生命（10档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">209.13</div><div class="ref-cell">239</div><div class="ref-cell">268.88</div><div class="ref-cell">298.75</div><div class="ref-cell">418.26</div><div class="ref-cell">448.13</div><div class="ref-cell">478.01</div><div class="ref-cell">507.88</div><div class="ref-cell">537.75</div><div class="ref-cell">567.63</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">毛/沙/杯/头 4星 生命（4档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">167.3</div><div class="ref-cell">191.2</div><div class="ref-cell">215.1</div><div class="ref-cell">239</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">毛/沙/杯/头 3星 生命（4档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">100.38</div><div class="ref-cell">114.72</div><div class="ref-cell">129.06</div><div class="ref-cell">143.4</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">毛/沙/杯/头 2星 生命（3档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">50.19</div><div class="ref-cell">60.95</div><div class="ref-cell">71.7</div>
-      </div>
-    </div>
-    <div class="ref-section">
-      <div class="ref-title">毛/沙/杯/头 1星 生命（2档）</div>
-      <div class="ref-grid">
-        <div class="ref-cell">23.9</div><div class="ref-cell">29.88</div>
-      </div>
-    </div>
+    <div class="muted" style="font-size:12px;line-height:1.6;margin-bottom:8px">下面的数值就是 APP 现在真正参与计算的生命表（内置 + 手机自定义 + 后台下发 + 后台改过的值都会算进来）。创始人 / 管理员点任意格子可以直接改，改完自动同步所有设备。</div>
+    <div id="refLifeBox"></div>
     </div><!-- /refTabLife -->
   </div>
 </div>
