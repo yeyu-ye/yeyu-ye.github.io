@@ -2403,7 +2403,15 @@ var ATK_DEF = {
     2: [2.8, 3.1, 3.5, 3.9, 4.2],
     1: [2.0, 2.3, 2.6, 2.9, 3.2]
   },
-  pct: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+  /* 主属性攻击力%（沙 / 杯 / 头）：按星级各有一组，1-5 星都能选。
+     默认 1-5 星是同一套档位（7% → 46.6%），需要按实际改就在数据库里逐档改 */
+  pct: {
+    5: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    4: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    3: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    2: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    1: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+  }
 };
 /* ATK_DEF_END */
 var ATK_DB_KEY = "yy_atk_db", ATK_OFF_KEY = "yy_atk_off", ATK_SIG_KEY = "yy_atk_sig", ATK_DIRTY_KEY = "yy_atk_dirty";
@@ -2446,7 +2454,7 @@ function atkStarsOf(m){
 /* 服务器/本地存储 → 内部结构 {main:{星:[值]}, sub:{星:[值]}, pct:[]}
    两种写法都认：数组 [{s:5,v:[...]}] 或对象 {"5":[...]} */
 function atkNormalize(src){
-  var out = { main: {}, sub: {}, subPct: {}, pct: [] };
+  var out = { main: {}, sub: {}, subPct: {}, pct: {} };
   function grab(m, dst){
     if(!m) return;
     var i, e, s;
@@ -2467,11 +2475,39 @@ function atkNormalize(src){
   grab(src && src.main, out.main);
   grab(src && src.sub, out.sub);
   grab(src && (src.subPct || src.subpct), out.subPct);
-  out.pct = atkVals(src && src.pct);
+  /* 攻击力%（沙 / 杯 / 头主属性）也按星级分库；老数据是纯数字数组 → 认作 5★ 一组 */
+  (function(raw){
+    var i, e, s, nums;
+    if(!raw) return;
+    if(Object.prototype.toString.call(raw) === "[object Array]"){
+      if(raw.length && typeof raw[0] !== "object"){
+        nums = atkVals(raw); if(nums.length) out.pct[5] = nums;
+        return;
+      }
+      for(i = 0; i < raw.length; i++){
+        e = raw[i] || {}; s = parseInt(e.s != null ? e.s : e.star, 10);
+        if(s > 0){ nums = atkVals(e.v || e.values || []); if(nums.length) out.pct[s] = nums; }
+      }
+      return;
+    }
+    for(var k in raw){
+      if(!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      s = parseInt(k, 10);
+      if(s > 0){ nums = atkVals(raw[k]); if(nums.length) out.pct[s] = nums; }
+    }
+  })(src && src.pct);
   if(!atkStarsOf(out.main).length) out.main = atkDeep(ATK_DEF.main);
   if(!atkStarsOf(out.sub).length) out.sub = atkDeep(ATK_DEF.sub);
   if(!atkStarsOf(out.subPct).length) out.subPct = atkDeep(ATK_DEF.subPct);
-  if(!out.pct.length) out.pct = ATK_DEF.pct.slice();
+  if(!atkStarsOf(out.pct).length) out.pct = atkDeep(ATK_DEF.pct);
+  /* 老数据只存了 5★ 一组（升级前的本机缓存 / 后台旧格式）→ 其余星级补上默认档位，
+     这样手机上 1-4★ 也能直接选，不用等后台重存一次 */
+  (function(){
+    var pk = atkStarsOf(out.pct);
+    if(pk.length === 1 && pk[0] === 5){
+      for(var q = 4; q >= 1; q--){ if(!out.pct[q] || !out.pct[q].length) out.pct[q] = atkDeep(ATK_DEF.pct)[q]; }
+    }
+  })();
   return out;
 }
 function atkOffList(a){
@@ -2526,7 +2562,7 @@ function atkIsOff(k, s, v){
 }
 function atkDropOff(k, s, v){
   k = atkK(k);
-  var s0 = (k === "pct") ? 0 : Number(s || 0), out = [];
+  var s0 = Number(s || 0), out = [];
   for(var i = 0; i < ATK_OFF.length; i++){
     var o = ATK_OFF[i];
     if(o && atkK(o.k) === k && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) continue;
@@ -2536,7 +2572,7 @@ function atkDropOff(k, s, v){
 }
 function atkMoveOff(k, s, from, to){
   k = atkK(k);
-  var s0 = (k === "pct") ? 0 : Number(s || 0);
+  var s0 = Number(s || 0);
   for(var i = 0; i < ATK_OFF.length; i++){
     var o = ATK_OFF[i];
     if(o && atkK(o.k) === k && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = atkRound(to);
@@ -2560,6 +2596,12 @@ function atkPickSubPct(star){
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
   for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
+}
+/* 主属性攻击力%（沙 / 杯 / 头）的档位池：按星级各一组，没有就只显示「不计」 */
+function atkPickPct(star){
+  var m = ATK_DB.pct || {}, s = Number(star) || 5;
+  if(m[s] && m[s].length) return { s: s, v: m[s] };
+  return { s: s, v: [] };
 }
 
 /* ---------- 打开 / 关闭 / 切页 ---------- */
@@ -2609,12 +2651,12 @@ function atkMainOptions(slot){
     }
     return out;
   }
-  /* 攻击力%（沙 / 杯 / 头主属性）只属于 5 星，1-4 星不显示这一组 */
-  if(Number(atkState.star) !== 5){ out.push({ idx: -1, label: "不计" }); return out; }
-  arr = ATK_DB.pct; base = atkNum(atkState.base);
+  /* 攻击力%（沙 / 杯 / 头主属性）：每个星级有自己的档位库，1-5 星都能选 */
+  var pp2 = atkPickPct(Number(atkState.star));
+  arr = pp2.v; base = atkNum(atkState.base);
   out.push({ idx: -1, label: "不计" });
   for(i = 0; i < arr.length; i++){
-    if(atkIsOff("pct", 0, arr[i])) continue;
+    if(atkIsOff("pct", pp2.s, arr[i])) continue;
     var pv1 = atkNum(arr[i]);
     out.push({ idx: i, label: pv1 === 0 ? "不用此部位" : (atkFmt(arr[i]) + "% · " + (base > 0 ? atkFmt(base * pv1 / 100) : "—")) });
   }
@@ -2664,7 +2706,7 @@ function atkMainVal(slotKey, idx){
   for(i = 0; i < ATK_SLOTS.length; i++) if(ATK_SLOTS[i].key === slotKey) slot = ATK_SLOTS[i];
   if(!slot) return 0;
   if(slot.type === "main"){ var a = atkPickMain(Number(atkState.star)).v; return idx < a.length ? atkNum(a[idx]) : 0; }
-  if(slot.type === "pct"){ var p = ATK_DB.pct; if(idx >= p.length) return 0; return atkNum(atkState.base) * atkNum(p[idx]) / 100; }
+  if(slot.type === "pct"){ var p = atkPickPct(Number(atkState.star)).v; if(idx >= p.length) return 0; return atkNum(atkState.base) * atkNum(p[idx]) / 100; }
   return 0;
 }
 /* 副词条贡献值：小攻击=固定值；攻击%=基础攻击 × 百分比 */
@@ -2685,8 +2727,8 @@ function atkSelOff(kind, slot, idx){
       return idx >= pm.v.length ? true : atkIsOff("main", pm.s, pm.v[idx]);
     }
     if(slot && slot.type === "pct"){
-      if(Number(atkState.star) !== 5) return true;   /* 攻击力% 主属性只有 5 星有 */
-      return idx >= ATK_DB.pct.length ? true : atkIsOff("pct", 0, ATK_DB.pct[idx]);
+      var ppc = atkPickPct(Number(atkState.star));
+      return idx >= ppc.v.length ? true : atkIsOff("pct", ppc.s, ppc.v[idx]);
     }
     return false;
   }
@@ -2796,7 +2838,7 @@ function atkSetStar(v){
   for(var i = 0; i < ATK_SLOTS.length; i++){
     var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
     var mm = slot.type === "main" ? atkPickMain(atkState.star).v.length
-           : (slot.type === "pct" ? (Number(atkState.star) === 5 ? ATK_DB.pct.length : 0) : 0);
+           : (slot.type === "pct" ? atkPickPct(atkState.star).v.length : 0);
     if(st.main >= mm) st.main = -1;
     if(atkSubOff(slot, st.main, st.sub)) st.sub = "";
   }
@@ -2831,14 +2873,15 @@ function atkBindOnce(){
 var ATK_OPT_LIMIT = 300, ATK_NODE_CAP = 1500000;
 /* 结果里的主属性标签：攻击% 主属性写成「沙主52.08（7%）」，让数值和来源百分比都看得见 */
 function atkMainLabel(slot, idx, val){
+  var pcArr = (slot.type === "pct") ? atkPickPct(Number(atkState.star)).v : null;
   if(idx >= 0){
     var raw = null, i;
-    if(slot.type === "pct") raw = ATK_DB.pct[idx];
+    if(slot.type === "pct") raw = pcArr[idx];
     else if(slot.type === "main"){ var pm = atkPickMain(Number(atkState.star)).v; raw = idx < pm.length ? pm[idx] : null; }
     if(raw !== null && raw !== undefined && atkNum(raw) === 0) return "不用此部位";
   }
-  if(slot.type === "pct" && idx >= 0 && ATK_DB.pct[idx] !== undefined){
-    var pv = atkFmt(ATK_DB.pct[idx]) + "%";
+  if(slot.type === "pct" && idx >= 0 && pcArr[idx] !== undefined){
+    var pv = atkFmt(pcArr[idx]) + "%";
     if(atkNum(atkState.base) > 0) return slot.label + "主" + atkFmt(val) + "（" + pv + "）";
     return slot.label + "主" + pv;
   }
@@ -3050,11 +3093,10 @@ function atkRenderDb(){
   starBox("atkDbMain", "main", "Lv");
   starBox("atkDbSub", "sub", "n");
   starBox("atkDbSubPct", "subPct", "n");
+  starBox("atkDbPct", "pct", "n");
   var boxPct = document.getElementById("atkDbPct");
-  if(boxPct){
-    var arr = ATK_DB.pct;
-    boxPct.innerHTML = groupBox("pct", 0, "攻击力%（仅 5★）", arr, "any", "n")
-      + "<div class=\"at-hint\" style=\"margin-top:6px\">共 " + arr.length + " 档 · 按 46.6 存（=46.6%）· 沙 / 杯 / 头主属性只有 5 星会用，1-4 星不显示</div>";
+  if(boxPct && !boxPct.innerHTML){
+    boxPct.innerHTML = "<div class=\"at-hint\">还没有数据</div>";
   }
 }
 function atkRenderAll(){
@@ -3064,10 +3106,10 @@ function atkRenderAll(){
   try{ atkRenderWho(); }catch(e){}
 }
 function atkArrOf(kind, star){
-  if(kind === "pct") return ATK_DB.pct;
   var m = ATK_DB[kind] || (ATK_DB[kind] = {});
-  if(!m[star]) m[star] = [];
-  return m[star];
+  var s = Number(star) || 0;
+  if(!m[s]) m[s] = [];
+  return m[s];
 }
 /* 一次改动落地：存本机 + 刷新界面；创始人/管理员直接推后台，普通成员只本机 */
 function atkAfterEdit(msg){
@@ -3117,7 +3159,7 @@ function atkToggleOff(kind, star, idx){
     atkDropOff(kind, star, v);
     atkAfterEdit("已恢复 " + atkFmt(v) + "，重新参与计算");
   } else {
-    ATK_OFF.push({ k: atkK(kind), s: (kind === "pct") ? 0 : Number(star), v: atkRound(v) });
+    ATK_OFF.push({ k: atkK(kind), s: Number(star) || 0, v: atkRound(v) });
     atkAfterEdit("已禁用 " + atkFmt(v) + "，不参与计算");
   }
 }
@@ -3131,12 +3173,13 @@ function atkReset(){
 
 /* ---------- 与后台 data.atk 同步 ---------- */
 function atkPayload(){
-  var order = atkStarsOf(ATK_DB.main), orderSub = atkStarsOf(ATK_DB.sub), orderSubPct = atkStarsOf(ATK_DB.subPct);
-  var main = [], sub = [], subPct = [], i, s;
+  var order = atkStarsOf(ATK_DB.main), orderSub = atkStarsOf(ATK_DB.sub), orderSubPct = atkStarsOf(ATK_DB.subPct), orderPct = atkStarsOf(ATK_DB.pct);
+  var main = [], sub = [], subPct = [], pct = [], i, s;
   for(i = 0; i < order.length; i++){ s = order[i]; main.push({ s: s, v: ATK_DB.main[s].slice() }); }
   for(i = 0; i < orderSub.length; i++){ s = orderSub[i]; sub.push({ s: s, v: ATK_DB.sub[s].slice() }); }
   for(i = 0; i < orderSubPct.length; i++){ s = orderSubPct[i]; subPct.push({ s: s, v: ATK_DB.subPct[s].slice() }); }
-  return { main: main, sub: sub, subPct: subPct, pct: ATK_DB.pct.slice(), off: ATK_OFF.slice() };
+  for(i = 0; i < orderPct.length; i++){ s = orderPct[i]; pct.push({ s: s, v: ATK_DB.pct[s].slice() }); }
+  return { main: main, sub: sub, subPct: subPct, pct: pct, off: ATK_OFF.slice() };
 }
 function atkSync(d){
   try{
@@ -6644,7 +6687,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 64;
+var APP_CODE = 65;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -10619,7 +10662,7 @@ function closeDeviceModal(){
                 花两种都有（沙杯头主属性选「不计」时两种也都能出）。
                 <br><b style="color:var(--gold)">⛔ 禁用的数值不参与计算</b>（显示删除线，点 ↩ 随时恢复）；✕ 是直接删掉。
                 <br><b style="color:var(--gold)">填 0 = 不用这个部位</b>（计算页下拉会显示「不用此部位」，加成为 0）；
-                「攻击力%（仅 5★）」这一组只有 5 星沙 / 杯 / 头主属性能选，1-4 星不显示。
+                「攻击力%」这一组按星级分开存，1-5 星的沙 / 杯 / 头主属性都能选；默认各星级是同一套档位，按实际改就行。
               </div>
               <div class="btn-row" style="margin:10px 0 0">
                 <button class="btn btn-ghost" style="font-size:13px" onclick="atkReset()">↩ 恢复原始数据</button>
@@ -10629,7 +10672,7 @@ function closeDeviceModal(){
             <div class="at-card"><div class="at-ct">主属性（毛 · 小攻击）</div><div id="atkDbMain"></div></div>
             <div class="at-card"><div class="at-ct">副词条 · 小攻击</div><div id="atkDbSub"></div></div>
             <div class="at-card"><div class="at-ct">副词条 · 攻击力%（百分比）</div><div id="atkDbSubPct"></div></div>
-            <div class="at-card"><div class="at-ct">攻击力%（沙 / 杯 / 头 主属性 · 仅 5★）</div><div id="atkDbPct"></div></div>
+            <div class="at-card"><div class="at-ct">攻击力%（沙 / 杯 / 头 主属性 · 按星级）</div><div id="atkDbPct"></div></div>
           </div>
         </div>
       </div>
