@@ -1463,11 +1463,14 @@ function dbRender(){
   var c = dbEnsureOv(), s = dbEnsureSv();
   var userN = 0, extraN = c.items.length;
   for(var i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].from === "user") userN++; }
-  var atkRev = 0, atkOffN = 0;
+  var atkRev = 0, atkOffN = 0, svOffN = 0;
   try{ var ak = dbEnsureAtk(); atkRev = ak.rev || 0; atkOffN = ak.off.length; }catch(e){}
+  try{ svOffN = dbSvOffArr().length; }catch(e){}
+  var calcOffN = 0;
+  try{ calcOffN = dbCalcOffArr().length; }catch(e){}
   if(st){
     st.innerHTML = "额外条目 " + extraN + " 条" + (userN ? ' · <span style="color:#3fb950">👤手机上传 ' + userN + '</span>' : "")
-      + " · 改动 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
+      + " · 改动 " + c.ov.length + " 条 · 禁用 " + calcOffN + " 条 · 求解器池 rev " + (s.rev || 0) + (svOffN ? "（禁用 " + svOffN + "）" : "")
       + " · 攻击库 rev " + atkRev + (atkOffN ? "（禁用 " + atkOffN + "）" : "")
       + (c.ts ? ' · 最近改 ' + new Date(c.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "");
   }
@@ -1493,79 +1496,285 @@ function dbRow(o, editCall, delCall, restoreCall){
     + '<input type="number" step="any" value="' + o.v + '" onchange="' + editCall + '">'
     + '<span style="flex:1"></span>' + stat + '<span style="width:10px"></span>' + act + '</div>';
 }
+/* ---------- 禁用清单（数据保留、不参与计算，思路与攻击库 off 一致）----------
+   data.calc.off = [{t:"life"|"mastery"|"percent", p, s, v}]  生命 / 精通 / 百分比共用
+   data.sv.off   = [{t:"int"|"dec"|"pct", v}]                 求解器数值池（v 是池内原值，pct 存 0.466 小数） */
+function dbCalcOffArr(){
+  var c = dbEnsureOv();
+  if(!Array.isArray(c.off)) c.off = [];
+  return c.off;
+}
+function dbCalcIsOff(t, p, s, v){
+  var off = dbCalcOffArr(), i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === t && (o.p || "") === (p || "") && Number(o.s || 0) === Number(s || 0) && Math.abs(Number(o.v) - Number(v)) < 0.011) return true;
+  }
+  return false;
+}
+function dbCalcOffMove(t, p, s, from, to){
+  var off = dbCalcOffArr(), i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === t && (o.p || "") === (p || "") && Number(o.s || 0) === Number(s || 0) && Math.abs(Number(o.v) - Number(from)) < 0.011) o.v = to;
+  }
+}
+function dbCalcOffDrop(t, p, s, v){
+  var off = dbCalcOffArr(), out = [], i, o;
+  for(i = 0; i < off.length; i++){
+    o = off[i];
+    if(o && o.t === t && (o.p || "") === (p || "") && Number(o.s || 0) === Number(s || 0) && Math.abs(Number(o.v) - Number(v)) < 0.011) continue;
+    out.push(o);
+  }
+  dbEnsureOv().off = out;
+}
+/* 一键禁用 / 全恢复：整组一次处理（生命 / 精通 / 百分比通用） */
+function dbCalcOffAll(kindLabel, t, p, s, vals){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  if(!vals || !vals.length){ showErr("这一组还没有数值"); return; }
+  var i, n = 0;
+  for(i = 0; i < vals.length; i++){ if(dbCalcIsOff(t, p, s, vals[i])) n++; }
+  var allOff = (n === vals.length);
+  if(!allOff && !confirm("把「" + kindLabel + "」的 " + vals.length + " 条全部禁用？它们会不参与计算，数据还在，点「↩ 全恢复」就能还回来。")) return;
+  mutate(function(){
+    if(allOff){ for(i = 0; i < vals.length; i++) dbCalcOffDrop(t, p, s, vals[i]); }
+    else { for(i = 0; i < vals.length; i++){ if(!dbCalcIsOff(t, p, s, vals[i])) dbCalcOffArr().push({ t: t, p: p || "", s: s || 0, v: vals[i] }); } }
+    dbBump();
+  }, (allOff ? "已恢复「" + kindLabel + "」全部数值" : "已一键禁用「" + kindLabel + "」全部 " + vals.length + " 条") + " · 正在同步到所有设备");
+}
+function dbLifeOffAll(p, star, vals){ dbCalcOffAll(p + " " + star + "★", "life", p, star, vals); }
+function dbMasOffAll(p, vals){ dbCalcOffAll(p + " 精通", "mastery", p, 0, vals); }
+function dbPctOffAll(vals){ dbCalcOffAll("百分比库", "percent", "", 0, vals); }
+/* 求解器数值池的禁用记录 */
+function dbSvOffArr(){
+  var s = dbEnsureSv();
+  if(!Array.isArray(s.off)) s.off = [];
+  return s.off;
+}
+function dbSvIsOff(kind, v){
+  var off = dbSvOffArr(), i;
+  for(i = 0; i < off.length; i++){
+    var o = off[i];
+    if(o && o.t === kind && Math.abs(Number(o.v) - Number(v)) < 1e-9) return true;
+  }
+  return false;
+}
+function dbSvOffDrop(kind, v){
+  var off = dbSvOffArr(), out = [], i;
+  for(i = 0; i < off.length; i++){
+    var o = off[i];
+    if(o && o.t === kind && Math.abs(Number(o.v) - Number(v)) < 1e-9) continue;
+    out.push(o);
+  }
+  dbEnsureSv().off = out;
+}
+function dbSvOffAll(kind, label, vals){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  if(!vals || !vals.length){ showErr("这一组还没有数值"); return; }
+  var i, n = 0;
+  for(i = 0; i < vals.length; i++){ if(dbSvIsOff(kind, vals[i])) n++; }
+  var allOff = (n === vals.length);
+  if(!allOff && !confirm("把「" + label + "」的 " + vals.length + " 个数值全部禁用？它们会不参与求解，数据还在，点「↩ 全恢复」就能还回来。")) return;
+  mutate(function(){
+    if(allOff){ for(i = 0; i < vals.length; i++) dbSvOffDrop(kind, vals[i]); }
+    else { for(i = 0; i < vals.length; i++){ if(!dbSvIsOff(kind, vals[i])) dbSvOffArr().push({ t: kind, v: vals[i] }); } }
+    dbBumpSv();
+  }, (allOff ? "已恢复「" + label + "」全部数值" : "已一键禁用「" + label + "」全部 " + vals.length + " 个") + " · 正在同步到所有设备");
+}
+/* 攻击库同款小组件：标题行（全禁按钮）+ 数值格子 */
+function dbGHead(icon, title, total, offN, allOff, call){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 3px">'
+    + '<span style="color:#58a6ff;font-size:12px;font-weight:600">' + icon + " " + title + "（" + total + " 条）"
+    + (offN ? '<span style="color:#f85149"> · 已禁 ' + offN + "</span>" : "") + "</span>"
+    + '<button class="' + (allOff ? "db-r" : "db-x") + '" style="white-space:nowrap;flex:none" title="'
+    + (allOff ? "把这一组全部恢复参与计算" : "把这一组的所有数值一次禁用")
+    + '" onclick="' + call + '">' + (allOff ? "↩ 全恢复" : "⛔ 全禁") + "</button></div>";
+}
+function dbGChip(o){
+  if(o.del){
+    return '<span class="db-chip" style="opacity:.55;text-decoration:line-through">'
+      + '<input type="number" step="any" value="' + o.v + '" disabled>'
+      + '<button class="db-r" title="恢复内置原值" onclick="' + o.restoreCall + '">↩ 还原</button></span>';
+  }
+  return '<span class="db-chip' + (o.of ? " mod" : "") + '"' + (o.of ? ' style="opacity:.55;border-color:#f85149"' : "") + ">"
+    + '<input type="number" step="any" value="' + o.v + '" onchange="' + o.editCall + '">' + (o.suffix || "")
+    + '<button class="' + (o.of ? "db-r" : "db-x") + '" title="' + (o.of ? "恢复参与计算" : "禁用（不参与计算）") + '" onclick="' + o.offCall + '">' + (o.of ? "↩" : "⛔") + "</button>"
+    + '<button class="db-x" title="删除" onclick="' + o.delCall + '">×</button></span>';
+}
+/* 单条禁用 / 恢复（点格子上面的 ⛔ / ↩） */
+function dbLifeOff(p, star, v){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    if(dbCalcIsOff("life", p, star, v)) dbCalcOffDrop("life", p, star, v);
+    else dbCalcOffArr().push({ t: "life", p: p, s: star, v: Math.round(v * 100) / 100 });
+    dbBump();
+  }, "生命库已更新（禁用值不参与计算）· 正在同步到所有设备");
+}
+function dbMasOff(p, v){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    if(dbCalcIsOff("mastery", p, 0, v)) dbCalcOffDrop("mastery", p, 0, v);
+    else dbCalcOffArr().push({ t: "mastery", p: p, s: 0, v: Math.round(v * 100) / 100 });
+    dbBump();
+  }, "精通库已更新（禁用值不参与计算）· 正在同步到所有设备");
+}
+function dbPctOff(v){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    if(dbCalcIsOff("percent", "", 0, v)) dbCalcOffDrop("percent", "", 0, v);
+    else dbCalcOffArr().push({ t: "percent", p: "", s: 0, v: v });
+    dbBump();
+  }, "百分比库已更新（禁用档不参与计算）· 正在同步到所有设备");
+}
+function dbSvOff(kind, v){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    if(dbSvIsOff(kind, v)) dbSvOffDrop(kind, v);
+    else dbSvOffArr().push({ t: kind, v: v });
+    dbBumpSv();
+  }, "求解器数值池已更新（禁用值不参与求解）· 正在同步到所有设备");
+}
+/* 求解器数值池改值（按值定位，改完禁用记录跟着走） */
+function dbSvEdit(kind, from, val){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  var raw = parseFloat(val);
+  if(!isFinite(raw) || raw <= 0){ showErr("数值不对，已还原。"); return; }
+  var to = (kind === "pct") ? Math.round(raw * 1000000) / 1000000
+         : (kind === "dec") ? Math.round(raw * 100) / 100 : Math.round(raw);
+  mutate(function(){
+    var s = dbEnsureSv(), key = kind === "int" ? "ints" : kind === "dec" ? "decs" : "pcts", arr = s[key], i;
+    for(i = 0; i < arr.length; i++){
+      if(Number(arr[i]) === Number(from)){ arr[i] = to; break; }
+    }
+    var off = dbSvOffArr();
+    for(i = 0; i < off.length; i++){
+      var o = off[i];
+      if(o && o.t === kind && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = to;
+    }
+    dbBumpSv();
+  }, "求解器数值池已改 · 正在同步到所有设备");
+}
 function dbPartSection(icon, p, n, inner){
   return '<div class="db-sechead"><span>' + icon + ' ' + p + '</span><span>' + n + ' 条</span></div>' + inner;
 }
 function dbRenderLife(){
   var box = $("dbLifeList"); if(!box) return;
-  var h = "", n = 0;
-  for(var pi = 0; pi < DB_PARTS.length; pi++){
+  var h = "", n = 0, offN = 0, pi, si, i, r;
+  for(pi = 0; pi < DB_PARTS.length; pi++){
     var p = DB_PARTS[pi], rows = dbLifeView(p);
-    rows.sort(function(a,b){ return (b.st - a.st) || (a.v - b.v); });
-    var inner = "";
-    for(var r = 0; r < rows.length; r++){
-      var o = rows[r]; n++;
-      inner += dbRow(o,
-        "dbLifeEdit('" + p + "'," + o.st + "," + o.v + ",this.value)",
-        "dbLifeDel('" + p + "'," + o.st + "," + (o.ov ? o.ov.f : o.v) + ")",
-        "dbOvRestore('life','" + p + "'," + o.st + "," + (o.ov ? o.ov.f : o.v) + ")");
+    var stars = [];
+    for(r = 0; r < rows.length; r++){ if(stars.indexOf(rows[r].st) < 0) stars.push(rows[r].st); }
+    stars.sort(function(a,b){ return b - a; });
+    for(si = 0; si < stars.length; si++){
+      var st = stars[si], sub = [];
+      for(r = 0; r < rows.length; r++){ if(rows[r].st === st) sub.push(rows[r]); }
+      sub.sort(function(a,b){ return a.v - b.v; });
+      var live = [], k = 0;
+      for(i = 0; i < sub.length; i++){ if(sub[i].del) continue; live.push(sub[i].v); if(dbCalcIsOff("life", p, st, sub[i].v)) k++; }
+      offN += k;
+      var allOff = live.length > 0 && k === live.length;
+      h += dbGHead("🌸", p + " · " + st + "★", live.length, k, allOff,
+        "dbLifeOffAll('" + p + "'," + st + ",[" + live.join(",") + "])");
+      h += '<div style="display:flex;flex-wrap:wrap">';
+      for(i = 0; i < sub.length; i++){
+        var o = sub[i]; n++;
+        var from = o.ov ? o.ov.f : o.v;
+        h += dbGChip({
+          v: o.v, of: !o.del && dbCalcIsOff("life", p, st, o.v), del: o.del,
+          editCall: "dbLifeEdit('" + p + "'," + st + "," + from + ",this.value)",
+          offCall: "dbLifeOff('" + p + "'," + st + "," + o.v + ")",
+          delCall: "dbLifeDel('" + p + "'," + st + "," + from + ")",
+          restoreCall: "dbOvRestore('life','" + p + "'," + st + "," + from + ")"
+        });
+      }
+      h += "</div>";
     }
-    h += dbPartSection("🌸", p, rows.length, inner);
   }
-  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条 · ✕ 删除 / 直接改数值 / ↩ 还原内置原值；新增走上面表单。</div>';
+  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条 · 禁用 ' + offN + ' 条 · 每组右侧「⛔ 全禁 / ↩ 全恢复」= 该组一次全处理；⛔ = 禁用（不参与计算）/ × 删除 / 直接改数值；新增走上面表单。</div>';
   box.innerHTML = h;
 }
 function dbRenderMas(){
   var box = $("dbMasList"); if(!box) return;
-  var h = "", n = 0;
+  var h = "", n = 0, offN = 0;
   for(var pi = 0; pi < DB_PARTS.length; pi++){
     var p = DB_PARTS[pi], rows = dbMasView(p);
     rows.sort(function(a,b){ return a.v - b.v; });
-    var inner = "";
-    for(var r = 0; r < rows.length; r++){
-      var o = rows[r]; n++;
-      inner += dbRow(o,
-        "dbMasEdit('" + p + "'," + o.v + ",this.value)",
-        "dbMasDel('" + p + "'," + o.v + ")",
-        "dbOvRestore('mastery','" + p + "',0," + (o.ov ? o.ov.f : o.v) + ")");
+    var live = [], k = 0;
+    for(var i = 0; i < rows.length; i++){ if(rows[i].del) continue; live.push(rows[i].v); if(dbCalcIsOff("mastery", p, 0, rows[i].v)) k++; }
+    offN += k;
+    var allOff = live.length > 0 && k === live.length;
+    h += dbGHead("✨", p + " 精通", live.length, k, allOff, "dbMasOffAll('" + p + "',[" + live.join(",") + "])");
+    h += '<div style="display:flex;flex-wrap:wrap">';
+    for(i = 0; i < rows.length; i++){
+      var o = rows[i]; n++;
+      var from = o.ov ? o.ov.f : o.v;
+      h += dbGChip({
+        v: o.v, of: !o.del && dbCalcIsOff("mastery", p, 0, o.v), del: o.del,
+        editCall: "dbMasEdit('" + p + "'," + from + ",this.value)",
+        offCall: "dbMasOff('" + p + "'," + o.v + ")",
+        delCall: "dbMasDel('" + p + "'," + from + ")",
+        restoreCall: "dbOvRestore('mastery','" + p + "',0," + from + ")"
+      });
     }
-    h += dbPartSection("✨", p, rows.length, inner);
+    h += "</div>";
   }
-  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条</div>';
+  h += '<div class="muted" style="margin-top:6px">共 ' + n + ' 条 · 禁用 ' + offN + ' 条 · 精通只有固定值，没有百分比。</div>';
   box.innerHTML = h;
 }
 function dbRenderPct(){
   var box = $("dbPctList"); if(!box) return;
   var rows = dbPctView();
   rows.sort(function(a,b){ return a.v - b.v; });
-  var h = '<div style="display:flex;flex-wrap:wrap">';
-  for(var i = 0; i < rows.length; i++){
+  var live = [], k = 0, i;
+  for(i = 0; i < rows.length; i++){ if(rows[i].del) continue; live.push(rows[i].v); if(dbCalcIsOff("percent", "", 0, rows[i].v)) k++; }
+  var allOff = live.length > 0 && k === live.length;
+  var h = dbGHead("🎯", "百分比", live.length, k, allOff, "dbPctOffAll([" + live.join(",") + "])");
+  h += '<div style="display:flex;flex-wrap:wrap">';
+  for(i = 0; i < rows.length; i++){
     var o = rows[i];
-    h += '<span class="db-chip' + (o.ov ? ' mod' : '') + '"' + (o.del ? ' style="opacity:.55;text-decoration:line-through"' : '') + '>'
-      + '<input type="number" step="0.1" value="' + o.v + '" onchange="dbPctEdit(' + o.v + ',this.value)">%'
-      + (o.del
-          ? '<button class="db-r" onclick="dbOvRestore(\'percent\',\'\',0,' + o.v + ')">↩</button>'
-          : '<button class="db-x" onclick="dbPctDel(' + o.v + ')">×</button>'
-            + (o.ov ? '<button class="db-r" onclick="dbOvRestore(\'percent\',\'\',0,' + o.ov.f + ')">↩</button>' : ''))
-      + '</span>';
+    var from = o.ov ? o.ov.f : o.v;
+    h += dbGChip({
+      v: o.v, of: !o.del && dbCalcIsOff("percent", "", 0, o.v), del: o.del, suffix: "%",
+      editCall: "dbPctEdit(" + from + ",this.value)",
+      offCall: "dbPctOff(" + o.v + ")",
+      delCall: "dbPctDel(" + from + ")",
+      restoreCall: "dbOvRestore('percent','',0," + from + ")"
+    });
   }
-  h += '</div><div class="muted" style="margin-top:6px">共 ' + rows.length + ' 档 · 蓝框 = 改过 / 新增，↩ 还原。</div>';
+  h += '</div><div class="muted" style="margin-top:6px">共 ' + rows.length + ' 档 · 禁用 ' + k + ' 档 · 每组右侧「⛔ 全禁 / ↩ 全恢复」= 一次全处理。</div>';
   box.innerHTML = h;
 }
 function dbRenderSv(){
   var box = $("dbSvList"); if(!box) return;
   var s = dbEnsureSv();
-  var one = function(kind, title, arr, fmt){
-    var h = '<div style="color:#58a6ff;font-size:12px;margin:10px 0 2px;font-weight:600">' + title + '（' + arr.length + ' 个）</div><div style="display:flex;flex-wrap:wrap">';
-    for(var i = 0; i < arr.length; i++){
-      h += '<span class="db-chip">' + (fmt ? fmt(arr[i]) : arr[i])
-        + '<button class="db-x" onclick="dbSvDel(\'' + kind + '\',' + arr[i] + ')">×</button></span>';
+  function one(kind, icon, title, arr, pct){
+    var vals = arr.slice().sort(function(a,b){ return a - b; });
+    var k = 0, i;
+    for(i = 0; i < vals.length; i++){ if(dbSvIsOff(kind, vals[i])) k++; }
+    var allOff = vals.length > 0 && k === vals.length;
+    var h = dbGHead(icon, title, vals.length, k, allOff, "dbSvOffAll('" + kind + "','" + title + "',[" + vals.join(",") + "])");
+    h += '<div style="display:flex;flex-wrap:wrap">';
+    for(i = 0; i < vals.length; i++){
+      h += dbGChip({
+        v: vals[i], of: dbSvIsOff(kind, vals[i]),
+        editCall: "dbSvEdit('" + kind + "'," + vals[i] + ",this.value)",
+        offCall: "dbSvOff('" + kind + "'," + vals[i] + ")",
+        delCall: "dbSvDel('" + kind + "'," + vals[i] + ")"
+      });
     }
-    return h + '</div>';
-  };
-  box.innerHTML = one("int", "整数固定值（花槽）", s.ints.slice().sort(function(a,b){return a-b;}), null)
-        + one("dec", "小数固定值（沙/杯/副词条槽）", s.decs.slice().sort(function(a,b){return a-b;}), null)
-        + one("pct", "百分比档（×基础生命）", s.pcts.slice().sort(function(a,b){return a-b;}), function(v){ return (Math.round(v * 1000000) / 10000) + "%"; });
+    return h + "</div>";
+  }
+  var offAll = 0, kind, vals, i;
+  var tmp = [["int", s.ints], ["dec", s.decs], ["pct", s.pcts]];
+  for(i = 0; i < tmp.length; i++){
+    vals = tmp[i][1] || [];
+    for(var j = 0; j < vals.length; j++){ if(dbSvIsOff(tmp[i][0], vals[j])) offAll++; }
+  }
+  box.innerHTML = one("int", "🧮", "整数固定值（花槽）", s.ints, false)
+        + one("dec", "🔢", "小数固定值（沙/杯/副词条槽）", s.decs, false)
+        + one("pct", "％", "百分比档（×基础生命）", s.pcts, true)
+        + '<div class="muted" style="margin-top:6px">共 ' + ((s.ints || []).length + (s.decs || []).length + (s.pcts || []).length)
+        + ' 个 · 禁用 ' + offAll + ' 个 · 百分比填小数（0.466 = 46.6%）· 直接改数值 / ⛔ 禁用 / × 删除。</div>';
 }
 /* ---------- 生命库 ---------- */
 function dbLifeAdd(){
@@ -1599,6 +1808,7 @@ function dbLifeEdit(p, star, from, val){
     var cc = dbEnsureOv(), o = dbOvFind("life", p, star, from);
     if(o) o.to = to;
     else cc.ov.push({ t: "life", p: p, s: star, f: from, to: to });
+    dbCalcOffMove("life", p, star, from, to);   /* 禁用记录跟着新值走 */
     dbBump();
   }, "生命值已改 · 正在同步到所有设备");
 }
@@ -1616,6 +1826,7 @@ function dbLifeDel(p, star, v){
       arr.push(it);
     }
     cc.items = arr;
+    dbCalcOffDrop("life", p, star, v);          /* 删掉的同时清掉禁用记录 */
     dbBump();
   }, "已从生命库删除 · 正在同步到所有设备");
 }
@@ -1644,6 +1855,7 @@ function dbPctEdit(from, val){
       var it = cc.items[i];
       if(it && it.type === "percent" && Number(it.value) === Number(from)) it.value = to;
     }
+    dbCalcOffMove("percent", "", 0, from, to);  /* 禁用记录跟着新值走 */
     dbBump();
   }, "百分比档已改 · 正在同步到所有设备");
 }
@@ -1660,6 +1872,7 @@ function dbPctDel(v){
       arr.push(it);
     }
     cc.items = arr;
+    dbCalcOffDrop("percent", "", 0, v);         /* 删掉的同时清掉禁用记录 */
     dbBump();
   }, "百分比档已删除 · 正在同步到所有设备");
 }
@@ -1689,6 +1902,7 @@ function dbMasEdit(p, from, val){
       var it = cc.items[i];
       if(it && it.type === "mastery" && it.part === p && Number(it.value) === Number(from)) it.value = to;
     }
+    dbCalcOffMove("mastery", p, 0, from, to);   /* 禁用记录跟着新值走 */
     dbBump();
   }, "精通值已改 · 正在同步到所有设备");
 }
@@ -1705,6 +1919,7 @@ function dbMasDel(p, v){
       arr.push(it);
     }
     cc.items = arr;
+    dbCalcOffDrop("mastery", p, 0, v);          /* 删掉的同时清掉禁用记录 */
     dbBump();
   }, "精通值已删除 · 正在同步到所有设备");
 }
@@ -1728,7 +1943,9 @@ function dbSvDel(kind, v){
     var s = dbEnsureSv(), key = kind === "int" ? "ints" : kind === "dec" ? "decs" : "pcts";
     var arr = [];
     for(var i = 0; i < s[key].length; i++){ if(Number(s[key][i]) !== Number(v)) arr.push(s[key][i]); }
-    s[key] = arr; dbBumpSv();
+    s[key] = arr;
+    dbSvOffDrop(kind, v);                       /* 删掉的同时清掉禁用记录 */
+    dbBumpSv();
   }, "已从求解器数值池删除 · 正在同步到所有设备");
 }
 function dbSvReset(){
@@ -1737,6 +1954,7 @@ function dbSvReset(){
   mutate(function(){
     var s = dbEnsureSv();
     s.ints = DB_BUILTIN.svInt.slice(); s.decs = DB_BUILTIN.svDec.slice(); s.pcts = DB_BUILTIN.svPct.slice();
+    s.off = [];                                 /* 恢复原始池的同时清掉禁用记录 */
     dbBumpSv();
   }, "已恢复 exe 原始数值池 · 正在同步到所有设备");
 }
