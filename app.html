@@ -720,7 +720,7 @@ nav button.active{color:var(--gold);background:transparent}
           <span style="font-size:15px;font-weight:600;color:var(--gold)">选择沙/头/杯百分比</span>
           <span style="cursor:pointer;color:var(--sub);font-size:20px;padding:4px 8px" onclick="closePctSelectModal()">✕</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px" id="pctSelectGrid"></div>
+        <div style="margin-bottom:12px;max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch" id="pctSelectGrid"></div>
         <div style="display:flex;gap:8px">
           <button class="btn" onclick="document.querySelectorAll('#pctSelectGrid input').forEach(c=>c.checked=true);updatePctSelect()" style="flex:1;font-size:12px;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px">全选</button>
           <button class="btn" onclick="document.querySelectorAll('#pctSelectGrid input').forEach(c=>c.checked=false);updatePctSelect()" style="flex:1;font-size:12px;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px">清空</button>
@@ -1578,6 +1578,8 @@ function rebuildDataWithCustom(){
     }
   }
   allPctRates.sort(function(a,b){return a-b;});
+  /* 暴露各星级档位组给「沙/头/杯百分比」选择弹窗（与后台百分比库同源同步） */
+  try{ window._pctGroups = pctGroups; }catch(e){}
 }
 
 /* 后台下发的内置值覆盖清单（后台 dbCard 生成） */
@@ -1745,25 +1747,63 @@ const ORIGINAL_ALL_PCT_RATES = allPctRates.slice();
 window._selectedPctRates = window._selectedPctRates || [];
 window._selectedExtraRates = window._selectedExtraRates || [];
 
+/* 沙/头/杯百分比选择：按 1-5★ 分组（与后台百分比库同步，window._pctGroups） */
+function pctChip(rate){
+  var checked = window._selectedPctRates.indexOf(rate) >= 0 ? " checked" : "";
+  return '<label style="display:flex;align-items:center;gap:5px;background:var(--card);padding:6px 9px;border-radius:8px;border:1px solid var(--card-border);cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" value="'+rate+'"'+checked+' onchange="updatePctSelect()">'+rate+'%</label>';
+}
 function initPctSelectGrid(){
   var grid = document.getElementById("pctSelectGrid");
   if(!grid) return;
-  var html = "";
-  // 内置百分比
-  for(var i=0;i<allPctRates.length;i++){
-    var rate = allPctRates[i];
-    var checked = window._selectedPctRates.indexOf(rate) >= 0 ? " checked" : "";
-    html += '<label style="display:flex;align-items:center;gap:6px;background:var(--card);padding:8px 10px;border-radius:8px;border:1px solid var(--card-border);cursor:pointer;font-size:12px;color:var(--text)"><input type="checkbox" value="'+rate+'"'+checked+' onchange="updatePctSelect()">'+rate+'%</label>';
+  var groups = window._pctGroups, html = "";
+  if(groups){
+    var stars = [5,4,3,2,1];
+    for(var g=0; g<stars.length; g++){
+      var st = stars[g];
+      var vals = (groups[st] || []).map(function(v){ return Math.round(v*10000)/10000; });
+      vals = vals.filter(function(v,i,a){ return a.indexOf(v) === i; }).sort(function(a,b){ return a-b; });
+      html += '<div style="margin-bottom:10px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 5px">'
+        + '<span style="color:var(--gold);font-size:12px;font-weight:600">'+st+'★ 百分比（'+vals.length+' 档）</span>'
+        + '<span data-gsel="'+st+'" onclick="pctGroupToggle(this)" style="cursor:pointer;font-size:11px;color:#58a6ff;text-decoration:underline">全选</span></div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px" data-ggrp="'+st+'">';
+      for(var i=0;i<vals.length;i++) html += pctChip(vals[i]);
+      html += '</div></div>';
+    }
+  } else {
+    html += '<div style="margin-bottom:10px"><div style="color:var(--gold);font-size:12px;font-weight:600;margin:2px 0 5px">百分比（'+allPctRates.length+' 档）</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    for(var j=0;j<allPctRates.length;j++) html += pctChip(allPctRates[j]);
+    html += '</div></div>';
   }
   grid.innerHTML = html;
   updatePctSelectDisplay();
 }
-
+/* 组级全选/取消：组内全选时点一下全取消，否则全选 */
+function pctGroupToggle(el){
+  var st = el.getAttribute("data-gsel");
+  var box = document.querySelector('#pctSelectGrid [data-ggrp="'+st+'"]');
+  if(!box) return;
+  var inputs = box.querySelectorAll("input");
+  var all = true;
+  for(var i=0;i<inputs.length;i++){ if(!inputs[i].checked){ all = false; break; } }
+  for(var k=0;k<inputs.length;k++) inputs[k].checked = !all;
+  el.textContent = all ? "全选" : "全不选";
+  updatePctSelect();
+}
 function updatePctSelect(){
   var checks = document.querySelectorAll("#pctSelectGrid input");
   var selected = [];
   for(var i=0;i<checks.length;i++){
-    if(checks[i].checked) selected.push(parseFloat(checks[i].value));
+    if(checks[i].checked){
+      var v = parseFloat(checks[i].value);
+      if(selected.indexOf(v) < 0) selected.push(v);
+    }
+  }
+  /* 同一个值在多个星级都有 → 勾选状态保持一致 */
+  for(var k=0;k<checks.length;k++){
+    var vv = parseFloat(checks[k].value);
+    var on = selected.indexOf(vv) >= 0;
+    if(checks[k].checked !== on) checks[k].checked = on;
   }
   window._selectedPctRates = selected;
   updatePctSelectDisplay();
@@ -3368,6 +3408,10 @@ function calcLifeSum(){
 
   var extraRates = [20,22,25];
 
+  /* 全精度工具：只清浮点噪声（1e-10），不做任何位数限制 */
+  function lpRound(v){ return Math.round(v * 1e10) / 1e10; }
+  function fmtFull(n){ return String(lpRound(n)); }
+
   // 构建各部位禁用的值集合（从筛选页禁用的生命词条中提取）
   var disabledByPart = {花:new Set(),毛:new Set(),沙:new Set(),杯:new Set(),头:new Set()};
   state.disabled.forEach(function(vid){
@@ -3421,7 +3465,7 @@ function calcLifeSum(){
     var extraRates_ = selectedExtraRates || [];
 
     // 去重 + 排序
-    function dedup(arr){ var s={},r=[];for(var i=0;i<arr.length;i++){var v=Math.round(arr[i]*10000)/10000;if(!s[v]){s[v]=true;r.push(v);}} r.sort(function(a,b){return a-b;}); return r; }
+    function dedup(arr){ var s={},r=[];for(var i=0;i<arr.length;i++){var v=lpRound(arr[i]);if(!s[v]){s[v]=true;r.push(v);}} r.sort(function(a,b){return a-b;}); return r; }
     var fVals = dedup(flowerValues);
     var featherVals = dedup(featherValues);
 
@@ -3432,7 +3476,7 @@ function calcLifeSum(){
     var sandPctMap = {}, cupPctMap = {}, headPctMap = {};
     if(percentageRates.length > 0 && baseLife_ > 0){
       for(var i=0;i<percentageRates.length;i++){
-        var pv = Math.round(baseLife_ * (percentageRates[i]/100) * 10000) / 10000;
+        var pv = lpRound(baseLife_ * (percentageRates[i]/100));
         sandVals.push(pv); sandPctMap[pv] = percentageRates[i];
         cupVals.push(pv); cupPctMap[pv] = percentageRates[i];
         headVals.push(pv); headPctMap[pv] = percentageRates[i];
@@ -3444,7 +3488,7 @@ function calcLifeSum(){
     var extraPctMap = {};
     if(extraRates_.length > 0 && baseLife_ > 0){
       for(var i=0;i<extraRates_.length;i++){
-        var ev = Math.round(baseLife_*(extraRates_[i]/100)*10000)/10000;
+        var ev = lpRound(baseLife_*(extraRates_[i]/100));
         extraVals.push(ev); extraPctMap[ev] = extraRates_[i];
       }
       extraVals = dedup(extraVals);
@@ -3476,7 +3520,7 @@ function calcLifeSum(){
       if(results.length >= maxResults) return;
       if(idx >= parts.length){
         if(sum >= minVal_ && sum <= maxVal_){
-          var key = flower+"|"+feather+"|"+sand+"|"+cup+"|"+head+"|"+extra+"|"+sum.toFixed(4);
+          var key = flower+"|"+feather+"|"+sand+"|"+cup+"|"+head+"|"+extra+"|"+fmtFull(sum);
           if(!seen[key]){ seen[key]=true; results.push({flower:flower,feather:feather,sand:sand,cup:cup,head:head,extra:extra,sandPercent:sandPct,cupPercent:cupPct,headPercent:headPct,extraPercent:extraPct,sum:sum}); }
         }
         return;
@@ -3522,14 +3566,14 @@ function calcLifeSum(){
         html += '<div style="background:rgba(255,255,255,.03);border-radius:10px;padding:10px;margin-bottom:8px;border:1px solid rgba(255,255,255,.06)">';
         html += '<div style="display:flex;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06)">';
         html += '<span style="font-size:13px;color:#7ec699;font-weight:600">组合 '+(i+1)+'</span>';
-        html += '<span style="font-size:14px;color:var(--gold);font-weight:700;font-family:monospace">总和: '+r.sum.toFixed(4)+'</span>';
+        html += '<span style="font-size:14px;color:var(--gold);font-weight:700;font-family:monospace">总和: '+fmtFull(r.sum)+'</span>';
         html += '</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
-        if(r.flower>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">花: '+r.flower.toFixed(4)+'</span>';
-        if(r.feather>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">羽: '+r.feather.toFixed(4)+'</span>';
-        if(r.sand>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">沙: '+r.sand.toFixed(4)+(r.sandPercent?' ('+r.sandPercent+'%)':'')+'</span>';
-        if(r.cup>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">杯: '+r.cup.toFixed(4)+(r.cupPercent?' ('+r.cupPercent+'%)':'')+'</span>';
-        if(r.head>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">头: '+r.head.toFixed(4)+(r.headPercent?' ('+r.headPercent+'%)':'')+'</span>';
-        if(r.extra>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">额外: '+r.extra.toFixed(4)+(r.extraPercent?' ('+r.extraPercent+'%)':'')+'</span>';
+        if(r.flower>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">花: '+fmtFull(r.flower)+'</span>';
+        if(r.feather>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">羽: '+fmtFull(r.feather)+'</span>';
+        if(r.sand>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">沙: '+fmtFull(r.sand)+(r.sandPercent?' ('+r.sandPercent+'%)':'')+'</span>';
+        if(r.cup>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">杯: '+fmtFull(r.cup)+(r.cupPercent?' ('+r.cupPercent+'%)':'')+'</span>';
+        if(r.head>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">头: '+fmtFull(r.head)+(r.headPercent?' ('+r.headPercent+'%)':'')+'</span>';
+        if(r.extra>0) html += '<span style="font-size:11px;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:6px;color:var(--text)">额外: '+fmtFull(r.extra)+(r.extraPercent?' ('+r.extraPercent+'%)':'')+'</span>';
         html += '</div></div>';
       }
       html += '</div>';
@@ -6790,7 +6834,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 68;
+var APP_CODE = 69;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
