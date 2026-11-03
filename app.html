@@ -4836,9 +4836,83 @@ if("serviceWorker" in navigator){
 // ==================== 参考表弹窗 ====================
 function showRefModal(){
   document.getElementById("refModal").classList.add("show");
+  try{ refOnTypeChange(); }catch(e){}
+  try{ refCustomRender(); }catch(e){}
 }
 function closeRefModal(){
   document.getElementById("refModal").classList.remove("show");
+}
+/* ===== 参考表里直接加数值（和「设置 → 数据管理」同一份自定义库，参与筛选） ===== */
+var REF_TYPE_NAMES = { life: "生命", percent: "百分比", mastery: "精通" };
+function refOnTypeChange(){
+  var t = document.getElementById("refAddType").value;
+  document.getElementById("refAddPart").style.display = (t === "percent") ? "none" : "";
+  document.getElementById("refAddStar").style.display = (t === "life") ? "" : "none";
+  document.getElementById("refAddVal").placeholder =
+    t === "life" ? "如 4780" : t === "mastery" ? "如 187" : "如 46.6（或 0.466）";
+  var info = document.getElementById("refAddInfo");
+  if(info) info.textContent = t === "percent"
+    ? "百分比加进全部位置；后台上新档 / 联网时会自动合并，不会重复。"
+    : "生命按 位置+星级 归档；加完筛选页立即生效，联网后自动同步到后台。";
+}
+function refAddValue(){
+  var t = document.getElementById("refAddType").value;
+  var val = parseFloat(document.getElementById("refAddVal").value);
+  if(isNaN(val)){ showToast("请输入有效数值"); return; }
+  /* 自动适配比例：百分比 0.466 → 46.6 */
+  if(t === "percent" && val > 0 && val < 1) val = Math.round(val * 10000) / 100;
+  val = Math.round(val * 10000) / 10000;
+  if(val <= 0){ showToast("数值要大于 0"); return; }
+  var part = document.getElementById("refAddPart").value;
+  var star = t === "life" ? (parseInt(document.getElementById("refAddStar").value, 10) || 5) : 5;
+  var data = loadCustomData(t);
+  for(var i = 0; i < data.length; i++){
+    if(data[i].part === part && (data[i].star || 5) === star && Math.abs(data[i].value - val) < 0.0001){
+      showToast("该数值已存在"); return;
+    }
+  }
+  data.push({ part: part, value: val, star: star });
+  saveCustomData(t, data);
+  rebuildDataWithCustom();
+  refreshFilterIfActive();
+  try{ renderDmAdmin(); }catch(e){}
+  try{ calcUploadLocal(); }catch(e){}          /* 联网后自动上传后台（👤） */
+  document.getElementById("refAddVal").value = "";
+  showToast("已添加到参考表：" + (t === "percent" ? val + "%" : (t === "life" ? star + "星 " : "") + val + "（" + part + "）· 筛选立即生效"));
+  refCustomRender();
+}
+function refCustomRender(){
+  var box = document.getElementById("refCustomList");
+  if(!box) return;
+  var h = "", total = 0;
+  for(var ti = 0; ti < CALC_TYPES.length; ti++){
+    var tk = CALC_TYPES[ti].k, arr = loadCustomData(tk);
+    var mine = [];
+    for(var i = 0; i < arr.length; i++){
+      if(arr[i] && !arr[i].aid) mine.push(i);
+    }
+    if(!mine.length) continue;
+    total += mine.length;
+    h += '<div style="font-size:11px;color:var(--gold);margin:8px 0 3px">' + REF_TYPE_NAMES[tk] + '（自己加的 ' + mine.length + ' 条）</div>';
+    for(var j = 0; j < mine.length; j++){
+      var d = arr[mine[j]];
+      var label = tk === "percent" ? d.value + "%" : ((tk === "life" ? (d.star || 5) + "星 " : "") + d.value + " · " + (d.part || "花"));
+      h += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.05);border:1px solid var(--card-border);border-radius:7px;padding:3px 8px;font-size:12px;margin:2px;color:var(--text)">' + label +
+           '<span style="color:var(--danger);cursor:pointer;padding:0 2px" onclick="refDelCustom(\'' + tk + '\',' + mine[j] + ')">✕</span></span>';
+    }
+  }
+  box.innerHTML = h;
+}
+function refDelCustom(type, idx){
+  var data = loadCustomData(type);
+  if(!data[idx]) return;
+  if(data[idx].aid){ showToast("这条是后台下发的（☁），请让管理员在后台删"); return; }
+  data.splice(idx, 1);
+  saveCustomData(type, data);
+  rebuildDataWithCustom();
+  refreshFilterIfActive();
+  refCustomRender();
+  showToast("已删除");
 }
 function switchRefTab(tab){
   var btns = document.querySelectorAll(".ref-tab-btn");
@@ -5504,7 +5578,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 58;
+var APP_CODE = 59;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
@@ -5747,10 +5821,7 @@ var MONA_TABS = [
   { r: "calculate",          i: "⚔️", t: "计算" },
   { r: "artifacts",          i: "📿", t: "圣遗物" },
   { r: "uid-data",           i: "📥", t: "UID 数据" },
-  { r: "character",          i: "🧙", t: "角色" },
   { r: "artifacts-kumi",     i: "🔮", t: "套装" },
-  { r: "best-set",           i: "🎯", t: "套装优化" },
-  { r: "potential",          i: "💎", t: "圣遗物潜力" },
   { r: "team-optimization",  i: "👥", t: "整队优化" },
   { r: "presets",            i: "⚙️", t: "预设" },
   { r: "account",            i: "👤", t: "账号" },
@@ -9492,6 +9563,28 @@ function closeDeviceModal(){
 <div class="modal-overlay over-lock" id="refModal" onclick="if(event.target===this)closeRefModal()">
   <div class="modal-box">
     <button class="modal-close" onclick="closeRefModal()">✕</button>
+
+    <div class="ref-section" style="border:1px solid var(--gold);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div class="ref-title" style="color:var(--gold)">➕ 添加数值（自动适配比例，百分比填 0.466 或 46.6 都行）</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
+        <select id="refAddType" onchange="refOnTypeChange()" style="background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-size:14px">
+          <option value="life">🌸 生命</option>
+          <option value="percent">🎯 百分比</option>
+          <option value="mastery">✨ 精通</option>
+        </select>
+        <select id="refAddPart" style="background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-size:14px">
+          <option value="花">🌸 花</option><option value="毛">🪶 毛</option><option value="沙">⏳ 沙</option><option value="杯">🍷 杯</option><option value="头">👑 头</option>
+        </select>
+        <select id="refAddStar" style="background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-size:14px">
+          <option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option>
+        </select>
+        <input type="number" id="refAddVal" step="0.0001" placeholder="如 4780" style="flex:1;min-width:110px;background:var(--card);color:var(--text);border:1px solid var(--card-border);border-radius:8px;padding:8px;font-size:16px">
+        <button onclick="refAddValue()" style="background:var(--gold);color:#000;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600">➕ 添加</button>
+      </div>
+      <div id="refAddInfo" style="font-size:11px;color:var(--sub);margin-top:6px"></div>
+      <div id="refCustomList"></div>
+    </div>
+
     <div class="ref-tabs">
       <button class="ref-tab-btn active" onclick="switchRefTab('sbc')">沙/杯/头参考表</button>
       <button class="ref-tab-btn" onclick="switchRefTab('life')">生命参考表</button>
