@@ -1482,13 +1482,17 @@ function rebuildDataWithCustom(){
     var d = customMastery[i];
     if(d.part && masteryData[d.part]) masteryData[d.part].push(d.value);
   }
-  // 合并自定义百分比数据（去重）
+  /* 百分比按星级分组（和攻击库 pct 一致）：1-5★ 各一组，最后取并集参与计算 */
+  var PCT_STAR_LIST = [5, 4, 3, 2, 1];
+  var pctGroups = {};
+  for(var pg = 0; pg < PCT_STAR_LIST.length; pg++) pctGroups[PCT_STAR_LIST[pg]] = ORIGINAL_ALL_PCT_RATES.slice();
+  // 合并自定义百分比数据（按星级归组，老数据没星级归 5★）
   var customPercent = loadCustomData("percent");
   for(var i=0; i<customPercent.length; i++){
     var d = customPercent[i];
-    if(allPctRates.indexOf(d.value) < 0) allPctRates.push(d.value);
+    var pg2 = pctGroups[d.star || 5];
+    if(pg2 && pg2.indexOf(d.value) < 0) pg2.push(d.value);
   }
-  allPctRates.sort(function(a,b){return a-b;});
   // 后台「数据库管理」对内置值的覆盖（改值 / 删除）：yy_calc_ov
   var ovs = loadCalcOv();
   for(var k=0; k<ovs.length; k++){
@@ -1514,14 +1518,18 @@ function rebuildDataWithCustom(){
       }
       masteryData[ov.p] = out3;
     } else if(ov.t === "percent"){
-      var out4 = [];
-      for(var c2=0; c2<allPctRates.length; c2++){
-        if(Math.abs(allPctRates[c2] - Number(ov.f)) < 0.011){
-          if(ov.to != null && isFinite(Number(ov.to))) out4.push(Number(ov.to));
-        } else out4.push(allPctRates[c2]);
+      /* s=0/缺省 = 老格式通配（全部星级）；其余只改对应星级 */
+      var pTargets = (ov.s || 0) === 0 ? PCT_STAR_LIST : [Number(ov.s) || 5];
+      for(var t2 = 0; t2 < pTargets.length; t2++){
+        var gr = pctGroups[pTargets[t2]]; if(!gr) continue;
+        var out4 = [];
+        for(var c2=0; c2<gr.length; c2++){
+          if(Math.abs(gr[c2] - Number(ov.f)) < 0.011){
+            if(ov.to != null && isFinite(Number(ov.to))) out4.push(Number(ov.to));
+          } else out4.push(gr[c2]);
+        }
+        pctGroups[pTargets[t2]] = out4;
       }
-      allPctRates = out4;
-      allPctRates.sort(function(x,y){return x-y;});
     }
   }
   /* 后台下发的「禁用」清单（数据保留、不参与计算）：从三张表里临时剔除，参考表/计算都不再出现 */
@@ -1547,15 +1555,29 @@ function rebuildDataWithCustom(){
       }
       masteryData[of2.p] = out6;
     } else if(of2.t === "percent"){
-      var out7 = [];
-      for(var z=0; z<allPctRates.length; z++){
-        if(Math.abs(allPctRates[z] - fv) < 0.011) continue;
-        out7.push(allPctRates[z]);
+      var pTargets2 = (of2.s || 0) === 0 ? PCT_STAR_LIST : [Number(of2.s) || 5];
+      for(var t3 = 0; t3 < pTargets2.length; t3++){
+        var gr2 = pctGroups[pTargets2[t3]]; if(!gr2) continue;
+        var out7 = [];
+        for(var z=0; z<gr2.length; z++){
+          if(Math.abs(gr2[z] - fv) < 0.011) continue;
+          out7.push(gr2[z]);
+        }
+        pctGroups[pTargets2[t3]] = out7;
       }
-      allPctRates = out7;
-      allPctRates.sort(function(a,b){return a-b;});
     }
   }
+  /* 各星级启用档位取并集 → 参与计算的百分比池（去重升序） */
+  var seenPct = {};
+  allPctRates = [];
+  for(var pu = 0; pu < PCT_STAR_LIST.length; pu++){
+    var gu = pctGroups[PCT_STAR_LIST[pu]];
+    for(var pv = 0; pv < gu.length; pv++){
+      var pvv = Math.round(gu[pv] * 10000) / 10000;
+      if(!seenPct[pvv]){ seenPct[pvv] = 1; allPctRates.push(pvv); }
+    }
+  }
+  allPctRates.sort(function(a,b){return a-b;});
 }
 
 /* 后台下发的内置值覆盖清单（后台 dbCard 生成） */
@@ -6726,7 +6748,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 66;
+var APP_CODE = 67;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
