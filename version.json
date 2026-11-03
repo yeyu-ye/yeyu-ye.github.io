@@ -1,11 +1,11 @@
 {
-  "code": 65,
-  "ver": "v65",
-  "file": "yeyu-v65.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v65.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v65/yeyu-v65.apk",
-  "size": 41095957,
+  "code": 66,
+  "ver": "v66",
+  "file": "yeyu-v66.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v66.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v66/yeyu-v66.apk",
+  "size": 41100053,
   "force": true,
-  "date": "2026-11-03",
-  "note": "① 攻击力%（沙 / 杯 / 头主属性）改成按星级分库：1★、2★、3★、4★、5★ 各有自己的一组档位，每个星级都能在数据库里加 / 改 / 删 / 禁用，计算页每个星级也都能选；② 后台「⚔️ 攻击库」的攻击力% 也按星级分组显示，新增时选几星就进几星那一组（不再一律归到 5★）；③ 老数据（只有 5★ 一组）会自动补齐其余星级，不用重新录。"
+  "date": "2026-11-04",
+  "note": "① 后台数据库全面升级：生命库 / 百分比库 / 精通库 / 求解器数值池全部改成和攻击库一样的界面，每个分组右侧有「⛔ 全禁 / ↩ 全恢复」，数值格子可以直接改、可以单独禁用（⛔ = 不参与计算，数据保留，随时恢复）；② 精通库只有固定值、没有百分比；③ 手机端同步生效：后台禁用的数值在手机上也不参与计算。"
 }
