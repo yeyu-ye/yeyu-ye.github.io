@@ -576,6 +576,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <button class="dbtab" id="dbt-percent" onclick="dbTab('percent')">🎯 百分比库</button>
       <button class="dbtab" id="dbt-mastery" onclick="dbTab('mastery')">✨ 精通库</button>
       <button class="dbtab" id="dbt-sv" onclick="dbTab('sv')">🧬 求解器数值池</button>
+      <button class="dbtab" id="dbt-atk" onclick="dbTab('atk')">⚔️ 攻击库</button>
       <span style="flex:1"></span>
       <span class="muted" id="dbState"></span>
     </div>
@@ -629,6 +630,29 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       </div>
       <div class="bar"><button class="sm" onclick="dbSvReset()">↩ 恢复 exe 原始池</button></div>
       <div id="dbSvList" style="max-height:480px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px;margin-top:10px"></div>
+    </div>
+
+    <div id="dbPane-atk" style="display:none">
+      <div class="muted" style="margin-bottom:8px">
+        收纳篮「⚔️ 攻击计算器」的整套数据库（数据源：攻击计算器.apk 内置表）。
+        主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击）。
+        改值 / 删除 / <b style="color:#e6edf3">禁用</b>都实时同步到所有手机；
+        <b style="color:#e6edf3">禁用的数值不参与任何计算</b>（随时点 ↩ 恢复），× 才是真删。
+      </div>
+      <div class="sec" style="align-items:end">
+        <div><label>新增到</label>
+          <select id="dbAtkKind">
+            <option value="main">🪶 毛主属性</option>
+            <option value="sub">🎲 副词条</option>
+            <option value="pct">🎯 攻击力%</option>
+          </select></div>
+        <div><label>星级</label>
+          <select id="dbAtkStar"><option value="5">5★</option><option value="4">4★</option><option value="3">3★</option><option value="2">2★</option><option value="1">1★</option></select></div>
+        <div><label>数值</label><input type="number" id="dbAtkVal" step="0.01" placeholder="47 / 13.62 / 46.6" style="width:130px"></div>
+        <div><label>&nbsp;</label><button class="p" onclick="dbAtkAdd()">➕ 添加</button></div>
+      </div>
+      <div class="bar"><button class="sm" onclick="dbAtkReset()">↩ 恢复 APK 原始数据</button></div>
+      <div id="dbAtkList" style="max-height:520px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px;margin-top:10px"></div>
     </div>
   </div>
 <div class="card" id="wpCard">
@@ -1369,7 +1393,7 @@ function dbBump(){ var c = dbEnsureOv(); c.rev = (c.rev || 0) + 1; c.ts = Date.n
 function dbBumpSv(){ var s = dbEnsureSv(); s.rev = (s.rev || 0) + 1; s.ts = Date.now(); }
 function dbTab(t){
   dbCurTab = t;
-  var tabs = ["life","percent","mastery","sv"];
+  var tabs = ["life","percent","mastery","sv","atk"];
   for(var i = 0; i < tabs.length; i++){
     var p = $("dbPane-" + tabs[i]), b = $("dbt-" + tabs[i]);
     if(p) p.style.display = (tabs[i] === t) ? "" : "none";
@@ -1435,14 +1459,18 @@ function dbRender(){
   var c = dbEnsureOv(), s = dbEnsureSv();
   var userN = 0, extraN = c.items.length;
   for(var i = 0; i < c.items.length; i++){ if(c.items[i] && c.items[i].from === "user") userN++; }
+  var atkRev = 0, atkOffN = 0;
+  try{ var ak = dbEnsureAtk(); atkRev = ak.rev || 0; atkOffN = ak.off.length; }catch(e){}
   if(st){
     st.innerHTML = "额外条目 " + extraN + " 条" + (userN ? ' · <span style="color:#3fb950">👤手机上传 ' + userN + '</span>' : "")
       + " · 改动 " + c.ov.length + " 条 · 求解器池 rev " + (s.rev || 0)
+      + " · 攻击库 rev " + atkRev + (atkOffN ? "（禁用 " + atkOffN + "）" : "")
       + (c.ts ? ' · 最近改 ' + new Date(c.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "");
   }
   if(dbCurTab === "life") dbRenderLife();
   else if(dbCurTab === "mastery") dbRenderMas();
   else if(dbCurTab === "percent") dbRenderPct();
+  else if(dbCurTab === "atk") dbRenderAtk();
   else dbRenderSv();
 }
 /* 一行：星级徽标 + 数值输入 + 状态 + 操作（删 / 还原） */
@@ -1707,6 +1735,221 @@ function dbSvReset(){
     s.ints = DB_BUILTIN.svInt.slice(); s.decs = DB_BUILTIN.svDec.slice(); s.pcts = DB_BUILTIN.svPct.slice();
     dbBumpSv();
   }, "已恢复 exe 原始数值池 · 正在同步到所有设备");
+}
+/* ===== ⑪ 攻击库：收纳篮「⚔️ 攻击计算器」的数据（source: 攻击计算器.apk） =====
+   和前面三个库不同，这一套是「整份下发」的（跟 data.sv 一个思路）：
+     data.atk = { rev, ts, main:[{s:5,v:[...]}], sub:[{s:5,v:[...]}], pct:[...], off:[{k,s,v}] }
+   改值 / 加 / 删 都直接改这三张表；禁用只是记进 off（条目还在，但不参与计算）。
+   手机端 atkSync() 见到内容变了就整份替换，因此这里怎么改那边就怎么变。 */
+/* ATK_BUILTIN_START */
+var DB_ATK = {
+  main: {
+    5: [47, 60.2, 73.4, 86.6, 99.8, 113, 126.2, 139.4, 152.6, 165.8, 179, 192.2, 205.4, 218.6, 231.8, 245, 258.2, 271.4, 284.6, 297.8, 311],
+    4: [42, 53.875, 65.75, 77.625, 89.5, 101.375, 113.25, 125.125, 137, 148.875, 160.75, 172.625, 184.5, 196.375, 208.25, 220.125, 232],
+    3: [28, 35.9167, 43.8333, 51.75, 59.6667, 67.5833, 75.5, 83.4167, 91.3333, 99.25, 107.1667, 115.0833, 123],
+    2: [15, 20.5, 26, 31.5, 37],
+    1: [6, 8.25, 10.5, 12.75, 15]
+  },
+  sub: {
+    5: [13.62, 15.56, 17.51, 19.45, 27.24, 29.18, 31.13, 33.07, 35.01, 36.96, 38.9, 40.86, 42.8, 44.75, 46.69, 48.63, 50.58, 52.52, 54.46, 56.41, 56.42, 58.37, 58.35, 60.31, 62.25, 64.2, 66.14, 70.03, 71.99, 73.91, 73.93],
+    4: [10.89, 12.45, 14, 15.56],
+    3: [8.17, 9.34, 10.51, 11.68],
+    2: [3.27, 3.73, 4.19, 4.65]
+  },
+  pct: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+};
+/* ATK_BUILTIN_END */
+function dbAtkToArr(m){
+  var out = [], st = [], k, s, i;
+  for(k in m){
+    if(!Object.prototype.hasOwnProperty.call(m, k)) continue;
+    s = parseInt(k, 10);
+    if(s > 0 && m[k] && m[k].length) st.push(s);
+  }
+  st.sort(function(a, b){ return b - a; });
+  for(i = 0; i < st.length; i++) out.push({ s: st[i], v: m[st[i]].slice() });
+  return out;
+}
+function dbAtkNums(a){
+  var out = [], i, v;
+  if(!a) return out;
+  for(i = 0; i < a.length; i++){
+    v = Number(a[i]);
+    if(isFinite(v) && v > 0) out.push(Math.round(v * 1000000) / 1000000);
+  }
+  return out;
+}
+/* 兼容三种写法：数组 [{s,v}] / 对象 {"5":[...]} / 手机早期上传的 {star,values} */
+function dbAtkNorm(a){
+  a = a || {};
+  var out = { main: [], sub: [], pct: [], off: [] }, i, e, k, s, vv;
+  function grab(src, dst){
+    if(!src) return;
+    if(Object.prototype.toString.call(src) === "[object Array]"){
+      for(i = 0; i < src.length; i++){
+        e = src[i] || {};
+        s = parseInt(e.s != null ? e.s : e.star, 10);
+        if(s > 0){ vv = dbAtkNums(e.v || e.values || []); if(vv.length) dst.push({ s: s, v: vv }); }
+      }
+    } else {
+      for(k in src){
+        if(!Object.prototype.hasOwnProperty.call(src, k)) continue;
+        s = parseInt(k, 10);
+        if(s > 0){ vv = dbAtkNums(src[k]); if(vv.length) dst.push({ s: s, v: vv }); }
+      }
+    }
+    dst.sort(function(x, y){ return y.s - x.s; });
+  }
+  grab(a.main, out.main);
+  grab(a.sub, out.sub);
+  out.pct = dbAtkNums(a.pct);
+  var off = Array.isArray(a.off) ? a.off : [];
+  for(i = 0; i < off.length; i++){
+    var o = off[i] || {};
+    k = String(o.k || "");
+    if(k !== "main" && k !== "sub" && k !== "pct") continue;
+    s = parseInt(o.s, 10); if(!(s > 0)) s = 0;
+    var v = Number(o.v); if(!isFinite(v)) continue;
+    out.off.push({ k: k, s: s, v: Math.round(v * 1000000) / 1000000 });
+  }
+  if(!out.main.length) out.main = dbAtkToArr(DB_ATK.main);
+  if(!out.sub.length) out.sub = dbAtkToArr(DB_ATK.sub);
+  if(!out.pct.length) out.pct = DB_ATK.pct.slice();
+  return out;
+}
+function dbEnsureAtk(){
+  if(!data.atk || typeof data.atk !== "object") data.atk = { rev: 0, ts: 0 };
+  var a = data.atk, n = dbAtkNorm(a);
+  a.main = n.main; a.sub = n.sub; a.pct = n.pct; a.off = n.off;
+  return a;
+}
+function dbBumpAtk(){ var a = dbEnsureAtk(); a.rev = (a.rev || 0) + 1; a.ts = Date.now(); }
+function dbAtkArrOf(a, kind, star){
+  if(kind === "pct") return a.pct;
+  var list = (kind === "main") ? a.main : a.sub, i;
+  for(i = 0; i < list.length; i++){ if(Number(list[i].s) === Number(star)) return list[i].v; }
+  return null;
+}
+function dbAtkIsOff(a, kind, star, v){
+  var s0 = (kind === "pct") ? 0 : Number(star || 0), i, o;
+  for(i = 0; i < a.off.length; i++){
+    o = a.off[i];
+    if(o && o.k === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) return true;
+  }
+  return false;
+}
+function dbAtkDropOff(a, kind, star, v){
+  var s0 = (kind === "pct") ? 0 : Number(star || 0), out = [], i, o;
+  for(i = 0; i < a.off.length; i++){
+    o = a.off[i];
+    if(o && o.k === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) continue;
+    out.push(o);
+  }
+  a.off = out;
+}
+function dbAtkMoveOff(a, kind, star, from, to){
+  var s0 = (kind === "pct") ? 0 : Number(star || 0), i, o;
+  for(i = 0; i < a.off.length; i++){
+    o = a.off[i];
+    if(o && o.k === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = to;
+  }
+}
+function dbRenderAtk(){
+  var box = $("dbAtkList");
+  if(!box) return;
+  var a = dbEnsureAtk();
+  var h = "", i, j, s, arr, off;
+  function group(kind, star, title, arr2){
+    var g = "<div style=\"color:#58a6ff;font-size:12px;margin:9px 0 3px;font-weight:600\">" + title
+          + "（" + arr2.length + " 档" + (kind === "pct" ? "" : " · " + star + "★") + "）</div>";
+    g += "<div style=\"display:flex;flex-wrap:wrap\">";
+    for(var q = 0; q < arr2.length; q++){
+      var of = dbAtkIsOff(a, kind, star, arr2[q]);
+      g += "<span class=\"db-chip" + (of ? " mod" : "") + "\"" + (of ? " style=\"opacity:.55;border-color:#f85149\"" : "") + ">"
+        + "<input type=\"number\" step=\"0.01\" value=\"" + arr2[q] + "\" onchange=\"dbAtkEdit('" + kind + "'," + star + "," + q + ",this.value)\">"
+        + "<button class=\"" + (of ? "db-r" : "db-x") + "\" title=\"" + (of ? "恢复参与计算" : "禁用（不参与计算）") + "\" onclick=\"dbAtkOff('" + kind + "'," + star + "," + q + ")\">" + (of ? "↩" : "⛔") + "</button>"
+        + "<button class=\"db-x\" title=\"删除\" onclick=\"dbAtkDel('" + kind + "'," + star + "," + q + ")\">×</button>"
+        + "</span>";
+    }
+    return g + "</div>";
+  }
+  h += "<div class=\"db-sechead\"><span>🪶 毛主属性（小攻击）</span><span>" + a.main.length + " 个星级</span></div>";
+  for(i = 0; i < a.main.length; i++) h += group("main", a.main[i].s, "主属性", a.main[i].v);
+  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎲 副词条（小攻击）</span><span>" + a.sub.length + " 个星级</span></div>";
+  for(i = 0; i < a.sub.length; i++) h += group("sub", a.sub[i].s, "副词条", a.sub[i].v);
+  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎯 攻击力%（沙 / 杯 / 头）</span><span>" + a.pct.length + " 档</span></div>";
+  h += group("pct", 0, "攻击力%", a.pct);
+  h += "<div class=\"muted\" style=\"margin-top:8px\">共 " + (a.main.length + a.sub.length) + " 组 · 禁用 " + a.off.length
+     + " 条 · rev " + (a.rev || 0) + (a.ts ? " · 最近改 " + new Date(a.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "")
+     + "　⛔ = 禁用（不参与计算）/ ↩ 恢复 / × 删除</div>";
+  box.innerHTML = h;
+}
+function dbAtkEdit(kind, star, idx, val){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); dbRenderAtk(); return; }
+  var to = parseFloat(val);
+  if(!isFinite(to) || to <= 0){ showErr("数值不对，已还原。"); dbRenderAtk(); return; }
+  to = Math.round(to * 1000000) / 1000000;
+  mutate(function(){
+    var a = dbEnsureAtk(), arr = dbAtkArrOf(a, kind, star);
+    if(!arr || idx < 0 || idx >= arr.length) return;
+    var from = arr[idx];
+    arr[idx] = to;
+    dbAtkMoveOff(a, kind, star, from, to);
+    dbBumpAtk();
+  }, "攻击库已改 · 正在同步到所有设备");
+}
+function dbAtkDel(kind, star, idx){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    var a = dbEnsureAtk(), arr = dbAtkArrOf(a, kind, star);
+    if(!arr || idx < 0 || idx >= arr.length) return;
+    var v = arr[idx];
+    arr.splice(idx, 1);
+    dbAtkDropOff(a, kind, star, v);
+    dbBumpAtk();
+  }, "已从攻击库删除 · 正在同步到所有设备");
+}
+/* 禁用 / 恢复：被禁用的值不参与计算，但数据还在，随时能恢复 */
+function dbAtkOff(kind, star, idx){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){
+    var a = dbEnsureAtk(), arr = dbAtkArrOf(a, kind, star);
+    if(!arr || idx < 0 || idx >= arr.length) return;
+    var v = arr[idx];
+    if(dbAtkIsOff(a, kind, star, v)) dbAtkDropOff(a, kind, star, v);
+    else a.off.push({ k: kind, s: (kind === "pct") ? 0 : Number(star), v: v });
+    dbBumpAtk();
+  }, "攻击库已更新（禁用值不参与计算）· 正在同步到所有设备");
+}
+function dbAtkAdd(){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  var kind = $("dbAtkKind").value, star = parseInt($("dbAtkStar").value, 10) || 5;
+  var v = parseFloat($("dbAtkVal").value);
+  if(!isFinite(v) || v <= 0){ showErr("请填有效数值，如 47 / 13.62 / 46.6"); return; }
+  v = Math.round(v * 1000000) / 1000000;
+  mutate(function(){
+    var a = dbEnsureAtk();
+    if(kind === "pct"){ a.pct.push(v); }
+    else {
+      var list = (kind === "main") ? a.main : a.sub, arr = dbAtkArrOf(a, kind, star);
+      if(!arr){ list.push({ s: star, v: [v] }); list.sort(function(x, y){ return y.s - x.s; }); }
+      else if(arr.indexOf(v) < 0) arr.push(v);
+    }
+    dbBumpAtk();
+  }, "已加入攻击库 · 正在同步到所有设备");
+  $("dbAtkVal").value = "";
+}
+function dbAtkReset(){
+  if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  if(!confirm("恢复成攻击计算器 APK 的原始数据？现在的改动会被覆盖。")) return;
+  mutate(function(){
+    var a = dbEnsureAtk();
+    a.main = dbAtkToArr(DB_ATK.main);
+    a.sub = dbAtkToArr(DB_ATK.sub);
+    a.pct = DB_ATK.pct.slice();
+    a.off = [];
+    dbBumpAtk();
+  }, "已恢复 APK 原始数据 · 正在同步到所有设备");
 }
 try{ dbTab("life"); }catch(e){}
 
