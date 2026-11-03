@@ -1,11 +1,11 @@
 {
-  "code": 58,
-  "ver": "v58",
-  "file": "yeyu-v58.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v58.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v58/yeyu-v58.apk",
-  "size": 31476358,
+  "code": 59,
+  "ver": "v59",
+  "file": "yeyu-v59.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v59.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v59/yeyu-v59.apk",
+  "size": 41079573,
   "force": true,
   "date": "2026-11-03",
-  "note": "后台新增「🗃 数据库管理」：生命/百分比/精通三库全部数值可查看、改值、删除、新增；收纳篮「🧬 生命求解器」的三张数值池也能在后台编辑并同步所有设备；手机上自己加的数值会自动上传后台（带 👤 标记）。新加数值自动适配比例（0.466/46.6 都认）。莫娜计算器不变。"
+  "note": "① 莫娜计算器更新到最新版 7.2.02（离线壳同步升级，顶部页签按新版调整，自动更新提示已屏蔽）；② 筛选页「📋参考表」里可以直接添加数值了（生命/百分比/精通，自动适配比例，加完筛选立即生效、联网同步后台）；③ 后台数据库管理界面重排：按部位分区、改动/删除可一键还原；添加数值后列表立即刷新，不用再手动刷新后台。"
 }
