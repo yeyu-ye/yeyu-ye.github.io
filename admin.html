@@ -635,8 +635,8 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <div id="dbPane-atk" style="display:none">
       <div class="muted" style="margin-bottom:8px">
         收纳篮「⚔️ 攻击计算器」的整套数据库（数据源：攻击计算器.apk 内置表）。
-        主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击，<b style="color:#e6edf3">只有 5★ 有这一组，1-4★ 不显示</b>）。
-        <b style="color:#e6edf3">新增攻击力%时星级自动锁成 5★</b>（这一组没有 4/3/2/1★）。<br>        副词条分两种：<b style="color:#e6edf3">小攻击</b>（固定值）和 <b style="color:#e6edf3">攻击%</b>（按基础攻击折算）。<br>
+        主属性 = 毛的小攻击 Lv 档位；副词条 = 小攻击档位；攻击力% = 沙 / 杯 / 头主属性（× 基础攻击，<b style="color:#e6edf3">按星级各有一组，1-5 星都能加</b>）。
+        攻击力% 也按星级分开存，选 4★ 就进 4★ 那一组。<br>        副词条分两种：<b style="color:#e6edf3">小攻击</b>（固定值）和 <b style="color:#e6edf3">攻击%</b>（按基础攻击折算）。<br>
         规则：毛的主属性就是小攻击 → 只有攻击%副词条；沙 / 杯 / 头 选了攻击%主属性 → 只有小攻击副词条；花两种都有。<br>
         改值 / 删除 / <b style="color:#e6edf3">禁用</b>都实时同步到所有手机；
         <b style="color:#e6edf3">禁用的数值不参与任何计算</b>（随时点 ↩ 恢复），× 才是真删。
@@ -1769,7 +1769,15 @@ var DB_ATK = {
     2: [2.8, 3.1, 3.5, 3.9, 4.2],
     1: [2.0, 2.3, 2.6, 2.9, 3.2]
   },
-  pct: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+  /* 主属性攻击力%（沙 / 杯 / 头）：按星级各有一组，1-5 星都能选。
+     默认 1-5 星是同一套档位（7% → 46.6%），需要按实际改就在数据库里逐档改 */
+  pct: {
+    5: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    4: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    3: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    2: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6],
+    1: [7, 9, 11, 12.9, 14.9, 16.9, 18.9, 20.9, 22.8, 24.8, 26.8, 28.8, 30.8, 32.8, 34.7, 36.7, 38.7, 40.7, 42.7, 44.6, 46.6]
+  }
 };
 /* ATK_BUILTIN_END */
 function dbAtkToArr(m){
@@ -1817,7 +1825,11 @@ function dbAtkNorm(a){
   grab(a.main, out.main);
   grab(a.sub, out.sub);
   grab(a.subPct || a.subpct, out.subPct);
-  out.pct = dbAtkNums(a.pct);
+  /* 攻击力%（沙 / 杯 / 头主属性）按星级分库；老数据是纯数字数组 → 认作 5★ 一组 */
+  if(Object.prototype.toString.call(a.pct) === "[object Array]" && a.pct.length && typeof a.pct[0] !== "object"){
+    vv = dbAtkNums(a.pct); if(vv.length) out.pct.push({ s: 5, v: vv });
+    out.pct.sort(function(x, y){ return y.s - x.s; });
+  } else grab(a.pct, out.pct);
   var off = Array.isArray(a.off) ? a.off : [];
   for(i = 0; i < off.length; i++){
     var o = off[i] || {};
@@ -1830,7 +1842,15 @@ function dbAtkNorm(a){
   if(!out.main.length) out.main = dbAtkToArr(DB_ATK.main);
   if(!out.sub.length) out.sub = dbAtkToArr(DB_ATK.sub);
   if(!out.subPct.length) out.subPct = dbAtkToArr(DB_ATK.subPct || {});
-  if(!out.pct.length) out.pct = DB_ATK.pct.slice();
+  if(!out.pct.length) out.pct = dbAtkToArr(DB_ATK.pct || {});
+  /* 老数据只存了 5★ 一组 → 其余星级补默认档位（后台一打开 1-4★ 也有得改） */
+  if(out.pct.length === 1 && Number(out.pct[0].s) === 5){
+    var defPct = dbAtkToArr(DB_ATK.pct || {});
+    for(i = 0; i < defPct.length; i++){
+      if(Number(defPct[i].s) !== 5) out.pct.push({ s: defPct[i].s, v: defPct[i].v.slice() });
+    }
+    out.pct.sort(function(x, y){ return y.s - x.s; });
+  }
   return out;
 }
 function dbEnsureAtk(){
@@ -1841,8 +1861,7 @@ function dbEnsureAtk(){
 }
 function dbBumpAtk(){ var a = dbEnsureAtk(); a.rev = (a.rev || 0) + 1; a.ts = Date.now(); }
 function dbAtkArrOf(a, kind, star){
-  if(kind === "pct") return a.pct;
-  var list = (kind === "main") ? a.main : (kind === "subPct") ? a.subPct : a.sub, i;
+  var list = (kind === "pct") ? a.pct : (kind === "main") ? a.main : (kind === "subPct") ? a.subPct : a.sub, i;
   for(i = 0; i < list.length; i++){ if(Number(list[i].s) === Number(star)) return list[i].v; }
   return null;
 }
@@ -1850,7 +1869,7 @@ function dbAtkArrOf(a, kind, star){
 function dbAtkKindKey(k){ return (k === "subPct") ? "subpct" : k; }
 function dbAtkIsOff(a, kind, star, v){
   kind = dbAtkKindKey(kind);
-  var s0 = (kind === "pct") ? 0 : Number(star || 0), i, o;
+  var s0 = Number(star || 0), i, o;
   for(i = 0; i < a.off.length; i++){
     o = a.off[i];
     if(o && dbAtkKindKey(o.k) === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) return true;
@@ -1859,7 +1878,7 @@ function dbAtkIsOff(a, kind, star, v){
 }
 function dbAtkDropOff(a, kind, star, v){
   kind = dbAtkKindKey(kind);
-  var s0 = (kind === "pct") ? 0 : Number(star || 0), out = [], i, o;
+  var s0 = Number(star || 0), out = [], i, o;
   for(i = 0; i < a.off.length; i++){
     o = a.off[i];
     if(o && dbAtkKindKey(o.k) === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(v)) < 1e-9) continue;
@@ -1869,7 +1888,7 @@ function dbAtkDropOff(a, kind, star, v){
 }
 function dbAtkMoveOff(a, kind, star, from, to){
   kind = dbAtkKindKey(kind);
-  var s0 = (kind === "pct") ? 0 : Number(star || 0), i, o;
+  var s0 = Number(star || 0), i, o;
   for(i = 0; i < a.off.length; i++){
     o = a.off[i];
     if(o && dbAtkKindKey(o.k) === kind && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = to;
@@ -1882,7 +1901,7 @@ function dbRenderAtk(){
   var h = "", i, j, s, arr, off;
   function group(kind, star, title, arr2){
     var g = "<div style=\"color:#58a6ff;font-size:12px;margin:9px 0 3px;font-weight:600\">" + title
-          + "（" + arr2.length + " 档" + (kind === "pct" ? "" : " · " + star + "★") + "）</div>";
+          + "（" + arr2.length + " 档 · " + star + "★）</div>";
     g += "<div style=\"display:flex;flex-wrap:wrap\">";
     for(var q = 0; q < arr2.length; q++){
       var of = dbAtkIsOff(a, kind, star, arr2[q]);
@@ -1900,9 +1919,9 @@ function dbRenderAtk(){
   for(i = 0; i < a.sub.length; i++) h += group("sub", a.sub[i].s, "副词条", a.sub[i].v);
   h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>％ 副词条（攻击力%）</span><span>" + a.subPct.length + " 个星级</span></div>";
   for(i = 0; i < a.subPct.length; i++) h += group("subPct", a.subPct[i].s, "副词条%", a.subPct[i].v);
-  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎯 攻击力%（沙 / 杯 / 头 · 仅 5★）</span><span>" + a.pct.length + " 档</span></div>";
-  h += group("pct", 0, "攻击力%（5★）", a.pct);
-  h += "<div class=\"muted\" style=\"margin-top:8px\">共 " + (a.main.length + a.sub.length) + " 组 · 禁用 " + a.off.length
+  h += "<div class=\"db-sechead\" style=\"margin-top:14px\"><span>🎯 攻击力%（沙 / 杯 / 头 主属性）</span><span>" + a.pct.length + " 个星级</span></div>";
+  for(i = 0; i < a.pct.length; i++) h += group("pct", a.pct[i].s, "攻击力%", a.pct[i].v);
+  h += "<div class=\"muted\" style=\"margin-top:8px\">共 " + (a.main.length + a.sub.length + a.subPct.length + a.pct.length) + " 组 · 禁用 " + a.off.length
      + " 条 · rev " + (a.rev || 0) + (a.ts ? " · 最近改 " + new Date(a.ts).toLocaleTimeString("zh-CN", { hour12: false }) : "")
      + "　⛔ = 禁用（不参与计算）/ ↩ 恢复 / × 删除</div>";
   box.innerHTML = h;
@@ -1944,34 +1963,25 @@ function dbAtkOff(kind, star, idx){
     dbBumpAtk();
   }, "攻击库已更新（禁用值不参与计算）· 正在同步到所有设备");
 }
-/* 攻击力%（沙 / 杯 / 头主属性）只有 5★ 这一组：选中这一项时星级锁死 5★，
-   避免「选了 4★ 却被归到 5★」看起来像 bug */
+/* 攻击力%（沙 / 杯 / 头主属性）现在按星级各有一组，1-5 星都能加，所以星级不再锁 */
 function dbAtkKindChg(){
   var k = $("dbAtkKind").value, s = $("dbAtkStar"), h = $("dbAtkStarHint");
   if(!s) return;
-  if(k === "pct"){
-    s.value = "5"; s.disabled = true; s.style.opacity = "0.45";
-    if(h) h.textContent = "（攻击力% 只有 5★，固定归 5★）";
-  } else {
-    s.disabled = false; s.style.opacity = "";
-    if(h) h.textContent = "";
-  }
+  s.disabled = false; s.style.opacity = "";
+  if(h) h.textContent = (k === "pct") ? "（攻击力% 按星级分开存）" : "";
 }
 function dbAtkAdd(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
   var kind = $("dbAtkKind").value, star = parseInt($("dbAtkStar").value, 10) || 5;
-  if(kind === "pct") star = 5;   /* 攻击力%（沙 / 杯 / 头主属性）只有 5 星一组 */
   var v = parseFloat($("dbAtkVal").value);
   if(!isFinite(v) || v < 0){ showErr("请填有效数值（0 = 不用这个部位）"); return; }
   v = Math.round(v * 1000000) / 1000000;
   mutate(function(){
     var a = dbEnsureAtk();
-    if(kind === "pct"){ a.pct.push(v); }
-    else {
-      var list = (kind === "main") ? a.main : (kind === "subPct") ? a.subPct : a.sub, arr = dbAtkArrOf(a, kind, star);
-      if(!arr){ list.push({ s: star, v: [v] }); list.sort(function(x, y){ return y.s - x.s; }); }
-      else if(arr.indexOf(v) < 0) arr.push(v);
-    }
+    var list = (kind === "pct") ? a.pct : (kind === "main") ? a.main : (kind === "subPct") ? a.subPct : a.sub;
+    var arr = dbAtkArrOf(a, kind, star);
+    if(!arr){ list.push({ s: star, v: [v] }); list.sort(function(x, y){ return y.s - x.s; }); }
+    else if(arr.indexOf(v) < 0) arr.push(v);
     dbBumpAtk();
   }, "已加入攻击库 · 正在同步到所有设备");
   $("dbAtkVal").value = "";
@@ -1984,7 +1994,7 @@ function dbAtkReset(){
     a.main = dbAtkToArr(DB_ATK.main);
     a.sub = dbAtkToArr(DB_ATK.sub);
     a.subPct = dbAtkToArr(DB_ATK.subPct || {});
-    a.pct = DB_ATK.pct.slice();
+    a.pct = dbAtkToArr(DB_ATK.pct || {});
     a.off = [];
     dbBumpAtk();
   }, "已恢复 APK 原始数据 · 正在同步到所有设备");
