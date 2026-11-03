@@ -1,11 +1,11 @@
 {
-  "code": 67,
-  "ver": "v67",
-  "file": "yeyu-v67.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v67.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v67/yeyu-v67.apk",
+  "code": 68,
+  "ver": "v68",
+  "file": "yeyu-v68.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v68.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v68/yeyu-v68.apk",
   "size": 41100053,
   "force": true,
   "date": "2026-11-04",
-  "note": "① 后台百分比库升级：和攻击库的攻击力%一样按 1-5 星级分成五组，每组独立加档 / 改值 / 删除 / 禁用，每组右侧有「⛔ 全禁 / ↩ 全恢复」，新增百分比档时可选星级；② 手机端同步：后台各星级启用的档位取并集参与计算，只禁某一星不影响其它星；③ 修复与稳定性优化。"
+  "note": "① 攻击计算器计算模式升级：圣遗物星级新增「1-5 星全部」（默认选中），各星级的主属性 / 副词条 / 攻击% / 副词条% 档位合并去重后全部参与计算；禁用规则更智能——某个档位只要还有任意星级没被禁用，就仍然参与计算，只有 1-5 星全部禁用才真正不参与；也可以随时切回单个星级单独计算。② 百分比计算器与生命求解器的「角色基础生命」输入框支持任意小数位（如 13789.15），全部精度参与计算。"
 }
