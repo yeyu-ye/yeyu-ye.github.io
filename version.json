@@ -1,11 +1,11 @@
 {
-  "code": 63,
-  "ver": "v63",
-  "file": "yeyu-v63.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v63.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v63/yeyu-v63.apk",
+  "code": 64,
+  "ver": "v64",
+  "file": "yeyu-v64.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v64.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v64/yeyu-v64.apk",
   "size": 41095957,
   "force": true,
   "date": "2026-11-03",
-  "note": "① 攻击计算器的「开始枚举」改为「开始计算」，结果区标题同步为「计算结果」；② 计算结果里的百分比属性改成带数值显示：主属性写「沙主52.08（7%）」、副词条写「沙副52.08（7%）」，数值一律按 基础攻击 × 百分比 折算（如 744 × 7% = 52.08）；③ 沙 / 杯 / 头主属性与副词条% 全部按同一规则折算，禁用值照旧不参与计算。"
+  "note": "① 基础攻击力输多少位小数都完整参与计算，结果也不再只显示两位（如 744.557 × 7% = 52.11899）；② 数据库现在可以填 0，0 代表「不用这个部位」，计算页下拉会显示「不用此部位」、加成为 0，后台和手机都能加 / 改 / 删这个 0；③ 攻击力%（沙 / 杯 / 头主属性）只属于 5 星，1-4 星不再显示这一组，数据库里也标明「仅 5★」。"
 }
