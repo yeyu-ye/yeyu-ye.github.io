@@ -6857,9 +6857,12 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 71;
+var APP_CODE = 72;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
-var ONLINE_MS = 5 * 60 * 1000;      // 5 分钟内有心跳就算在线
+var ONLINE_MS = 5 * 60 * 1000;      // 兜底值；读到数据后按「上报间隔」自动放大（见 refreshOnlineMs）
+function refreshOnlineMs(){           // v72：上报间隔随设备数变长，在线阈值必须跟着放大，否则永远判掉线
+  try{ ONLINE_MS = Math.max(5 * 60 * 1000, Math.round(presenceBase() * 1.6)); }catch(e){}
+}
 var LOG_MAX = 200, CHAT_MAX = 200, NOTICE_MAX = 60;
 var VER_URLS = [
   "https://yeyu-ye.github.io/version.json",
@@ -7992,7 +7995,7 @@ function openChatModal(ch){
   if(gistDataCache && gistDataCache.chat){ try{ chatPaint(gistDataCache, true, true); }catch(e){} }
   chatLoad(true);
   if(chatTimer) clearInterval(chatTimer);
-  chatTimer = setInterval(function(){ chatLoad(false); }, 2000);   // 聊天界面开着时 2 秒拉一次，消息更快到
+  chatTimer = setInterval(function(){ chatLoad(false); }, 4000);   // v72：聊天界面开着时 4 秒拉一次（2 秒 × 多台设备太吃配额）
 }
 function closeChatModal(){
   kbReset();
@@ -9835,6 +9838,7 @@ function gistWrite(data, cb, retry, _rotated){
         gistEtag = _et || null;
         gistFreshAt = Date.now();          // 刚写进去的就是服务器上最新的内容
         w403N = 0;                         // v38：写进去了，解除退避
+        wrMark();                          // v72：记一次写入，用于本地预算（每账号 500 次/小时）
         snapSave(data); if(cb) cb(true); return;
       }
       // 令牌被吊销 → 换一枚重来一次
@@ -9958,7 +9962,9 @@ function gistSync(cb){
     if(d.brand && me.brand !== d.brand){ me.brand = d.brand; changed = true; }
     if(d.android && me.android !== d.android){ me.android = d.android; changed = true; }
     if(!me.firstSeen){ me.firstSeen = now; changed = true; }
-    if(!me.lastSeen || (now - me.lastSeen) > 5 * 60 * 1000){
+    // v72：lastSeen 不再由心跳维护（那会让每次心跳都整份写回）。在线时间交给 livePingTick，
+    // 这里只在「超过 1 小时没记录」时兜底，避免心跳把写入额度耗在自己身上。
+    if(!me.lastSeen || (now - me.lastSeen) > 60 * 60 * 1000){
       me.lastSeen = now;
       me.launches = (me.launches || 0) + 1;
       changed = true;
@@ -9973,10 +9979,15 @@ var statusPollTimer = null;
 var heartTimer = null;
 // ⚠️v38：读取也计费！17 台手机 × 每 6 秒一读 = 每小时 10000+ 次请求，
 // 而 GitHub 只有 5000 次/小时 —— 配额一干，点「踢出」照样写不进去（又是没反应）。
-// 现在 20 秒一读（约 3000 次/小时），配额吃紧时 quotaFactor 会自动再放慢到 40 / 80 秒。
-var POLL_MS = 20000;
+// ⚠️v72 实测确认：带 If-None-Match 的 304 响应【不消耗配额】（同一 ETag 连读三次，remaining 纹丝不动），
+// 所以「读取」反而可以提速；真正卡死的是【写入】——GitHub 每账号 500 次/小时（还有 80 次/分钟），
+// 而 28 台设备每 3 分钟上报一次就是 560 次/小时，光在线上报就把额度顶穿了 → 后台一保存就 403。
+// 现在：读取 30 秒一轮（没变就是免费的 304），写入按设备数分摊预算（见 livePingGap）。
+// ⚠️ 读取不是越勤越好：别人一写，你的 ETag 就失效，下次必须整份下载（算 1 次配额）。
+//    28 台 × 每 30 秒 = 最坏 3360 次/小时，离 5000 还有余量；改成 12 秒就是 8400 次，直接超。
+var POLL_MS = 30000;
 var uiScrollUntil = 0;                // 正在滚动时跳过轮询，滚完再补，滑动更跟手
-var HEART_MS = 600000;               // 心跳：10 分钟完整上报一次（v38：原 3 分钟；状态检查靠 6 秒轮询，够用）
+var HEART_MS = 1800000;              // 心跳：30 分钟一次（v72；只查状态，不再为了刷 lastSeen 而写库）
 var POLL_BUSY = false;
 var gistEtag = null;                 // 条件请求用的 ETag：数据没变时返回 304，不消耗 API 配额
 var gistDataCache = null;
@@ -10002,6 +10013,53 @@ function quotaFactor(){                 // 1 = 正常；数字越大越慢
   if(quotaLeft < 300) return 4;
   if(quotaLeft < 1200) return 2;
   return 1;
+}
+
+/* ===================== v72：写入预算 =====================
+   GitHub 的写入上限是【每账号 500 次/小时 / 80 次/分钟】（官方文档「content-generating requests」），
+   跟令牌数量无关、跟 gist 数量也无关 —— 所以唯一出路是「少写 + 分摊 + 需要时再写」。
+   这里在本地记一份写入时间戳，任何设备算得出自己这一小时写了多少次，超预算就只压后「在线上报」，
+   聊天 / 计算器 / 后台指令这些用户主动触发的写入永远不受影响。 */
+var WR_KEY = "yy_wr_ts", WR_MAX_LOG = 800;
+function wrList(){
+  try{ var a = JSON.parse(localStorage.getItem(WR_KEY) || "[]"); return (a && a.length) ? a : []; }catch(e){ return []; }
+}
+function wrMark(){
+  try{
+    var a = wrList(); a.push(Date.now());
+    if(a.length > WR_MAX_LOG) a = a.slice(a.length - WR_MAX_LOG);
+    localStorage.setItem(WR_KEY, JSON.stringify(a));
+  }catch(e){}
+}
+function wrCount1h(){
+  var now = Date.now(), a = wrList(), n = 0;
+  for(var i = 0; i < a.length; i++){ if(now - a[i] < 3600000) n++; }
+  return n;
+}
+/* 每台设备每小时最多写这么多次（400 的八成留给在线上报，其余留给人主动操作） */
+function wrBudget(){ return Math.max(4, Math.round(360 / devCount())); }
+function wrOver(){ return wrCount1h() >= wrBudget(); }
+
+/* 当前有多少台设备（读到的最新库里算）；28 台就是 28 份上报要分摊同一份额度 */
+var devCountCache = 1;
+function devCount(){
+  try{
+    var d = gistDataCache && gistDataCache.dev, n = 0, k;
+    if(d && typeof d === "object"){ for(k in d){ if(Object.prototype.hasOwnProperty.call(d, k)) n++; } }
+    if(n) devCountCache = n;
+  }catch(e){}
+  return Math.max(1, devCountCache || 1);
+}
+/* 加一点随机抖动，避免几十台手机总在同一秒一起写（80 次/分钟那条也很容易被同时撞破） */
+function wrJitter(){ return 1 + (Math.random() * 0.24 - 0.12); }
+/* 不定抖动的「基础上报间隔」，给在线判定阈值用 */
+function presenceBase(){
+  var n = devCount();
+  var gap = Math.ceil(3600000 * n / 300);        // 每小时 300 次的预算摊到每台
+  gap = Math.max(120000, Math.min(1800000, gap)); // 2 分钟 ~ 30 分钟
+  if(deviceStatus === "pending") gap = Math.max(gap, 600000);
+  if(gistSlow) gap = Math.max(gap, 600000);
+  return gap;
 }
 // 冷启动先把上次的数据从本地捞出来：打开消息 / 日志 / 公告时 0 毫秒就有内容，网络回来再覆盖
 try{ var _sn = snapLoad(); if(_sn){ gistDataCache = _sn; gistCacheAt = 0; } }catch(e){}
@@ -10032,7 +10090,7 @@ function gistReadFast(cb){
           var d = null;
           try{ d = JSON.parse(f.content); }catch(e){ return; }
           // ⚠️ 只有 API 主通道返回的数据才算「校验过」；CDN 兜底可能是几分钟前的旧副本，绝不能拿去覆盖写入
-          if(d && d.dev){ gistDataCache = d; gistCacheAt = Date.now(); gistFreshAt = Date.now(); srvOkMark(); if(et) gistEtag = et; fin(d); }
+          if(d && d.dev){ gistDataCache = d; gistCacheAt = Date.now(); gistFreshAt = Date.now(); srvOkMark(); if(et) gistEtag = et; try{ refreshOnlineMs(); }catch(e){} fin(d); }
         });
       }).catch(function(){});
   }catch(e){}
@@ -10153,7 +10211,8 @@ function heartBeat(){
   // 关了锁也要心跳上报，否则后台看不到这台设备（管理员就没法管它）
   gistSync(function(st){
     if(!st) return;
-    try{ logOnline(); }catch(e){}        // 心跳顺便刷新一次「上线」记录，后台日志里就一直是最新的
+    // v72：心跳不再写「上线日志」。以前每 10 分钟一次日志 = 每台每小时 6 次写，
+    // 28 台就是 168 次/小时，白吃掉写入额度的三分之一。上线记录只在启动 / 手动标注时写。
     if(st === "pending" && licLockOff()) return;   // 关了锁：不强制等待授权，但被封禁照样生效
     enforceStatus(st);
   });
@@ -10171,21 +10230,28 @@ function livePingSync(data){
   try{ if(data && data.cfg){ livePingOn = !!data.cfg.livePing; if(livePingOn) livePingOkAt = Date.now(); } }catch(e){}
 }
 function livePingLive(){                           // 实时模式是否仍有效
-  // 后台关掉设备页后 cfg.livePing 会变 false，手机下次读就知道；
-  // 万一后台异常退出没关掉，最多再快写 3 分钟就自动降回慢速，不无限烧配额。
+  // v72：不再靠「20 秒一写」实现实时（28 台 × 20 秒 = 每小时 5000+ 次写，必被限流）。
+  // 改成后台点「📡 立即刷新在线」写一个 pingReq 时间戳，所有手机读到后各自上报一次。
   return livePingOn && (Date.now() - livePingOkAt) < 180000;
 }
+/* v72：后台发起的「立刻上报」请求（cfg.pingReq），2 分钟内有效 */
+function pingReqTs(){
+  try{
+    var t = Number((gistDataCache && gistDataCache.cfg && gistDataCache.cfg.pingReq) || 0);
+    return (t && (Date.now() - t) < 120000) ? t : 0;
+  }catch(e){ return 0; }
+}
+var pingReqDone = 0;
 function livePingGap(){
   // ⚠️v38 实测：17 台手机 × 每 60 秒写一次 = 每小时 1000+ 次写同一个 Gist
   // → GitHub 二级限流（PATCH 403、X-RateLimit-Remaining:0，而 GET 还显示剩 4909）
   // → 后台「点踢出 / 点允许 完全没反应」、打电话提示网络异常。
-  // 现在：平时 3 分钟一写；后台开着设备页 20 秒一写（且后台关掉后最多再快 3 分钟）。
-  var base;
-  if(w403N) base = Math.min(2880000, 180000 * Math.pow(2, w403N));   // 被限流过 → 成倍退避（最长 48 分钟）
-  else if(deviceStatus === "pending") base = 600000;                 // 待授权：10 分钟一次，别凑热闹
-  else base = livePingLive() ? 20000 : 180000;
-  if(gistSlow) base = Math.max(base, 300000);
-  return base * quotaFactor();
+  // ⚠️v72：GitHub 官方上限是【每账号 500 次/小时写】，28 台设备即使 3 分钟一报也超（560 次）。
+  // 所以间隔按【设备数】分摊：总数越多，每台报得越稀；同时加 ±12% 抖动，
+  // 免得几十台每次都在同一秒撞上去（还有 80 次/分钟那条）。
+  var base = presenceBase();
+  if(w403N) base = Math.min(1800000, base * Math.pow(2, w403N));   // 被限流过 → 成倍退避（最长 30 分钟）
+  return Math.round(base * wrJitter() * quotaFactor());
 }
 function livePingTick(){
   if(!gistEnabled() || document.hidden) return;
@@ -10195,7 +10261,15 @@ function livePingTick(){
   // ⚠️v38：刚被限流就别再撞了，退避时间没到就安静等着（否则限流窗口被自己撑大）
   if(w403N && (Date.now() - w403At) < 60000) return;
   if(livePingBusy) return;
-  if(Date.now() - livePingAt < livePingGap() - 80) return;
+  // v72：后台点了「📡 立即刷新在线」→ 所有手机在下一轮轮询（≤12 秒）内各上报一次。
+  // 这是一次性成本（28 台 = 28 次写），由人手动控制，不像原来的 20 秒一写会自己烧穿额度。
+  var pr = pingReqTs();
+  if(pr && pr > pingReqDone){
+    if(Date.now() - livePingAt < 15000) return;      // 刚写过就别重复
+  } else {
+    if(wrOver()) return;                             // v72：本地预算用完 → 只停「在线上报」，不影响聊天/计算器写入
+    if(Date.now() - livePingAt < livePingGap() - 80) return;
+  }
   livePingAt = Date.now();
   livePingBusy = true;
   // ⚠️ 最后一个参数 false = 禁止快车道：必须先从服务器拉最新（带 ETag，没变就是 304 不花钱）再改再写
@@ -10215,7 +10289,10 @@ function livePingTick(){
       if(!me.lastSeen || now - me.lastSeen > 60000) me.lastSeen = now;
       return true;
     }catch(e){ return false; }
-  }, function(){ livePingBusy = false; }, false);
+  }, function(ok){
+    livePingBusy = false;
+    if(ok){ var _pr = pingReqTs(); if(_pr) pingReqDone = _pr; }   // v72：这次的「立刻上报」已经完成
+  }, false);
 }
 
 function startStatusPolling(){
