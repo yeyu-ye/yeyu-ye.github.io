@@ -657,7 +657,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
         <div><label>数值</label><input type="number" id="dbAtkVal" step="any" placeholder="47 / 13.62 / 46.6 / 0" style="width:130px"></div>
         <div><label>&nbsp;</label><button class="p" onclick="dbAtkAdd()">➕ 添加</button></div>
       </div>
-      <div class="bar"><button class="sm" onclick="dbAtkReset()">↩ 恢复 APK 原始数据</button></div>
+      <div class="bar"><button class="p" onclick="dbAtkReset()">⚡ 一键默认数值</button><span style="color:#8b949e;font-size:11px;margin-left:8px">四类数值全部恢复成内置默认（就是现在这套实测档位），并清掉所有禁用记录</span></div>
       <div id="dbAtkList" style="max-height:520px;overflow-y:auto;border:1px solid #21262d;border-radius:10px;padding:10px;font-size:13px;margin-top:10px"></div>
     </div>
   </div>
@@ -2350,7 +2350,7 @@ function dbAtkAdd(){
 }
 function dbAtkReset(){
   if(!canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
-  if(!confirm("恢复成攻击计算器 APK 的原始数据？现在的改动会被覆盖。")) return;
+  if(!confirm("一键恢复默认数值？主属性 / 小攻击 / 攻击力% 四类数值全部回到内置默认（当前这套实测档位），所有禁用记录也会清空。")) return;
   mutate(function(){
     var a = dbEnsureAtk();
     a.main = dbAtkToArr(DB_ATK.main);
@@ -2359,7 +2359,7 @@ function dbAtkReset(){
     a.pct = dbAtkToArr(DB_ATK.pct || {});
     a.off = [];
     dbBumpAtk();
-  }, "已恢复 APK 原始数据 · 正在同步到所有设备");
+  }, "攻击库已恢复默认数值 · 正在同步到所有设备");
 }
 try{ dbTab("life"); }catch(e){}
 try{ dbAtkKindChg(); }catch(e){}
