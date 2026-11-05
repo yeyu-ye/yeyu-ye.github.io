@@ -1,11 +1,11 @@
 {
-  "code": 70,
-  "ver": "v70",
-  "file": "yeyu-v70.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v70.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v70/yeyu-v70.apk",
+  "code": 71,
+  "ver": "v71",
+  "file": "yeyu-v71.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v71.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v71/yeyu-v71.apk",
   "size": 41100053,
   "force": true,
-  "date": "2026-11-04",
-  "note": "攻击计算器弹窗改成半透明：打开后可以直接看到壁纸——预装动态壁纸、自己添加的图片/视频壁纸都能透出来。卡片换成半透明毛玻璃，壁纸再花文字也看得清。"
+  "date": "2026-11-05",
+  "note": "攻击计算器数据库：把后台已经改好的那套数值固化成内置默认数据（副词条攻击% 改为 4.08/4.66/5.25/5.83 等实测档位；主属性攻击% 的 1-5 星各自独立档位；1★ 小攻击按现状）。以后「恢复原始数据」恢复的就是这套。"
 }
