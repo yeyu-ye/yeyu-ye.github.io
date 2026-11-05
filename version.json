@@ -1,11 +1,11 @@
 {
-  "code": 71,
-  "ver": "v71",
-  "file": "yeyu-v71.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v71.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v71/yeyu-v71.apk",
-  "size": 41100053,
+  "code": 72,
+  "ver": "v72",
+  "file": "yeyu-v72.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v72.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v72/yeyu-v72.apk",
+  "size": 41104149,
   "force": true,
   "date": "2026-11-05",
-  "note": "攻击计算器数据库：把后台已经改好的那套数值固化成内置默认数据（副词条攻击% 改为 4.08/4.66/5.25/5.83 等实测档位；主属性攻击% 的 1-5 星各自独立档位；1★ 小攻击按现状）。以后「恢复原始数据」恢复的就是这套。"
+  "note": "修复「后台老是提示服务器繁忙（限流）」：GitHub 每个账号每小时只允许 500 次写入，以前 28 台设备每 3 分钟上报一次就已经 728 次/小时，必然被拦。新版在线上报按设备台数自动分摊（设备越多间隔越长，始终控制在 300 次/小时以内），心跳从上线的每 10 分钟一次改成 30 分钟且不再写日志；读取提速到 30 秒一轮（数据没变时是免费的条件请求）。后台设备页新增「📡 立即刷新在线」，点一下所有手机在 12 秒内各上报一次，需要看实时状态时再点。"
 }
