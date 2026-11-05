@@ -394,12 +394,12 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
       <input type="text" id="logKw" placeholder="筛选机型 / 设备 ID / 页面" oninput="renderLog()" style="flex:1;min-width:170px">
       <select id="liveRate" onchange="liveRateSet(this.value)" style="width:auto;min-width:96px">
         <option value="1000">⚡ 1 秒（费配额）</option>
-        <option value="2000" selected>2 秒</option>
+        <option value="2000">2 秒（费配额）</option>
         <option value="5000">5 秒</option>
+        <option value="8000" selected>8 秒（推荐）</option>
         <option value="0">手动</option>
       </select>
-      <label class="sw" style="margin:0;white-space:nowrap" title="打开后手机会每 2 秒上报一次，在线状态和延迟显示才准">
-        <input type="checkbox" id="livePingSw" onchange="livePingSet(this.checked)"> 手机 20 秒上报</label>
+      <button class="sm" onclick="pingAllNow()" title="让所有在线手机立刻上报一次（一次点击 = 每台写 1 次，约 12 秒内刷出来）。平时靠自动分摊上报，不点也不会掉线">📡 立即刷新在线</button>
       <button class="sm" onclick="load()">🔄 立即刷新</button>
       <button class="sm danger" onclick="mutate(function(){ data.log = []; }, '已清空日志')">🗑 清空日志</button>
     </div>
@@ -733,7 +733,7 @@ textarea{width:100%;background:rgba(13,17,23,.62);border:1px solid rgba(48,54,61
     <h2>📖 说明</h2>
     <div class="muted">
       · <b>新设备装好默认是「待授权」</b>，打不开 APP，必须你在下面点「允许」。<br>
-      · 「连接」列：5 分钟内有上报显示 🟢 在线，否则 ⚪ 离线。<br>
+      · 「连接」列：最近有上报显示 🟢 在线（阈值随设备数自动放宽，设备越多上报越稀，避免被 GitHub 限流），否则 ⚪ 离线。想看实时状态点「📡 立即刷新在线」。<br>
       · 点「踢出」后，对方下次打开 APP 会被锁死，断网也锁。要恢复就点「允许」。<br>
       · <b>批量操作</b>：勾选设备左边的小方框 → 点「删除选中 / 批量允许 / 批量踢出」，连点多次会合并成一次保存，界面立刻更新不卡顿。<br>
       · <b>顶部右上角</b>会显示保存状态：待保存 / 保存中 / 已保存。<br>
@@ -2917,6 +2917,7 @@ function load(retried){
     var rs = document.querySelectorAll('input[name=mode]');
     for(var i=0;i<rs.length;i++) rs[i].disabled = !canEditNow;
     backup(); offline = false; stopRetry(); setOfflineBar(null);
+    try{ refreshAdminOnlineMs(); }catch(e){}     // v72：在线阈值随设备数自动放宽
     render();
     if(curRole === "founder") renderUsers();
   }).catch(function(e){
@@ -3377,7 +3378,7 @@ var ONLINE_MS_ADMIN = 5 * 60 * 1000;
    后台这里每秒重画一次，延迟和「停留在哪一页」都是实时的。 */
 /* ⚠️ 这个阈值必须比手机平时上报间隔（v38：livePingGap 的 180 秒）大，否则永远判成掉线 */
 var LIVE_STALE = 240000;                // 超过 4 分钟没上报 = 掉线（v38：手机平时 3 分钟一写，阈值必须比它大）
-var logLiveTimer = null, logLiveMs = 4000;
+var logLiveTimer = null, logLiveMs = 8000;    // v72：4 秒太费（每次数据变化都要整份下载 54KB），改 8 秒
 function lagMs(d, now){
   if(d.ping){ var l = now - d.ping; return l < 0 ? 0 : l; }
   return d.lastSeen ? (now - d.lastSeen) : -1;
@@ -3461,20 +3462,36 @@ function logLiveRestart(){
   }, logLiveMs);
 }
 function livePingSet(on){
-  if(!data || !data.cfg) return;
-  if(typeof canEdit === "function" && !canEdit()) return;   // 成员只读：静默跳过，不弹提示
-  if(!!data.cfg.livePing === !!on) return;
-  mutate(function(){ data.cfg.livePing = on ? 1 : 0; },
-    on ? "已让手机高频上报（延迟显示更准）" : "手机上报已恢复为 60 秒一次");
+  // v72：不再有「手机高频上报」开关。GitHub 每账号只允许 500 次写/小时，
+  // 开着设备页就 20 秒一写会让 28 台设备每小时写 5000+ 次 → 后台所有保存都 403。
+  // 现在改成按设备数分摊的自动上报 + 需要时点「📡 立即刷新在线」（见 pingAllNow）。
+}
+/* v72：一键让所有手机立刻上报一次在线状态
+   成本 = 设备台数（28 台 ≈ 28 次写），由人手动控制频率；不点也不影响正常显示。 */
+function pingAllNow(){
+  if(!data || !data.cfg){ showErr("还没读到数据，请先点「🔄 立即刷新」。"); return; }
+  if(typeof canEdit === "function" && !canEdit()){ showErr("你的权限是「成员」，只能查看。"); return; }
+  mutate(function(){ data.cfg.pingReq = Date.now(); }, "已通知所有手机立刻上报，约 12 秒后在线状态就准了");
+  setTimeout(function(){ try{ load(); }catch(e){} }, 12000);
+}
+/* v72：在线阈值跟着「设备数决定的上报间隔」走，否则设备一多、上报一变稀，全都判成掉线 */
+function adminPresenceGap(){
+  var n = 1;
+  try{ n = Object.keys((data && data.dev) || {}).length || 1; }catch(e){}
+  return Math.max(120000, Math.min(1800000, Math.ceil(3600000 * n / 300)));
+}
+function refreshAdminOnlineMs(){
+  try{
+    var base = adminPresenceGap();
+    ONLINE_MS_ADMIN = Math.max(5 * 60 * 1000, Math.round(base * 1.6));
+    LIVE_STALE = Math.max(120000, Math.round(base * 1.6));
+  }catch(e){}
 }
 function liveAutoOn(){
   logLiveRestart();
-  var el = $("livePingSw"); if(el) el.checked = true;
-  livePingSet(true);
 }
 function liveAutoOff(){
   if(logLiveTimer){ clearInterval(logLiveTimer); logLiveTimer = null; }
-  livePingSet(false);
 }
 function pad2a(n){ return (n < 10 ? "0" : "") + n; }
 function fmtClockA(ts){
