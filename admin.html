@@ -1808,6 +1808,8 @@ function dbRenderMas(){
 function dbRenderPct(){
   var box = $("dbPctList"); if(!box) return;
   var h = "", total = 0, si, i;
+  h += '<div class="muted" style="font-size:11px;margin-bottom:6px">⛔ 禁用 = 这一档立刻不参与手机「百分比」页的计算。'
+     + 'APP 那边不区分星级，所以任一星级禁用，这一档就整档停用（其余星级同样不再使用）。</div>';
   for(si = 0; si < PCT_STARS.length; si++){
     var star = PCT_STARS[si], rows = dbPctViewStar(star);
     rows.sort(function(a,b){ return a.v - b.v; });
