@@ -692,7 +692,7 @@ nav button.active{color:var(--gold);background:transparent}
         <div style="color:#ffc107;font-size:14px;font-weight:600">ℹ️ 说明</div>
         <div style="color:var(--sub);font-size:12px;margin-top:6px;line-height:1.6">
           花数值列表 × 5星花至1星花共61个；毛/沙/杯/头各16个基础数值。<br>
-          启用沙/头/杯百分比后，沙、杯和头会额外加入 基础生命×百分比 的数值（7%~46.6%共21档）。<br>
+          启用沙/头/杯百分比后，沙、杯和头会额外加入 基础生命×百分比 的数值（<span id="lifePctHint">7%~46.6% 共 21 档</span>）。<br>
           启用额外项后，加入 基础生命×20%/22%/25% 三个额外数值。<br>
           计算花/毛/沙/杯/头/(额外)所有组合，筛选总和在范围内的结果。
         </div>
@@ -1554,6 +1554,7 @@ function rebuildDataWithCustom(){
     }
   }
   /* 后台下发的「禁用」清单（数据保留、不参与计算）：从三张表里临时剔除，参考表/计算都不再出现 */
+  var pctOffGlobal = {};      /* v73：百分比禁用按「值」全局生效（百分比页不分星级） */
   var offs = loadCalcOff();
   for(var w=0; w<offs.length; w++){
     var of2 = offs[w];
@@ -1576,16 +1577,24 @@ function rebuildDataWithCustom(){
       }
       masteryData[of2.p] = out6;
     } else if(of2.t === "percent"){
-      var pTargets2 = (of2.s || 0) === 0 ? PCT_STAR_LIST : [Number(of2.s) || 5];
-      for(var t3 = 0; t3 < pTargets2.length; t3++){
-        var gr2 = pctGroups[pTargets2[t3]]; if(!gr2) continue;
-        var out7 = [];
-        for(var z=0; z<gr2.length; z++){
-          if(Math.abs(gr2[z] - fv) < 0.011) continue;
-          out7.push(gr2[z]);
-        }
-        pctGroups[pTargets2[t3]] = out7;
+      /* ⚠️v73：百分比页不区分星级 —— 后台在任一星级禁用某档，就等于这一档不能用。
+         以前只从被禁的那个星级组里剔除，其余 4 组还留着同一个值，并集一算又回来了，
+         表现就是「后台禁用了手机照样算」。现在整档从所有星级组剔除。 */
+      pctOffGlobal[Math.round(fv * 1e10) / 1e10] = 1;
+    }
+  }
+  /* v73：把全局禁用的百分比档从每个星级组里清掉（弹窗、计算池两边一致） */
+  for(var po in pctOffGlobal){
+    if(!pctOffGlobal.hasOwnProperty(po)) continue;
+    var pvOff = Number(po);
+    for(var ps = 0; ps < PCT_STAR_LIST.length; ps++){
+      var gOff = pctGroups[PCT_STAR_LIST[ps]]; if(!gOff) continue;
+      var gKeep = [];
+      for(var gk = 0; gk < gOff.length; gk++){
+        if(Math.abs(gOff[gk] - pvOff) < 0.011) continue;
+        gKeep.push(gOff[gk]);
       }
+      pctGroups[PCT_STAR_LIST[ps]] = gKeep;
     }
   }
   /* 各星级启用档位取并集 → 参与计算的百分比池（去重升序） */
@@ -1601,6 +1610,25 @@ function rebuildDataWithCustom(){
   allPctRates.sort(function(a,b){return a-b;});
   /* 暴露各星级档位组给「沙/头/杯百分比」选择弹窗（与后台百分比库同源同步） */
   try{ window._pctGroups = pctGroups; }catch(e){}
+  /* ⚠️v73：后台禁用 / 删除 / 改走的档位，必须同步从「已勾选」里移掉。
+     以前只改库、不动已选列表 —— 用户先勾了 46.6，后台再禁用 46.6，
+     计算仍然按旧勾选跑，看起来就是「禁用无效」。 */
+  try{
+    var selOld = window._selectedPctRates || [], selKeep = [];
+    for(var sk = 0; sk < selOld.length; sk++){
+      var sv2 = Math.round(selOld[sk] * 1e10) / 1e10;
+      if(allPctRates.indexOf(sv2) >= 0) selKeep.push(selOld[sk]);
+    }
+    window._selectedPctRates = selKeep;
+    if(typeof updatePctSelectDisplay === "function") updatePctSelectDisplay();
+    var psm = document.getElementById("pctSelectModal");
+    if(psm && psm.classList && psm.classList.contains("show")) initPctSelectGrid();
+    /* 说明文字里的档位范围也跟着后台变，别再写死 21 档 */
+    var hint = document.getElementById("lifePctHint");
+    if(hint && allPctRates.length){
+      hint.textContent = allPctRates[0] + "%~" + allPctRates[allPctRates.length - 1] + "% 共 " + allPctRates.length + " 档";
+    }
+  }catch(e){}
 }
 
 /* 后台下发的内置值覆盖清单（后台 dbCard 生成） */
@@ -3407,7 +3435,11 @@ function atkPushNow(){
 var lifeWorker = null;
 function calcLifeSum(){
   var baseLife = parseFloat(document.getElementById("lifeBase").value);
-  var selectedPctRates = window._selectedPctRates || [];
+  /* ⚠️v73：只保留当前库里真实存在的百分比档位。
+     后台禁用 / 删除过的档位就算还留在旧勾选里，也一律不参与计算。 */
+  var selectedPctRates = (window._selectedPctRates || []).filter(function(r){
+    return allPctRates.indexOf(Math.round(r * 1e10) / 1e10) >= 0;
+  });
   var selectedExtraRates = window._selectedExtraRates || [];
   var enablePct = selectedPctRates.length > 0;
   var enableExtra = selectedExtraRates.length > 0;
@@ -6857,7 +6889,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 72;
+var APP_CODE = 73;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 兜底值；读到数据后按「上报间隔」自动放大（见 refreshOnlineMs）
 function refreshOnlineMs(){           // v72：上报间隔随设备数变长，在线阈值必须跟着放大，否则永远判掉线
