@@ -2768,26 +2768,50 @@ function atkMoveOff(k, s, from, to){
     if(o && atkK(o.k) === k && Number(o.s || 0) === s0 && Math.abs(Number(o.v) - Number(from)) < 1e-9) o.v = atkRound(to);
   }
 }
+/* v74：某数值出现在哪些星级的池里（降序），用于全星模式给档位标星级 */
+function atkStarsHave(kind, v){
+  var m = ATK_DB[kind] || {}, out = [], k, i;
+  var key = Math.round(atkNum(v) * 1000000);
+  if(!isFinite(key)) return out;
+  for(k in m){
+    if(!Object.prototype.hasOwnProperty.call(m, k)) continue;
+    var s = parseInt(k, 10); if(!(s > 0)) continue;
+    var arr = m[k] || [];
+    for(i = 0; i < arr.length; i++){
+      if(Math.round(atkNum(arr[i]) * 1000000) === key){ out.push(s); break; }
+    }
+  }
+  out.sort(function(a, b){ return b - a; });
+  return out;
+}
+/* 全星模式（star=0）给数值补星级标记：单星「·5★」，连续区间「·3-5★」，离散「·1/3★」 */
+function atkStarTag(kind, v){
+  if(Number(atkState.star) !== 0) return "";
+  if(atkNum(v) === 0) return "";
+  var st = atkStarsHave(kind, v), n = st.length;
+  if(!n) return "";
+  if(n === 1) return "·" + st[0] + "★";
+  if(st[0] - st[n - 1] + 1 === n) return "·" + st[n - 1] + "-" + st[0] + "★";
+  return "·" + st.join("/") + "★";
+}
 function atkPickMain(star){
-  var m = ATK_DB.main, st = atkStarsOf(m), i;
+  var m = ATK_DB.main;
   if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
+  /* v74：某星级没数据就返回空池，不再悄悄借 5★ 的档位（借过去=把 5★ 数值安给别的星级） */
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
-  for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
 }
 function atkPickSub(star){
-  var m = ATK_DB.sub, st = atkStarsOf(m), i;
+  var m = ATK_DB.sub;
   if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
-  for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
 }
 /* 副词条百分比（攻击力%）的档位池 */
 function atkPickSubPct(star){
-  var m = ATK_DB.subPct || {}, st = atkStarsOf(m), i;
+  var m = ATK_DB.subPct || {};
   if(Number(star) === 0) return { s: 0, v: atkUnionOf(m) };
   if(m[star] && m[star].length) return { s: Number(star), v: m[star] };
-  for(i = 0; i < st.length; i++){ if(m[st[i]] && m[st[i]].length) return { s: st[i], v: m[st[i]] }; }
   return { s: Number(star), v: [] };
 }
 /* 主属性攻击力%（沙 / 杯 / 头）的档位池：按星级各一组，没有就只显示「不计」 */
@@ -2841,7 +2865,7 @@ function atkMainOptions(slot){
     out.push({ idx: -1, label: "不计" });
     for(i = 0; i < arr.length; i++){
       if(atkIsOff("main", pm.s, arr[i])) continue;
-      out.push({ idx: i, label: atkNum(arr[i]) === 0 ? "不用此部位" : ((pm.s > 0 ? "Lv" + i + " · " : "") + atkFmt(arr[i])) });
+      out.push({ idx: i, label: atkNum(arr[i]) === 0 ? "不用此部位" : ((pm.s > 0 ? "Lv" + i + " · " : "") + atkFmt(arr[i]) + atkStarTag("main", arr[i])) });
     }
     return out;
   }
@@ -2852,7 +2876,7 @@ function atkMainOptions(slot){
   for(i = 0; i < arr.length; i++){
     if(atkIsOff("pct", pp2.s, arr[i])) continue;
     var pv1 = atkNum(arr[i]);
-    out.push({ idx: i, label: pv1 === 0 ? "不用此部位" : (atkFmt(arr[i]) + "% · " + (base > 0 ? atkFmt(base * pv1 / 100) : "—")) });
+    out.push({ idx: i, label: pv1 === 0 ? "不用此部位" : (atkFmt(arr[i]) + "%" + atkStarTag("pct", arr[i]) + " · " + (base > 0 ? atkFmt(base * pv1 / 100) : "—")) });
   }
   return out;
 }
@@ -2874,14 +2898,14 @@ function atkSubOptionsFor(slot, mainIdx){
     var ps = atkPickSub(Number(atkState.star));
     for(i = 0; i < ps.v.length; i++){
       if(atkIsOff("sub", ps.s, ps.v[i])) continue;
-      out.push({ key: "f" + i, label: atkNum(ps.v[i]) === 0 ? "不用此部位" : ("小攻击 " + atkFmt(ps.v[i])) });
+      out.push({ key: "f" + i, label: atkNum(ps.v[i]) === 0 ? "不用此部位" : ("小攻击 " + atkFmt(ps.v[i]) + atkStarTag("sub", ps.v[i])) });
     }
   }
   if(t.pct){
     var pp = atkPickSubPct(Number(atkState.star));
     for(i = 0; i < pp.v.length; i++){
       if(atkIsOff("subpct", pp.s, pp.v[i])) continue;
-      out.push({ key: "p" + i, label: atkNum(pp.v[i]) === 0 ? "不用此部位" : ("攻击% " + atkFmt(pp.v[i]) + "%" + (base > 0 ? "·" + atkFmt(base * pp.v[i] / 100) : "")) });
+      out.push({ key: "p" + i, label: atkNum(pp.v[i]) === 0 ? "不用此部位" : ("攻击% " + atkFmt(pp.v[i]) + "%" + atkStarTag("subPct", pp.v[i]) + (base > 0 ? "·" + atkFmt(base * pp.v[i] / 100) : "")) });
     }
   }
   return out;
@@ -2890,27 +2914,85 @@ function atkSubLabel(key){
   if(!key) return "";
   var t = key.charAt(0), i = parseInt(key.slice(1), 10);
   if(!(i >= 0)) return "";
-  if(t === "f"){ var a = atkPickSub(Number(atkState.star)).v; return i < a.length ? atkFmt(a[i]) : ""; }
-  if(t === "p"){ var b = atkPickSubPct(Number(atkState.star)).v; return i < b.length ? (atkFmt(b[i]) + "%") : ""; }
+  if(t === "f"){ var a = atkPickSub(Number(atkState.star)).v; return i < a.length ? (atkFmt(a[i]) + atkStarTag("sub", a[i])) : ""; }
+  if(t === "p"){ var b = atkPickSubPct(Number(atkState.star)).v; return i < b.length ? (atkFmt(b[i]) + "%" + atkStarTag("subPct", b[i])) : ""; }
   return "";
 }
-function atkMainVal(slotKey, idx){
+function atkMainVal(slotKey, idx, star){
   if(idx < 0) return 0;
   var slot = null, i;
   for(i = 0; i < ATK_SLOTS.length; i++) if(ATK_SLOTS[i].key === slotKey) slot = ATK_SLOTS[i];
   if(!slot) return 0;
-  if(slot.type === "main"){ var a = atkPickMain(Number(atkState.star)).v; return idx < a.length ? atkNum(a[idx]) : 0; }
-  if(slot.type === "pct"){ var p = atkPickPct(Number(atkState.star)).v; if(idx >= p.length) return 0; return atkNum(atkState.base) * atkNum(p[idx]) / 100; }
+  var st = (star === undefined || star === null) ? Number(atkState.star) : Number(star);
+  if(slot.type === "main"){ var a = atkPickMain(st).v; return idx < a.length ? atkNum(a[idx]) : 0; }
+  if(slot.type === "pct"){ var p = atkPickPct(st).v; if(idx >= p.length) return 0; return atkNum(atkState.base) * atkNum(p[idx]) / 100; }
   return 0;
 }
 /* 副词条贡献值：小攻击=固定值；攻击%=基础攻击 × 百分比 */
-function atkSubVal(key){
+function atkSubVal(key, star){
   if(!key) return 0;
   var t = String(key).charAt(0), i = parseInt(String(key).slice(1), 10);
   if(!(i >= 0)) return 0;
-  if(t === "f"){ var a = atkPickSub(Number(atkState.star)).v; return i < a.length ? atkNum(a[i]) : 0; }
-  if(t === "p"){ var b = atkPickSubPct(Number(atkState.star)).v; return i < b.length ? (atkNum(atkState.base) * atkNum(b[i]) / 100) : 0; }
+  var st = (star === undefined || star === null) ? Number(atkState.star) : Number(star);
+  if(t === "f"){ var a = atkPickSub(st).v; return i < a.length ? atkNum(a[i]) : 0; }
+  if(t === "p"){ var b = atkPickSubPct(st).v; return i < b.length ? (atkNum(atkState.base) * atkNum(b[i]) / 100) : 0; }
   return 0;
+}
+/* v74：取主属性在指定星级池里的「原值」（pct 部位是百分比本身，不是 贡献值） */
+function atkMainRawVal(slotKey, idx, star){
+  var slot = null, i;
+  for(i = 0; i < ATK_SLOTS.length; i++) if(ATK_SLOTS[i].key === slotKey) slot = ATK_SLOTS[i];
+  if(!slot || !(idx >= 0)) return 0;
+  var st = (star === undefined || star === null) ? Number(atkState.star) : Number(star);
+  if(slot.type === "main"){ var a = atkPickMain(st).v; return idx < a.length ? atkNum(a[idx]) : 0; }
+  if(slot.type === "pct"){ var p = atkPickPct(st).v; return idx < p.length ? atkNum(p[idx]) : 0; }
+  return 0;
+}
+/* v74：在当前星级的池里按「数值」找主属性下标（换星级后同下标=不同数值，必须按值重定位） */
+function atkFindMainIdx(slotKey, val){
+  if(!(atkNum(val) > 0)) return -1;
+  var slot = null, i;
+  for(i = 0; i < ATK_SLOTS.length; i++) if(ATK_SLOTS[i].key === slotKey) slot = ATK_SLOTS[i];
+  if(!slot) return -1;
+  var kind = slot.type === "main" ? "main" : (slot.type === "pct" ? "pct" : null);
+  if(!kind) return -1;
+  var pk = (kind === "main") ? atkPickMain(Number(atkState.star)) : atkPickPct(Number(atkState.star));
+  var key = Math.round(atkNum(val) * 1000000);
+  for(i = 0; i < pk.v.length; i++){
+    if(Math.round(atkNum(pk.v[i]) * 1000000) !== key) continue;
+    if(atkIsOff(kind, pk.s, pk.v[i])) continue;
+    return i;
+  }
+  return -1;
+}
+/* v74：在当前星级的池里按「数值」找副词条 key（f 下标 / p 下标），优先保持原类型 */
+function atkFindSubKey(slot, mainIdx, oldKey, val){
+  if(!(atkNum(val) > 0)) return "";
+  var t0 = String(oldKey || "").charAt(0);
+  var tt = atkSubTypes(slot, mainIdx);
+  var key = Math.round(atkNum(val) * 1000000), i;
+  var tryList = (t0 === "p") ? ["p", "f"] : ["f", "p"];
+  for(var n = 0; n < tryList.length; n++){
+    var t = tryList[n];
+    if(t === "f" && tt.flat){
+      var a = atkPickSub(Number(atkState.star));
+      for(i = 0; i < a.v.length; i++){
+        if(Math.round(atkNum(a.v[i]) * 1000000) !== key) continue;
+        if(atkIsOff("sub", a.s, a.v[i])) continue;
+        return "f" + i;
+      }
+    }
+    if(t === "p" && tt.pct){
+      var b = atkPickSubPct(Number(atkState.star));
+      for(i = 0; i < b.v.length; i++){
+        var pv = atkNum(atkState.base) * atkNum(b.v[i]) / 100;
+        if(Math.round(pv * 1000000) !== key) continue;
+        if(atkIsOff("subpct", b.s, b.v[i])) continue;
+        return "p" + i;
+      }
+    }
+  }
+  return "";
 }
 /* 当前选中的那一档是否已被禁用 / 已删除 —— 是的话就不能再算进结果里 */
 function atkSelOff(kind, slot, idx){
@@ -3028,12 +3110,22 @@ function atkRenderSum(){
 function atkSetBase(v){ atkState.base = v; atkRenderCalc(); }
 function atkSetRange(which, v){ if(which === "min") atkState.min = v; else atkState.max = v; atkRenderSum(); }
 function atkSetStar(v){
+  var oldStar = Number(atkState.star);
   atkState.star = atkNum(v);
-  for(var i = 0; i < ATK_SLOTS.length; i++){
+  var i;
+  for(i = 0; i < ATK_SLOTS.length; i++){
     var slot = ATK_SLOTS[i], st = atkState.slots[slot.key];
-    var mm = slot.type === "main" ? atkPickMain(atkState.star).v.length
-           : (slot.type === "pct" ? atkPickPct(atkState.star).v.length : 0);
-    if(st.main >= mm) st.main = -1;
+    /* v74：按「数值」重定位选择。以前按下标保留，同一下标在两个星级的池里是
+       不同数值 —— 5★ 选的档位切到别的星级就悄悄变成 5★ 的值安在别的星级上 */
+    if(st.main >= 0){
+      var mv = atkMainRawVal(slot.key, st.main, oldStar);
+      st.main = mv > 0 ? atkFindMainIdx(slot.key, mv) : -1;
+    }
+    if(st.sub){
+      var sv = atkSubVal(st.sub, oldStar);
+      st.sub = atkFindSubKey(slot, st.main, st.sub, sv);
+    }
+    if(atkSelOff("main", slot, st.main)) st.main = -1;
     if(atkSubOff(slot, st.main, st.sub)) st.sub = "";
   }
   atkRenderCalc();
@@ -3075,16 +3167,20 @@ function atkMainLabel(slot, idx, val){
     if(raw !== null && raw !== undefined && atkNum(raw) === 0) return "不用此部位";
   }
   if(slot.type === "pct" && idx >= 0 && pcArr[idx] !== undefined){
-    var pv = atkFmt(pcArr[idx]) + "%";
+    var pv = atkFmt(pcArr[idx]) + "%" + atkStarTag("pct", pcArr[idx]);
     if(atkNum(atkState.base) > 0) return slot.label + "主" + atkFmt(val) + "（" + pv + "）";
     return slot.label + "主" + pv;
+  }
+  if(slot.type === "main" && idx >= 0){
+    var pmv = atkPickMain(Number(atkState.star)).v;
+    if(idx < pmv.length) return slot.label + "主" + atkFmt(val) + atkStarTag("main", pmv[idx]);
   }
   return slot.label + "主" + atkFmt(val);
 }
 /* 副词条百分比的标签：同样写成「花副52.08（7%）」 */
 function atkSubPctLabel(slot, pctVal){
   if(atkNum(pctVal) === 0) return "不用此部位";
-  var pv = atkFmt(pctVal) + "%", base = atkNum(atkState.base);
+  var pv = atkFmt(pctVal) + "%" + atkStarTag("subPct", pctVal), base = atkNum(atkState.base);
   if(base > 0) return slot.label + "副" + atkFmt(base * atkNum(pctVal) / 100) + "（" + pv + "）";
   return slot.label + "副" + pv;
 }
@@ -3384,7 +3480,25 @@ function atkSync(d){
     var nd = atkNormalize(a), no = atkOffList(a.off);
     var sig = atkSig(nd, no);
     if(sig === atkSigApplied) return;
+    /* v74：换库前先记下已选档位的「数值」，换完按数值重定位。远程库一变（管理员
+       改/删档），同下标就是不同数值 —— 不能让旧下标悄悄指向别的档 */
+    var oldSel = [], i;
+    for(i = 0; i < ATK_SLOTS.length; i++){
+      var slot0 = ATK_SLOTS[i], st0 = atkState.slots[slot0.key];
+      oldSel.push({
+        main: st0.main >= 0 ? atkMainRawVal(slot0.key, st0.main) : -1,
+        sub: st0.sub ? atkSubVal(st0.sub) : 0,
+        subKey: st0.sub || ""
+      });
+    }
     ATK_DB = nd; ATK_OFF = no; atkSigApplied = sig;
+    for(i = 0; i < ATK_SLOTS.length; i++){
+      var slot1 = ATK_SLOTS[i], st1 = atkState.slots[slot1.key], os = oldSel[i];
+      st1.main = os.main > 0 ? atkFindMainIdx(slot1.key, os.main) : -1;
+      st1.sub = os.sub > 0 ? atkFindSubKey(slot1, st1.main, os.subKey, os.sub) : "";
+      if(atkSelOff("main", slot1, st1.main)) st1.main = -1;
+      if(atkSubOff(slot1, st1.main, st1.sub)) st1.sub = "";
+    }
     atkSaveLocal();
     try{
       var md = document.getElementById("atkModal");
@@ -6889,7 +7003,7 @@ function renderMgrSection(){
 }
 
 /* ==================== 设备日志 / 在线状态 / 聊天 / 版本更新 ==================== */
-var APP_CODE = 73;
+var APP_CODE = 74;
 var APP_VER  = "v" + APP_CODE;   // ⚠️ 必须跟着 APP_CODE 走：以前写死 v16，更新弹窗永远显示「当前 v16」
 var ONLINE_MS = 5 * 60 * 1000;      // 兜底值；读到数据后按「上报间隔」自动放大（见 refreshOnlineMs）
 function refreshOnlineMs(){           // v72：上报间隔随设备数变长，在线阈值必须跟着放大，否则永远判掉线
