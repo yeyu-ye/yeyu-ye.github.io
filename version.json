@@ -1,11 +1,11 @@
 {
-  "code": 73,
-  "ver": "v73",
-  "file": "yeyu-v73.apk",
-  "apk": "https://yeyu-ye.github.io/yeyu-v73.apk",
-  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v73/yeyu-v73.apk",
+  "code": 74,
+  "ver": "v74",
+  "file": "yeyu-v74.apk",
+  "apk": "https://yeyu-ye.github.io/yeyu-v74.apk",
+  "cdn": "https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v74/yeyu-v74.apk",
   "size": 41104149,
   "force": true,
-  "date": "2026-11-19",
-  "note": "修复「后台禁用了百分比，手机照样算」：以前百分比页用的是你之前勾选的档位，后台改库不会动这份勾选；而且只在一个星级禁用，其余星级还留着同一个值，一合并又回来了。现在后台禁用哪一档，百分比页立刻整档停用（所有星级一起停），已勾选里的失效档位也会自动清掉，计算、弹窗、参考表三处一致。"
+  "date": "2026-11-23",
+  "note": "修复攻击计算器「5星百分比副词条安到别的星级」：换星级以前是按下标保留已选档位，同一下标在不同星级是不同数值（5★ 选的档切到别的星级就变成错的）；某星级数据缺失时还会悄悄借 5★ 的档位。现在换星级、远程库同步都按数值重定位，数值不会漂移；某星级没数据就显示空，不再借别星级的。「1-5 星全部」模式下所有档位标注所属星级（如 4.08%·5★），一眼看清哪个值属于哪星。"
 }
