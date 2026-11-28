@@ -182,7 +182,7 @@ h1 { font-size: 24px; margin-bottom: 8px; color: #58a6ff; }
     </div>
     <a id="dlBtn" href="https://yeyu-ye.github.io/yeyu-v74.apk" class="download-btn" download>⬇ 下载 APK</a>
     <div class="size" id="dlSize">文件大小：8.7 MB · 直连下载</div>
-    <a id="dlAlt" href="https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v74/yeyu-v74.apk" class="alt-link">备用下载（jsDelivr 加速节点）</a>
+    <a id="dlAlt" href="https://yeyu-ye.github.io/yeyu-v74.apk" class="alt-link" style="display:none">备用下载（jsDelivr 加速节点）</a>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid #21262d">
       <div class="size" style="margin-bottom:6px">点上面没反应？复制下面的链接，到浏览器里打开 ↓</div>
       <div style="display:flex;gap:6px">
@@ -266,12 +266,13 @@ function applyVer(j){
   var code = j.code || j.ver || 36;
   var file = j.file || ("yeyu-v" + code + ".apk");
   var apk  = j.apk  || ("https://yeyu-ye.github.io/" + file);
-  var cdn  = j.cdn  || ("https://cdn.jsdelivr.net/gh/yeyu-ye/yeyu-ye.github.io@v" + code + "/" + file);
+  /* v75：cdn 为空 = jsDelivr 该版本解析不了（如仓库包超 50MB），隐藏备用行而不是给坏链 */
+  var cdn  = j.cdn  || "";
   var b = document.getElementById("dlBtn"), a = document.getElementById("dlAlt"),
       u = document.getElementById("apkUrl"), n = document.getElementById("verName"),
       s = document.getElementById("dlSize"), t = document.querySelector(".version");
   if(b) b.href = apk;
-  if(a) a.href = cdn;
+  if(a){ a.href = cdn || apk; a.style.display = cdn ? "" : "none"; }
   if(u) u.value = apk;
   if(n) n.textContent = "v" + code + " (" + String(file).replace(/\.apk$/, "") + ")";
   if(t) t.textContent = "v" + code + (j.time ? " — " + j.time + " 更新" : " 更新");
